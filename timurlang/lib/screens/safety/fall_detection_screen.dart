@@ -4,6 +4,7 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 import '../../config/theme.dart';
 import '../../config/constants.dart';
@@ -43,6 +44,8 @@ class _FallDetectionScreenState extends State<FallDetectionScreen> {
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
+      SystemSound.play(SystemSoundType.alert);
+      HapticFeedback.heavyImpact();
       setState(() {
         if (_countdown > 0) {
           _countdown--;

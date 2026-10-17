@@ -8,6 +8,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../../config/theme.dart';
 import '../../config/constants.dart';
 import '../../models/sos_incident.dart';
@@ -31,6 +32,8 @@ class _SosBeaconScreenState extends State<SosBeaconScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animCtrl;
   late Animation<double> _pulseAnim;
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  bool _isSoundPlaying = false;
   Timer? _hapticTimer;
   bool _isFlashWhite = false;
   int _strobeMode = 0; // 0 = Cepat (Strobe), 1 = Morse SOS, 2 = Tetap Terang
@@ -70,6 +73,35 @@ class _SosBeaconScreenState extends State<SosBeaconScreen>
     );
 
     _startStrobe();
+    _playSiren();
+  }
+
+  Future<void> _playSiren() async {
+    try {
+      await _audioPlayer.setReleaseMode(ReleaseMode.loop);
+      await _audioPlayer.setVolume(1.0);
+      await _audioPlayer.play(AssetSource('sounds/siren.wav'));
+      if (mounted) setState(() => _isSoundPlaying = true);
+    } catch (e) {
+      debugPrint('Error playing siren: $e');
+    }
+  }
+
+  Future<void> _stopSiren() async {
+    try {
+      await _audioPlayer.stop();
+      if (mounted) setState(() => _isSoundPlaying = false);
+    } catch (e) {
+      debugPrint('Error stopping siren: $e');
+    }
+  }
+
+  void _toggleSiren() {
+    if (_isSoundPlaying) {
+      _stopSiren();
+    } else {
+      _playSiren();
+    }
   }
 
   void _startStrobe() {
@@ -147,6 +179,7 @@ class _SosBeaconScreenState extends State<SosBeaconScreen>
     );
 
     if (confirm == true && mounted) {
+      await _stopSiren();
       if (widget.incident != null) {
         await DatabaseService.instance.updateSOSStatus(
           widget.incident!.id,
@@ -170,6 +203,8 @@ class _SosBeaconScreenState extends State<SosBeaconScreen>
     _animCtrl.dispose();
     _hapticTimer?.cancel();
     _morseTimer?.cancel();
+    _stopSiren();
+    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -198,38 +233,46 @@ class _SosBeaconScreenState extends State<SosBeaconScreen>
         body: SafeArea(
           child: Column(
             children: [
-              // Header Status Darurat
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isWhite ? const Color(0xFFD50000) : Colors.black45,
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(
-                    color: isWhite ? Colors.transparent : Colors.white30,
-                  ),
-                ),
+              // Header Status Darurat + Tombol Sirine
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
-                      width: 10,
-                      height: 10,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                       decoration: BoxDecoration(
-                        color: isWhite ? Colors.white : Colors.redAccent,
-                        shape: BoxShape.circle,
+                        color: isWhite ? const Color(0xFFD50000) : Colors.black45,
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(
+                          color: isWhite ? Colors.transparent : Colors.white30,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 9,
+                            height: 9,
+                            decoration: BoxDecoration(
+                              color: isWhite ? Colors.white : Colors.redAccent,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            '🚨 SUAR TIM SAR AKTIF',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '🚨 SUAR DARURAT TIM SAR AKTIF',
-                      style: TextStyle(
-                        color: isWhite ? Colors.white : Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
+                    _soundButton(isWhite),
                   ],
                 ),
               ),
@@ -439,6 +482,47 @@ class _SosBeaconScreenState extends State<SosBeaconScreen>
                 ? (isWhite ? Colors.white : const Color(0xFFD50000))
                 : (isWhite ? Colors.black87 : Colors.white),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _soundButton(bool isWhite) {
+    return GestureDetector(
+      onTap: _toggleSiren,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: _isSoundPlaying
+              ? (isWhite ? const Color(0xFFD50000) : Colors.white)
+              : Colors.black45,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isWhite ? Colors.transparent : Colors.white30,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _isSoundPlaying ? Icons.volume_up : Icons.volume_off,
+              size: 16,
+              color: _isSoundPlaying
+                  ? (isWhite ? Colors.white : const Color(0xFFD50000))
+                  : Colors.white70,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              _isSoundPlaying ? 'SIRINE ON' : 'SIRINE OFF',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: _isSoundPlaying
+                    ? (isWhite ? Colors.white : const Color(0xFFD50000))
+                    : Colors.white70,
+              ),
+            ),
+          ],
         ),
       ),
     );
