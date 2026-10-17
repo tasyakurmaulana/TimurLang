@@ -27,11 +27,14 @@ import 'screens/profile/medical_profile_screen.dart';
 import 'screens/feedback/course_feedback_screen.dart';
 
 class MainApp extends StatelessWidget {
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   const MainApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'TimurLang',
       theme: AppTheme.darkTheme,
       debugShowCheckedModeBanner: false,

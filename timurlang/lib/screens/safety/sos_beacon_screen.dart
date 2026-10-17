@@ -78,6 +78,15 @@ class _SosBeaconScreenState extends State<SosBeaconScreen>
 
   Future<void> _playSiren() async {
     try {
+      await _audioPlayer.setAudioContext(AudioContext(
+        android: const AudioContextAndroid(
+          isSpeakerphoneOn: true,
+          stayAwake: true,
+          contentType: AndroidContentType.sonification,
+          usageType: AndroidUsageType.alarm,
+          audioFocus: AndroidAudioFocus.gainTransientExclusive,
+        ),
+      ));
       await _audioPlayer.setReleaseMode(ReleaseMode.loop);
       await _audioPlayer.setVolume(1.0);
       await _audioPlayer.play(AssetSource('sounds/siren.wav'));

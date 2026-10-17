@@ -13,6 +13,8 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
 
+  Function(String? payload)? onNotificationTap;
+
   Future<void> initialize() async {
     if (_initialized || kIsWeb) return;
 
@@ -28,7 +30,12 @@ class NotificationService {
       iOS: iosSettings,
     );
 
-    await _plugin.initialize(initSettings);
+    await _plugin.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        onNotificationTap?.call(response.payload);
+      },
+    );
     _initialized = true;
   }
 
@@ -36,6 +43,7 @@ class NotificationService {
   Future<void> showSOSNotification({
     required String title,
     required String body,
+    String? payload,
   }) async {
     const androidDetails = AndroidNotificationDetails(
       'sos_channel',
@@ -61,7 +69,39 @@ class NotificationService {
       ),
     );
 
-    await _plugin.show(1, title, body, details);
+    await _plugin.show(1, title, body, details, payload: payload ?? 'sos_emergency');
+  }
+
+  /// Show ongoing background monitoring notification
+  Future<void> showOngoingMonitoringNotification() async {
+    const androidDetails = AndroidNotificationDetails(
+      'sos_monitor_channel',
+      'Pemantauan Siaga SOS',
+      channelDescription: 'Status aktif sensor pendeteksi jatuh & guncangan',
+      importance: Importance.low,
+      priority: Priority.low,
+      ongoing: true,
+      autoCancel: false,
+      showWhen: false,
+    );
+
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(),
+    );
+
+    await _plugin.show(
+      999,
+      '🛡️ Siaga SOS Aktif',
+      'Sensor guncangan & jatuh aktif memantau di latar belakang.',
+      details,
+      payload: 'sos_screen',
+    );
+  }
+
+  /// Dismiss ongoing monitoring notification
+  Future<void> dismissOngoingMonitoringNotification() async {
+    await cancelNotification(999);
   }
 
   /// Show sunset warning notification

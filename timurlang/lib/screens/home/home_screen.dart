@@ -271,7 +271,7 @@ class _DashboardPageState extends State<_DashboardPage> {
                 _menuCard('SOS\nDarurat', Icons.sos_rounded, AppTheme.dangerRed, () {
                   Navigator.pushNamed(context, AppRoutes.fallDetection);
                 }),
-                _menuCard('Survival\nAssistant', Icons.smart_toy_rounded, Color(0xFF7B1FA2), () {
+                _menuCard('AI\nAssistant', Icons.auto_awesome_rounded, const Color(0xFF7B1FA2), () {
                   Navigator.pushNamed(context, AppRoutes.survivalAssistant);
                 }),
                 _menuCard('Tiket\nSimaksi', Icons.confirmation_num_rounded, AppTheme.accentOrange, () {

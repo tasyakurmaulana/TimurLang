@@ -25,6 +25,7 @@ class AppConstants {
   static const double fallThresholdG = 2.5; // G-force threshold
   static const int fallCountdownSeconds = 15;
   static const double fallFreefallThreshold = 0.3;
+  static const String sosMonitoringEnabledKey = 'sos_monitoring_enabled';
 
   // Operational Hours
   static const int operationalStartHour = 8;

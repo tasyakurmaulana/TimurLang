@@ -38,7 +38,7 @@ class SensorService {
     _isMonitoring = true;
 
     _accelSubscription = accelerometerEventStream(
-      samplingPeriod: const Duration(milliseconds: 100),
+      samplingPeriod: const Duration(milliseconds: 50),
     ).listen((AccelerometerEvent event) {
       _processFallDetection(event);
     });
@@ -52,20 +52,20 @@ class SensorService {
   }
 
   void _processFallDetection(AccelerometerEvent event) {
-    // Calculate total acceleration magnitude
+    // Hitung total percepatan vektor (X, Y, Z)
     final magnitude = sqrt(
       event.x * event.x + event.y * event.y + event.z * event.z,
     );
 
-    // Normal gravity ~9.8 m/s², convert to G-force
+    // Normal gravitasi ~9.8 m/s², konversi ke satuan G
     final gForce = magnitude / 9.8;
 
-    // Detect freefall (very low G) followed by impact (very high G)
-    if (gForce < AppConstants.fallFreefallThreshold || gForce > AppConstants.fallThresholdG) {
-      // Debounce: only trigger once per 30 seconds
+    // Deteksi benturan / guncangan hebat (> 2.5G) atau kondisi melayang bebas (< 0.3G)
+    if (gForce > AppConstants.fallThresholdG || gForce < AppConstants.fallFreefallThreshold) {
+      // Debounce: 15 detik agar tidak memicu berkali-kali dalam satu benturan
       final now = DateTime.now();
       if (_lastFallDetection != null &&
-          now.difference(_lastFallDetection!).inSeconds < 30) {
+          now.difference(_lastFallDetection!).inSeconds < 15) {
         return;
       }
 
