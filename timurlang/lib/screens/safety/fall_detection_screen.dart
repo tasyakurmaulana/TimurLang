@@ -12,6 +12,7 @@ import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
 import '../../services/sensor_service.dart';
 import '../../services/notification_service.dart';
+import 'sos_beacon_screen.dart';
 
 class FallDetectionScreen extends StatefulWidget {
   const FallDetectionScreen({super.key});
@@ -81,8 +82,9 @@ class _FallDetectionScreenState extends State<FallDetectionScreen> {
 
     // Save to DB
     final user = AuthService.instance.currentUser;
+    SosIncident? incident;
     if (user != null) {
-      final incident = SosIncident(
+      incident = SosIncident(
         id: const Uuid().v4(),
         userId: user.id,
         koordinatLat: -8.108, // Mock GPS
@@ -97,10 +99,14 @@ class _FallDetectionScreenState extends State<FallDetectionScreen> {
     }
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Sinyal SOS telah dikirim!'),
-          backgroundColor: AppTheme.dangerRed,
+      // Buka Layar Suar Darurat (SOS Beacon) yang berkedip untuk Tim SAR
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SosBeaconScreen(
+            incident: incident,
+            triggerType: type,
+          ),
         ),
       );
     }

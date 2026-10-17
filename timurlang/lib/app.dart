@@ -19,6 +19,7 @@ import 'screens/map/map_screen.dart';
 import 'screens/weather/weather_screen.dart';
 import 'screens/compass/compass_screen.dart';
 import 'screens/safety/fall_detection_screen.dart';
+import 'screens/safety/sos_beacon_screen.dart';
 import 'screens/ai/survival_assistant_screen.dart';
 import 'screens/game/pack_carrier_screen.dart';
 import 'screens/profile/profile_screen.dart';
@@ -52,6 +53,7 @@ class MainApp extends StatelessWidget {
         AppRoutes.weather: (context) => const WeatherScreen(),
         AppRoutes.compass: (context) => const CompassScreen(),
         AppRoutes.fallDetection: (context) => const FallDetectionScreen(),
+        AppRoutes.sos: (context) => const SosBeaconScreen(),
         AppRoutes.survivalAssistant: (context) => const SurvivalAssistantScreen(),
         AppRoutes.packCarrier: (context) => const PackCarrierScreen(),
         AppRoutes.profile: (context) => const ProfileScreen(),
