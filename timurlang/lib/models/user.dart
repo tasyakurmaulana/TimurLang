@@ -9,6 +9,8 @@ class User {
   final String email;
   final String passwordHash;
   final String? fotoProfilUrl;
+  final bool isBiometricEnabled;
+  final String? biometricToken;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -19,6 +21,8 @@ class User {
     required this.email,
     required this.passwordHash,
     this.fotoProfilUrl,
+    this.isBiometricEnabled = false,
+    this.biometricToken,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -31,6 +35,8 @@ class User {
       'email': email,
       'password_hash': passwordHash,
       'foto_profil_url': fotoProfilUrl,
+      'is_biometric_enabled': isBiometricEnabled ? 1 : 0,
+      'biometric_token': biometricToken,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -44,6 +50,9 @@ class User {
       email: map['email'] as String,
       passwordHash: map['password_hash'] as String,
       fotoProfilUrl: map['foto_profil_url'] as String?,
+      isBiometricEnabled: map['is_biometric_enabled'] == true ||
+          map['is_biometric_enabled'] == 1,
+      biometricToken: map['biometric_token'] as String?,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
     );
@@ -56,6 +65,8 @@ class User {
     String? email,
     String? passwordHash,
     String? fotoProfilUrl,
+    bool? isBiometricEnabled,
+    String? biometricToken,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -66,6 +77,8 @@ class User {
       email: email ?? this.email,
       passwordHash: passwordHash ?? this.passwordHash,
       fotoProfilUrl: fotoProfilUrl ?? this.fotoProfilUrl,
+      isBiometricEnabled: isBiometricEnabled ?? this.isBiometricEnabled,
+      biometricToken: biometricToken ?? this.biometricToken,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

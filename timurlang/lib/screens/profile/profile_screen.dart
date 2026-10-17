@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../config/theme.dart';
+import '../../config/routes.dart';
 import '../../services/auth_service.dart';
 import '../../utils/image_helper.dart';
 import '../../widgets/custom_text_field.dart';
@@ -364,13 +365,95 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () => setState(() => _isEditing = true),
                 icon: const Icon(Icons.edit_note),
                 label: const Text('Edit Profil'),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // ── Keamanan & Biometrik ──
+            Container(
+              decoration: BoxDecoration(
+                color: AppTheme.cardDark,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: SwitchListTile(
+                value: user.isBiometricEnabled,
+                activeThumbColor: AppTheme.primaryGreen,
+                secondary: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryGreen.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.fingerprint, color: AppTheme.primaryGreen),
+                ),
+                title: const Text('Login Sidik Jari', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                subtitle: Text(
+                  user.isBiometricEnabled
+                      ? 'Sidik jari aktif untuk login cepat'
+                      : 'Aktifkan untuk masuk tanpa kata sandi',
+                  style: const TextStyle(fontSize: 12, color: Colors.white54),
+                ),
+                onChanged: (bool value) async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  if (value) {
+                    final res = await AuthService.instance.enableBiometric();
+                    if (!mounted) return;
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(res.message),
+                        backgroundColor: res.success ? AppTheme.safeGreen : AppTheme.dangerRed,
+                      ),
+                    );
+                    setState(() {});
+                  } else {
+                    final res = await AuthService.instance.disableBiometric();
+                    if (!mounted) return;
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(res.message),
+                        backgroundColor: res.success ? AppTheme.safeGreen : AppTheme.dangerRed,
+                      ),
+                    );
+                    setState(() {});
+                  }
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // ── Rekam Medis Darurat ──
+            Container(
+              decoration: BoxDecoration(
+                color: AppTheme.cardDark,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.dangerRed.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.medical_services_outlined, color: AppTheme.dangerRed),
+                ),
+                title: const Text('Data Rekam Medis', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                subtitle: const Text(
+                  'Data medis & kontak darurat (Dilindungi Sidik Jari)',
+                  style: TextStyle(fontSize: 12, color: Colors.white54),
+                ),
+                trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+                onTap: () {
+                  Navigator.pushNamed(context, AppRoutes.medicalProfile);
+                },
               ),
             ),
           ] else ...[

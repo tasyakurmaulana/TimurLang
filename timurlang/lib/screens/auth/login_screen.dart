@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../config/routes.dart';
+import '../../models/user.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../utils/validators.dart';
@@ -78,8 +79,49 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _biometricLogin() async {
+    final email = _emailCtrl.text.trim();
+    if (email.isNotEmpty) {
+      // Jika email sudah diisi, langsung autentikasi untuk email tersebut
+      await _executeBiometricAuth(email: email);
+      return;
+    }
+
+    // Jika email belum diisi, ambil akun-akun dengan sidik jari aktif di perangkat ini
     setState(() => _isLoading = true);
-    final result = await AuthService.instance.authenticateBiometric();
+    final users = await AuthService.instance.getBiometricEnabledUsers();
+    setState(() => _isLoading = false);
+
+    if (!mounted) return;
+
+    if (users.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Belum ada akun dengan sidik jari aktif. Masukkan email & kata sandi terlebih dahulu.'),
+          backgroundColor: AppTheme.dangerRed,
+        ),
+      );
+      return;
+    }
+
+    if (users.length == 1) {
+      // Hanya ada 1 akun dengan sidik jari aktif
+      await _executeBiometricAuth(userId: users.first.id);
+      return;
+    }
+
+    // Ada lebih dari 1 akun (Multi-Akun): Tampilkan pemilih akun
+    final selectedUser = await _showAccountPickerSheet(users);
+    if (selectedUser != null && mounted) {
+      await _executeBiometricAuth(userId: selectedUser.id);
+    }
+  }
+
+  Future<void> _executeBiometricAuth({String? email, String? userId}) async {
+    setState(() => _isLoading = true);
+    final result = await AuthService.instance.authenticateBiometric(
+      email: email,
+      userId: userId,
+    );
     setState(() => _isLoading = false);
 
     if (!mounted) return;
@@ -92,10 +134,126 @@ class _LoginScreenState extends State<LoginScreen>
         Navigator.pushReplacementNamed(context, AppRoutes.home);
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result.message)),
-      );
+      if (result.message != 'Verifikasi sidik jari dibatalkan.') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.message),
+            backgroundColor: AppTheme.dangerRed,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
     }
+  }
+
+  Future<User?> _showAccountPickerSheet(List<User> users) {
+    return showModalBottomSheet<User>(
+      context: context,
+      backgroundColor: AppTheme.surfaceDark,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryGreen.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.fingerprint, color: AppTheme.primaryGreen, size: 28),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Pilih Akun Sidik Jari',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            'Pilih akun yang ingin Anda akses dengan sidik jari',
+                            style: TextStyle(fontSize: 12, color: Colors.white54),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Divider(color: Colors.white12),
+                const SizedBox(height: 8),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: users.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final u = users[index];
+                      final isBasecamp = u.peran == 'basecamp';
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.cardDark,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.white10),
+                        ),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          leading: CircleAvatar(
+                            backgroundColor: isBasecamp
+                                ? AppTheme.accentOrange.withValues(alpha: 0.2)
+                                : AppTheme.primaryGreen.withValues(alpha: 0.2),
+                            child: Icon(
+                              isBasecamp ? Icons.house : Icons.person,
+                              color: isBasecamp ? AppTheme.accentOrange : AppTheme.primaryGreen,
+                            ),
+                          ),
+                          title: Text(
+                            u.namaLengkap,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
+                          subtitle: Text(
+                            u.email,
+                            style: const TextStyle(color: Colors.white54, fontSize: 12),
+                          ),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: isBasecamp
+                                  ? AppTheme.accentOrange.withValues(alpha: 0.2)
+                                  : AppTheme.primaryGreen.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              u.peran.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: isBasecamp ? AppTheme.accentOrange : AppTheme.primaryGreen,
+                              ),
+                            ),
+                          ),
+                          onTap: () => Navigator.pop(context, u),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override

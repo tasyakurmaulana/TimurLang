@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../config/constants.dart';
+import '../../config/routes.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../utils/validators.dart';
@@ -38,29 +39,143 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
 
+    final email = _emailCtrl.text.trim();
+    final password = _passwordCtrl.text;
+
     final result = await AuthService.instance.register(
       namaLengkap: _namaCtrl.text.trim(),
-      email: _emailCtrl.text.trim(),
-      password: _passwordCtrl.text,
+      email: email,
+      password: password,
       peran: _selectedRole,
     );
-
-    setState(() => _isLoading = false);
 
     if (!mounted) return;
 
     if (result.success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Registrasi berhasil! Silakan login.'),
-          backgroundColor: AppTheme.safeGreen,
-        ),
+      // Auto-login setelah registrasi berhasil
+      final loginResult = await AuthService.instance.autoLoginAfterRegister(
+        email: email,
+        password: password,
       );
-      Navigator.pop(context);
+
+      if (!mounted) return;
+
+      if (loginResult.success) {
+        // Cek apakah perangkat mendukung biometrik
+        final biometricAvailable =
+            await AuthService.instance.checkBiometricAvailability();
+
+        if (biometricAvailable && mounted) {
+          // Tampilkan dialog aktivasi sidik jari
+          await _showBiometricDialog();
+        }
+
+        if (!mounted) return;
+
+        // Navigasi ke home sesuai peran
+        final user = AuthService.instance.currentUser!;
+        if (user.peran == 'basecamp') {
+          Navigator.pushReplacementNamed(context, AppRoutes.basecampDashboard);
+        } else {
+          Navigator.pushReplacementNamed(context, AppRoutes.home);
+        }
+      } else {
+        // Auto-login gagal, kembali ke login manual
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Registrasi berhasil! Silakan login.'),
+            backgroundColor: AppTheme.safeGreen,
+          ),
+        );
+        Navigator.pop(context);
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result.message), backgroundColor: AppTheme.dangerRed),
+        SnackBar(
+          content: Text(result.message),
+          backgroundColor: AppTheme.dangerRed,
+        ),
       );
+    }
+
+    if (mounted) setState(() => _isLoading = false);
+  }
+
+  /// Dialog untuk mengaktifkan sidik jari setelah registrasi
+  Future<void> _showBiometricDialog() async {
+    final shouldEnable = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.cardDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.fingerprint, color: AppTheme.primaryGreen, size: 32),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Aktifkan Sidik Jari?',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Gunakan sidik jari untuk:',
+              style: TextStyle(color: Colors.white70),
+            ),
+            SizedBox(height: 12),
+            _BiometricFeatureItem(
+              icon: Icons.login,
+              text: 'Login cepat tanpa kata sandi',
+            ),
+            SizedBox(height: 8),
+            _BiometricFeatureItem(
+              icon: Icons.medical_information,
+              text: 'Akses data rekam medis darurat',
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Anda bisa mengaktifkan atau menonaktifkan ini nanti di pengaturan profil.',
+              style: TextStyle(color: Colors.white38, fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Nanti Saja', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(context, true),
+            icon: const Icon(Icons.fingerprint, size: 20),
+            label: const Text('Aktifkan'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldEnable == true && mounted) {
+      // Proses verifikasi sidik jari
+      final result = await AuthService.instance.enableBiometric();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.message),
+            backgroundColor: result.success ? AppTheme.safeGreen : AppTheme.dangerRed,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        if (result.success) {
+          await Future.delayed(const Duration(milliseconds: 600));
+        }
+      }
     }
   }
 
@@ -218,6 +333,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Widget item fitur biometrik di dialog
+class _BiometricFeatureItem extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _BiometricFeatureItem({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: AppTheme.primaryGreen, size: 20),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(text, style: const TextStyle(color: Colors.white70)),
+        ),
+      ],
     );
   }
 }

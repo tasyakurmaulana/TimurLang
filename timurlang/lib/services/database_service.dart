@@ -50,6 +50,7 @@ class DatabaseService {
       path,
       version: AppConstants.dbVersion,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -62,6 +63,8 @@ class DatabaseService {
         email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
         foto_profil_url TEXT,
+        is_biometric_enabled INTEGER DEFAULT 0,
+        biometric_token TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
@@ -192,6 +195,22 @@ class DatabaseService {
     await _seedBasecamps(db);
   }
 
+  /// Migrasi database saat versi naik
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Tambah kolom is_biometric_enabled ke tabel users
+      await db.execute(
+        'ALTER TABLE users ADD COLUMN is_biometric_enabled INTEGER DEFAULT 0',
+      );
+    }
+    if (oldVersion < 3) {
+      // Tambah kolom biometric_token ke tabel users
+      await db.execute(
+        'ALTER TABLE users ADD COLUMN biometric_token TEXT',
+      );
+    }
+  }
+
   Future<void> _seedMountains(Database db) async {
     final mountains = [
       {
@@ -314,6 +333,45 @@ class DatabaseService {
   Future<void> updateUser(User user) async {
     final db = await database;
     await db.update('users', user.toMap(), where: 'id = ?', whereArgs: [user.id]);
+  }
+
+  /// Update status biometrik user beserta token biometriknya
+  Future<void> updateBiometricStatus(String userId, bool enabled, {String? token}) async {
+    final db = await database;
+    await db.update(
+      'users',
+      {
+        'is_biometric_enabled': enabled ? 1 : 0,
+        'biometric_token': enabled ? token : null,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [userId],
+    );
+  }
+
+  /// Ambil semua user yang telah mengaktifkan sidik jari di perangkat ini
+  Future<List<User>> getBiometricUsers() async {
+    final db = await database;
+    final maps = await db.query(
+      'users',
+      where: 'is_biometric_enabled = 1',
+      orderBy: 'updated_at DESC, created_at DESC',
+    );
+    return maps.map((m) => User.fromMap(m)).toList();
+  }
+
+  /// Ambil user terakhir yang mengaktifkan sidik jari
+  Future<User?> getLastBiometricUser() async {
+    final db = await database;
+    final maps = await db.query(
+      'users',
+      where: 'is_biometric_enabled = 1',
+      orderBy: 'updated_at DESC, created_at DESC',
+      limit: 1,
+    );
+    if (maps.isEmpty) return null;
+    return User.fromMap(maps.first);
   }
 
   // ── MEDICAL PROFILE CRUD ──

@@ -62,6 +62,8 @@ class SupabaseService {
         'email': user.email,
         'password_hash': user.passwordHash,
         'foto_profil_url': user.fotoProfilUrl,
+        'is_biometric_enabled': user.isBiometricEnabled,
+        'biometric_token': user.biometricToken,
         'created_at': user.createdAt.toIso8601String(),
         'updated_at': user.updatedAt.toIso8601String(),
       });
@@ -113,6 +115,8 @@ class SupabaseService {
       await _client!.from('users').update({
         'nama_lengkap': user.namaLengkap,
         'foto_profil_url': user.fotoProfilUrl,
+        'is_biometric_enabled': user.isBiometricEnabled,
+        'biometric_token': user.biometricToken,
         'updated_at': user.updatedAt.toIso8601String(),
       }).eq('id', user.id);
       return true;
@@ -130,6 +134,8 @@ class SupabaseService {
       email: map['email'] as String,
       passwordHash: map['password_hash'] as String,
       fotoProfilUrl: map['foto_profil_url'] as String?,
+      isBiometricEnabled: map['is_biometric_enabled'] == true || map['is_biometric_enabled'] == 1,
+      biometricToken: map['biometric_token'] as String?,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
     );

@@ -10,13 +10,16 @@ class AppConstants {
 
   // Database
   static const String dbName = 'timurlang.db';
-  static const int dbVersion = 1;
+  static const int dbVersion = 3;
 
   // Session
   static const String sessionTokenKey = 'session_token';
   static const String userIdKey = 'user_id';
   static const String userRoleKey = 'user_role';
   static const int sessionExpiryHours = 72;
+  static const String biometricEnabledKey = 'biometric_enabled';
+  static const String lastBiometricUserIdKey = 'last_biometric_user_id';
+  static const String registeredBiometricUserIdsKey = 'registered_biometric_user_ids';
 
   // Fall Detection
   static const double fallThresholdG = 2.5; // G-force threshold
