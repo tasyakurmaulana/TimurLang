@@ -13,6 +13,7 @@ import '../../utils/date_utils.dart';
 import '../mountain/mountain_list_screen.dart';
 import '../profile/profile_screen.dart';
 import '../feedback/course_feedback_screen.dart';
+import '../../utils/image_helper.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -84,10 +85,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildProfileIcon() {
     final user = AuthService.instance.currentUser;
-    if (user?.fotoProfilUrl != null) {
+    final provider = ImageHelper.getImageProvider(user?.fotoProfilUrl);
+    if (provider != null) {
       return CircleAvatar(
         radius: 12,
-        backgroundImage: NetworkImage(user!.fotoProfilUrl!),
+        backgroundImage: provider,
       );
     }
     return const Icon(Icons.person_rounded);

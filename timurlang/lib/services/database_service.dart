@@ -3,8 +3,10 @@
 // Offline-first architecture core
 // ============================================
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import '../config/constants.dart';
 import '../models/user.dart';
 import '../models/medical_profile.dart';
@@ -21,6 +23,14 @@ class DatabaseService {
 
   DatabaseService._internal();
 
+  /// Inisialisasi database factory untuk platform web
+  /// Harus dipanggil di main() SEBELUM menggunakan database
+  static void initForWeb() {
+    if (kIsWeb) {
+      databaseFactory = databaseFactoryFfiWeb;
+    }
+  }
+
   Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDatabase();
@@ -28,8 +38,13 @@ class DatabaseService {
   }
 
   Future<Database> _initDatabase() async {
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, AppConstants.dbName);
+    final String path;
+    if (kIsWeb) {
+      path = AppConstants.dbName;
+    } else {
+      final dbPath = await getDatabasesPath();
+      path = join(dbPath, AppConstants.dbName);
+    }
 
     return await openDatabase(
       path,

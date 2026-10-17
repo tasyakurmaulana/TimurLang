@@ -1,6 +1,6 @@
 // ============================================
 // TimurLang - Sync Service
-// Offline→Online sync (SQLite → Supabase mock)
+// Offline→Online sync (SQLite → Supabase)
 // ============================================
 
 import 'dart:convert';
@@ -9,12 +9,14 @@ import 'package:uuid/uuid.dart';
 import '../config/constants.dart';
 import '../models/sync_queue.dart';
 import 'database_service.dart';
+import 'supabase_service.dart';
 
 class SyncService {
   static final SyncService instance = SyncService._internal();
   SyncService._internal();
 
   final _db = DatabaseService.instance;
+  final _supabase = SupabaseService.instance;
   bool _isSyncing = false;
   bool get isSyncing => _isSyncing;
 
@@ -42,6 +44,33 @@ class SyncService {
     );
 
     await _db.insertSyncQueue(queue);
+
+    // Coba langsung sync jika ada koneksi
+    final hasNet = await hasConnection();
+    if (hasNet && _supabase.isInitialized) {
+      await _syncSingleItem(queue);
+    }
+  }
+
+  /// Sync satu item ke Supabase
+  Future<bool> _syncSingleItem(SyncQueue item) async {
+    if (!_supabase.isInitialized) return false;
+
+    try {
+      final payload = jsonDecode(item.payloadJson) as Map<String, dynamic>;
+      final success = await _supabase.upsertToTable(item.namaTabel, payload);
+
+      if (success) {
+        await _db.updateSyncStatus(item.id, AppConstants.syncCompleted);
+        return true;
+      } else {
+        await _db.updateSyncStatus(item.id, AppConstants.syncFailed);
+        return false;
+      }
+    } catch (e) {
+      await _db.updateSyncStatus(item.id, AppConstants.syncFailed);
+      return false;
+    }
   }
 
   /// Attempt to sync all pending items
@@ -55,6 +84,10 @@ class SyncService {
       return (synced: 0, failed: 0, message: 'Tidak ada koneksi internet. Data tersimpan lokal.');
     }
 
+    if (!_supabase.isInitialized) {
+      return (synced: 0, failed: 0, message: 'Supabase belum dikonfigurasi. Data tersimpan lokal.');
+    }
+
     _isSyncing = true;
     int synced = 0;
     int failed = 0;
@@ -63,15 +96,10 @@ class SyncService {
       final pending = await _db.getPendingSyncItems();
 
       for (final item in pending) {
-        try {
-          // Mock Supabase sync (simulate network call)
-          await Future.delayed(const Duration(milliseconds: 200));
-
-          // Mark as synced
-          await _db.updateSyncStatus(item.id, AppConstants.syncCompleted);
+        final success = await _syncSingleItem(item);
+        if (success) {
           synced++;
-        } catch (e) {
-          await _db.updateSyncStatus(item.id, AppConstants.syncFailed);
+        } else {
           failed++;
         }
       }
