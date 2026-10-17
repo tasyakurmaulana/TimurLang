@@ -40,10 +40,12 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
       final mountain = _args['mountain'] as Mountain;
       final totalBiayaIDR = _args['totalBiayaIDR'] as double;
       final convertedCost = CurrencyUtils.convertFromIDR(totalBiayaIDR, _selectedCurrency);
+      final basecampId = _args['basecampId'] as String?;
 
       await BlockchainService.instance.createPermit(
         userId: user.id,
         gunungId: mountain.id,
+        basecampId: basecampId,
         tanggalNaik: _args['tanggalNaik'] as DateTime,
         tanggalTurun: _args['tanggalTurun'] as DateTime,
         jumlahAnggota: _args['jumlahAnggota'] as int,
@@ -79,6 +81,7 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
     if (_args.isEmpty) return const Scaffold();
 
     final mountain = _args['mountain'] as Mountain;
+    final namaBasecamp = _args['namaBasecamp'] as String?;
     final totalBiayaIDR = _args['totalBiayaIDR'] as double;
     final convertedCost = CurrencyUtils.convertFromIDR(totalBiayaIDR, _selectedCurrency);
     final displayPrice = CurrencyUtils.formatCurrency(convertedCost, _selectedCurrency);
@@ -101,10 +104,21 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(mountain.namaGunung, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  if (namaBasecamp != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Via $namaBasecamp',
+                      style: const TextStyle(fontSize: 14, color: AppTheme.primaryGreen, fontWeight: FontWeight.w600),
+                    ),
+                  ],
                   const Divider(height: 24),
                   _summaryRow('Rombongan', '${_args['jumlahAnggota']} Orang'),
                   const SizedBox(height: 8),
                   _summaryRow('Durasi', '${(_args['tanggalTurun'] as DateTime).difference(_args['tanggalNaik'] as DateTime).inDays + 1} Hari'),
+                  if (namaBasecamp != null) ...[
+                    const SizedBox(height: 8),
+                    _summaryRow('Basecamp', namaBasecamp),
+                  ],
                 ],
               ),
             ),

@@ -6,6 +6,7 @@ class SosIncident {
   final String id;
   final String userId;
   final String? gunungId;
+  final String? basecampId;
   final double koordinatLat;
   final double koordinatLong;
   final String tipePemicu; // 'fall_detection' or 'manual'
@@ -18,6 +19,7 @@ class SosIncident {
     required this.id,
     required this.userId,
     this.gunungId,
+    this.basecampId,
     required this.koordinatLat,
     required this.koordinatLong,
     required this.tipePemicu,
@@ -32,6 +34,7 @@ class SosIncident {
       'id': id,
       'user_id': userId,
       'gunung_id': gunungId,
+      'basecamp_id': basecampId,
       'koordinat_lat': koordinatLat,
       'koordinat_long': koordinatLong,
       'tipe_pemicu': tipePemicu,
@@ -47,6 +50,7 @@ class SosIncident {
       id: map['id'] as String,
       userId: map['user_id'] as String,
       gunungId: map['gunung_id'] as String?,
+      basecampId: map['basecamp_id'] as String?,
       koordinatLat: (map['koordinat_lat'] as num).toDouble(),
       koordinatLong: (map['koordinat_long'] as num).toDouble(),
       tipePemicu: map['tipe_pemicu'] as String,

@@ -11,6 +11,7 @@ import 'package:uuid/uuid.dart';
 
 import '../config/constants.dart';
 import '../models/user.dart';
+import '../models/basecamp_post.dart';
 import '../utils/crypto_utils.dart';
 import 'database_service.dart';
 import 'supabase_service.dart';
@@ -36,6 +37,8 @@ class AuthService {
     required String email,
     required String password,
     required String peran,
+    String? gunungId,
+    String? namaBasecamp,
   }) async {
     try {
       // Check if email exists locally
@@ -62,12 +65,31 @@ class AuthService {
         namaLengkap: namaLengkap,
         email: email,
         passwordHash: '$salt:$passwordHash', // store salt:hash
+        gunungId: gunungId,
+        namaBasecamp: namaBasecamp,
         createdAt: now,
         updatedAt: now,
       );
 
       // Simpan ke database lokal (SQLite)
       await _db.insertUser(user);
+
+      // Jika role basecamp, catat juga entri pos basecamp resmi di tabel basecamp_posts
+      if (peran == AppConstants.roleBasecamp && gunungId != null && namaBasecamp != null) {
+        final post = BasecampPost(
+          id: 'bc-${user.id.substring(0, 8)}',
+          gunungId: gunungId,
+          userIdPetugas: user.id,
+          namaPos: namaBasecamp,
+          lokasiDeskripsi: 'Basecamp Resmi $namaBasecamp',
+          kontakPos: email,
+          createdAt: now,
+        );
+        await _db.insertBasecampPost(post);
+        if (_supabase.isInitialized) {
+          await _supabase.syncBasecampPost(post);
+        }
+      }
 
       // Sync ke Supabase (online) jika tersedia
       if (_supabase.isInitialized) {

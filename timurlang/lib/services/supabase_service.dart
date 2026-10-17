@@ -9,6 +9,7 @@ import '../config/supabase_config.dart';
 import '../models/user.dart' as app_user;
 import '../models/medical_profile.dart';
 import '../models/mountain.dart';
+import '../models/basecamp_post.dart';
 import '../models/simaksi_permit.dart';
 import '../models/sos_incident.dart';
 import '../models/course_feedback.dart';
@@ -55,6 +56,7 @@ class SupabaseService {
   Future<bool> syncUser(app_user.User user) async {
     if (!_initialized || _client == null) return false;
     try {
+      // Coba kirim payload lengkap dengan kolom-kolom baru
       await _client!.from('users').upsert({
         'id': user.id,
         'peran': user.peran,
@@ -64,13 +66,33 @@ class SupabaseService {
         'foto_profil_url': user.fotoProfilUrl,
         'is_biometric_enabled': user.isBiometricEnabled,
         'biometric_token': user.biometricToken,
+        'gunung_id': user.gunungId,
+        'nama_basecamp': user.namaBasecamp,
         'created_at': user.createdAt.toIso8601String(),
         'updated_at': user.updatedAt.toIso8601String(),
       });
+      debugPrint('✅ Berhasil sync user (${user.email}) ke Supabase');
       return true;
     } catch (e) {
-      debugPrint('❌ Gagal sync user: $e');
-      return false;
+      debugPrint('⚠️ Gagal sync user dengan kolom lengkap ($e), mencoba fallback kolom dasar...');
+      // Fallback jika kolom baru (gunung_id, dll) belum dibuat di Supabase
+      try {
+        await _client!.from('users').upsert({
+          'id': user.id,
+          'peran': user.peran,
+          'nama_lengkap': user.namaLengkap,
+          'email': user.email,
+          'password_hash': user.passwordHash,
+          'foto_profil_url': user.fotoProfilUrl,
+          'created_at': user.createdAt.toIso8601String(),
+          'updated_at': user.updatedAt.toIso8601String(),
+        });
+        debugPrint('✅ Berhasil sync user (${user.email}) ke Supabase via fallback dasar');
+        return true;
+      } catch (e2) {
+        debugPrint('❌ Gagal sync user fallback: $e2');
+        return false;
+      }
     }
   }
 
@@ -117,6 +139,8 @@ class SupabaseService {
         'foto_profil_url': user.fotoProfilUrl,
         'is_biometric_enabled': user.isBiometricEnabled,
         'biometric_token': user.biometricToken,
+        'gunung_id': user.gunungId,
+        'nama_basecamp': user.namaBasecamp,
         'updated_at': user.updatedAt.toIso8601String(),
       }).eq('id', user.id);
       return true;
@@ -136,6 +160,8 @@ class SupabaseService {
       fotoProfilUrl: map['foto_profil_url'] as String?,
       isBiometricEnabled: map['is_biometric_enabled'] == true || map['is_biometric_enabled'] == 1,
       biometricToken: map['biometric_token'] as String?,
+      gunungId: map['gunung_id'] as String?,
+      namaBasecamp: map['nama_basecamp'] as String?,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
     );
@@ -221,6 +247,78 @@ class SupabaseService {
   }
 
   // ══════════════════════════════════════════
+  // BASECAMP POST OPERATIONS
+  // ══════════════════════════════════════════
+
+  Future<bool> syncBasecampPost(BasecampPost post) async {
+    if (!_initialized || _client == null) return false;
+    try {
+      await _client!.from('basecamp_posts').upsert({
+        'id': post.id,
+        'gunung_id': post.gunungId,
+        'user_id_petugas': post.userIdPetugas,
+        'nama_pos': post.namaPos,
+        'lokasi_deskripsi': post.lokasiDeskripsi,
+        'kontak_pos': post.kontakPos,
+        'created_at': post.createdAt.toIso8601String(),
+      });
+      debugPrint('✅ Berhasil sync basecamp post (${post.namaPos}) ke Supabase');
+      return true;
+    } catch (e) {
+      debugPrint('❌ Gagal sync basecamp post: $e');
+      return false;
+    }
+  }
+
+  /// Mengambil semua pos basecamp dari Supabase
+  Future<List<BasecampPost>> getAllBasecampPosts() async {
+    if (!_initialized || _client == null) return [];
+    try {
+      final response = await _client!
+          .from('basecamp_posts')
+          .select()
+          .order('created_at', ascending: false);
+      return (response as List).map((m) => BasecampPost.fromMap(m)).toList();
+    } catch (e) {
+      debugPrint('❌ Gagal get all basecamp posts: $e');
+      return [];
+    }
+  }
+
+  /// Mengambil basecamp berdasarkan ID gunung
+  Future<List<BasecampPost>> getBasecampsByMountain(String gunungId) async {
+    if (!_initialized || _client == null) return [];
+    try {
+      final response = await _client!
+          .from('basecamp_posts')
+          .select()
+          .eq('gunung_id', gunungId)
+          .order('created_at', ascending: false);
+      return (response as List).map((m) => BasecampPost.fromMap(m)).toList();
+    } catch (e) {
+      debugPrint('❌ Gagal get basecamps by mountain: $e');
+      return [];
+    }
+  }
+
+  /// Mengambil basecamp berdasarkan user ID petugas
+  Future<BasecampPost?> getBasecampByUserId(String userId) async {
+    if (!_initialized || _client == null) return null;
+    try {
+      final response = await _client!
+          .from('basecamp_posts')
+          .select()
+          .eq('user_id_petugas', userId)
+          .maybeSingle();
+      if (response == null) return null;
+      return BasecampPost.fromMap(response);
+    } catch (e) {
+      debugPrint('❌ Gagal get basecamp by user id: $e');
+      return null;
+    }
+  }
+
+  // ══════════════════════════════════════════
   // SIMAKSI PERMIT OPERATIONS
   // ══════════════════════════════════════════
 
@@ -244,10 +342,33 @@ class SupabaseService {
         'matauang': permit.matauang,
         'created_at': permit.createdAt.toIso8601String(),
       });
+      debugPrint('✅ Berhasil sync permit (${permit.id}) ke Supabase');
       return true;
     } catch (e) {
-      debugPrint('❌ Gagal sync permit: $e');
-      return false;
+      debugPrint('⚠️ Gagal sync permit lengkap: $e, mencoba fallback tanpa basecamp_id...');
+      try {
+        await _client!.from('simaksi_permits').upsert({
+          'id': permit.id,
+          'user_id': permit.userId,
+          'gunung_id': permit.gunungId,
+          'tanggal_naik': permit.tanggalNaik.toIso8601String().split('T')[0],
+          'tanggal_turun': permit.tanggalTurun.toIso8601String().split('T')[0],
+          'jumlah_anggota': permit.jumlahAnggota,
+          'status_izin': permit.statusIzin,
+          'block_hash': permit.blockHash,
+          'previous_hash': permit.previousHash,
+          'nonce': permit.nonce,
+          'nama_gunung': permit.namaGunung,
+          'total_biaya': permit.totalBiaya,
+          'matauang': permit.matauang,
+          'created_at': permit.createdAt.toIso8601String(),
+        });
+        debugPrint('✅ Berhasil sync permit via fallback');
+        return true;
+      } catch (e2) {
+        debugPrint('❌ Gagal sync permit fallback: $e2');
+        return false;
+      }
     }
   }
 
@@ -282,6 +403,40 @@ class SupabaseService {
     }
   }
 
+  /// Mengambil semua izin SIMAKSI dari Supabase
+  Future<List<SimaksiPermit>> getAllPermits() async {
+    if (!_initialized || _client == null) return [];
+    try {
+      final response = await _client!
+          .from('simaksi_permits')
+          .select()
+          .order('created_at', ascending: false);
+      return (response as List)
+          .map((m) => SimaksiPermit.fromMap(m))
+          .toList();
+    } catch (e) {
+      debugPrint('❌ Gagal get all permits: $e');
+      return [];
+    }
+  }
+
+  /// Mengambil tiket SIMAKSI berdasarkan hash tiket blockchain
+  Future<SimaksiPermit?> getPermitByHash(String blockHash) async {
+    if (!_initialized || _client == null) return null;
+    try {
+      final response = await _client!
+          .from('simaksi_permits')
+          .select()
+          .eq('block_hash', blockHash)
+          .maybeSingle();
+      if (response == null) return null;
+      return SimaksiPermit.fromMap(response);
+    } catch (e) {
+      debugPrint('❌ Gagal get permit by hash: $e');
+      return null;
+    }
+  }
+
   // ══════════════════════════════════════════
   // SOS INCIDENT OPERATIONS
   // ══════════════════════════════════════════
@@ -293,6 +448,7 @@ class SupabaseService {
         'id': incident.id,
         'user_id': incident.userId,
         'gunung_id': incident.gunungId,
+        'basecamp_id': incident.basecampId,
         'koordinat_lat': incident.koordinatLat,
         'koordinat_long': incident.koordinatLong,
         'tipe_pemicu': incident.tipePemicu,
@@ -301,10 +457,74 @@ class SupabaseService {
         'nama_pendaki': incident.namaPendaki,
         'created_at': incident.createdAt.toIso8601String(),
       });
+      debugPrint('✅ Berhasil sync SOS incident ke Supabase');
       return true;
     } catch (e) {
-      debugPrint('❌ Gagal sync SOS incident: $e');
+      debugPrint('⚠️ Gagal sync SOS lengkap: $e, mencoba fallback tanpa basecamp_id...');
+      try {
+        await _client!.from('sos_incident_logs').upsert({
+          'id': incident.id,
+          'user_id': incident.userId,
+          'gunung_id': incident.gunungId,
+          'koordinat_lat': incident.koordinatLat,
+          'koordinat_long': incident.koordinatLong,
+          'tipe_pemicu': incident.tipePemicu,
+          'status_penanganan': incident.statusPenanganan,
+          'waktu_kejadian': incident.waktuKejadian.toIso8601String(),
+          'nama_pendaki': incident.namaPendaki,
+          'created_at': incident.createdAt.toIso8601String(),
+        });
+        debugPrint('✅ Berhasil sync SOS incident via fallback');
+        return true;
+      } catch (e2) {
+        debugPrint('❌ Gagal sync SOS incident fallback: $e2');
+        return false;
+      }
+    }
+  }
+
+  Future<bool> updateSosStatus(String id, String status) async {
+    if (!_initialized || _client == null) return false;
+    try {
+      await _client!
+          .from('sos_incident_logs')
+          .update({'status_penanganan': status})
+          .eq('id', id);
+      return true;
+    } catch (e) {
+      debugPrint('❌ Gagal update SOS status di Supabase: $e');
       return false;
+    }
+  }
+
+  /// Mengambil insiden SOS yang berstatus darurat aktif ('darurat_aktif')
+  Future<List<SosIncident>> getActiveSOSIncidents() async {
+    if (!_initialized || _client == null) return [];
+    try {
+      final response = await _client!
+          .from('sos_incident_logs')
+          .select()
+          .eq('status_penanganan', 'darurat_aktif')
+          .order('waktu_kejadian', ascending: false);
+      return (response as List).map((m) => SosIncident.fromMap(m)).toList();
+    } catch (e) {
+      debugPrint('❌ Gagal get active SOS incidents dari Supabase: $e');
+      return [];
+    }
+  }
+
+  /// Mengambil semua log insiden SOS dari Supabase
+  Future<List<SosIncident>> getAllSosIncidents() async {
+    if (!_initialized || _client == null) return [];
+    try {
+      final response = await _client!
+          .from('sos_incident_logs')
+          .select()
+          .order('waktu_kejadian', ascending: false);
+      return (response as List).map((m) => SosIncident.fromMap(m)).toList();
+    } catch (e) {
+      debugPrint('❌ Gagal get all SOS incidents dari Supabase: $e');
+      return [];
     }
   }
 

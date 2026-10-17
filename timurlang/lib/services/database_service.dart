@@ -65,6 +65,8 @@ class DatabaseService {
         foto_profil_url TEXT,
         is_biometric_enabled INTEGER DEFAULT 0,
         biometric_token TEXT,
+        gunung_id TEXT,
+        nama_basecamp TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
@@ -154,6 +156,7 @@ class DatabaseService {
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
         gunung_id TEXT,
+        basecamp_id TEXT,
         koordinat_lat REAL NOT NULL,
         koordinat_long REAL NOT NULL,
         tipe_pemicu TEXT NOT NULL,
@@ -209,10 +212,29 @@ class DatabaseService {
         'ALTER TABLE users ADD COLUMN biometric_token TEXT',
       );
     }
+    if (oldVersion < 4) {
+      // Tambah kolom gunung_id dan nama_basecamp ke users, serta basecamp_id ke sos_incident_logs
+      try {
+        await db.execute('ALTER TABLE users ADD COLUMN gunung_id TEXT');
+      } catch (_) {}
+      try {
+        await db.execute('ALTER TABLE users ADD COLUMN nama_basecamp TEXT');
+      } catch (_) {}
+      try {
+        await db.execute('ALTER TABLE sos_incident_logs ADD COLUMN basecamp_id TEXT');
+      } catch (_) {}
+    }
   }
 
   Future<void> _seedMountains(Database db) async {
     final mountains = [
+      {
+        'id': 'mtn-011', 'nama_gunung': 'Gunung Sumbing', 'elevasi_mdpl': 3371,
+        'tingkat_bahaya': 'Grade 3 - Sulit', 'sumber_air_tersedia': 1,
+        'status_jalur': 'Buka', 'koordinat_lat': -7.384, 'koordinat_long': 110.070,
+        'deskripsi': 'Gunung berapi aktif tipe stratovolcano di Jawa Tengah. Terkenal dengan jalur via Garung, Dukuh Semar, Gajah Mungkur, Bowongso, dan Mangli. Menawarkan pemandangan kawah dan sabana memukau.',
+        'kuota_harian': 400, 'created_at': DateTime.now().toIso8601String(),
+      },
       {
         'id': 'mtn-001', 'nama_gunung': 'Gunung Semeru', 'elevasi_mdpl': 3676,
         'tingkat_bahaya': 'Grade 4 - Sangat Sulit', 'sumber_air_tersedia': 1,
@@ -314,6 +336,12 @@ class DatabaseService {
   Future<void> insertUser(User user) async {
     final db = await database;
     await db.insert('users', user.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<User>> getAllUsers() async {
+    final db = await database;
+    final maps = await db.query('users');
+    return maps.map((m) => User.fromMap(m)).toList();
   }
 
   Future<User?> getUserByEmail(String email) async {
@@ -451,10 +479,56 @@ class DatabaseService {
 
   // ── BASECAMP CRUD ──
 
+  Future<void> insertBasecampPost(BasecampPost post) async {
+    final db = await database;
+    await db.insert('basecamp_posts', post.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<BasecampPost>> getAllBasecampPosts() async {
+    final db = await database;
+    final maps = await db.query('basecamp_posts');
+    return maps.map((m) => BasecampPost.fromMap(m)).toList();
+  }
+
   Future<List<BasecampPost>> getBasecampsByMountain(String gunungId) async {
     final db = await database;
     final maps = await db.query('basecamp_posts', where: 'gunung_id = ?', whereArgs: [gunungId]);
     return maps.map((m) => BasecampPost.fromMap(m)).toList();
+  }
+
+  /// Mengambil basecamp yang sudah terdaftar akun petugasnya untuk gunung tertentu
+  Future<List<BasecampPost>> getRegisteredBasecampsByMountain(String gunungId) async {
+    final db = await database;
+    // Cari yang user_id_petugas terisi (sudah ada akun terdaftar)
+    final registeredMaps = await db.query(
+      'basecamp_posts',
+      where: 'gunung_id = ? AND user_id_petugas IS NOT NULL',
+      whereArgs: [gunungId],
+      orderBy: 'created_at DESC',
+    );
+    if (registeredMaps.isNotEmpty) {
+      return registeredMaps.map((m) => BasecampPost.fromMap(m)).toList();
+    }
+    // Jika belum ada yang register khusus, ambil basecamp post default gunung tersebut
+    final fallbackMaps = await db.query(
+      'basecamp_posts',
+      where: 'gunung_id = ?',
+      whereArgs: [gunungId],
+    );
+    return fallbackMaps.map((m) => BasecampPost.fromMap(m)).toList();
+  }
+
+  /// Mengambil profil basecamp post milik petugas yang sedang login
+  Future<BasecampPost?> getBasecampByUserId(String userId) async {
+    final db = await database;
+    final maps = await db.query(
+      'basecamp_posts',
+      where: 'user_id_petugas = ?',
+      whereArgs: [userId],
+      limit: 1,
+    );
+    if (maps.isEmpty) return null;
+    return BasecampPost.fromMap(maps.first);
   }
 
   Future<BasecampPost?> getBasecampById(String id) async {
@@ -471,10 +545,43 @@ class DatabaseService {
     await db.insert('simaksi_permits', permit.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
+  Future<List<SimaksiPermit>> getAllPermits() async {
+    final db = await database;
+    final maps = await db.query('simaksi_permits');
+    return maps.map((m) => SimaksiPermit.fromMap(m)).toList();
+  }
+
   Future<List<SimaksiPermit>> getPermitsByUser(String userId) async {
     final db = await database;
     final maps = await db.query('simaksi_permits', where: 'user_id = ?', whereArgs: [userId], orderBy: 'created_at DESC');
     return maps.map((m) => SimaksiPermit.fromMap(m)).toList();
+  }
+
+  /// Mengambil tiket SIMAKSI aktif yang sedang 'Di Jalur' dari seorang pendaki
+  Future<SimaksiPermit?> getActivePermitForHiker(String userId) async {
+    final db = await database;
+    final maps = await db.query(
+      'simaksi_permits',
+      where: 'user_id = ? AND status_izin = ?',
+      whereArgs: [userId, AppConstants.statusDiJalur],
+      orderBy: 'created_at DESC',
+      limit: 1,
+    );
+    if (maps.isNotEmpty) {
+      return SimaksiPermit.fromMap(maps.first);
+    }
+    // Fallback cek status tervalidasi atau terdaftar jika belum check-in
+    final fallback = await db.query(
+      'simaksi_permits',
+      where: 'user_id = ? AND status_izin IN (?, ?)',
+      whereArgs: [userId, AppConstants.statusTervalidasi, AppConstants.statusTerdaftar],
+      orderBy: 'created_at DESC',
+      limit: 1,
+    );
+    if (fallback.isNotEmpty) {
+      return SimaksiPermit.fromMap(fallback.first);
+    }
+    return null;
   }
 
   Future<SimaksiPermit?> getPermitByHash(String blockHash) async {
@@ -490,6 +597,29 @@ class DatabaseService {
       'simaksi_permits',
       where: 'status_izin IN (?, ?, ?)',
       whereArgs: [AppConstants.statusTerdaftar, AppConstants.statusTervalidasi, AppConstants.statusDiJalur],
+      orderBy: 'created_at DESC',
+    );
+    return maps.map((m) => SimaksiPermit.fromMap(m)).toList();
+  }
+
+  /// Mengambil izin pendaki aktif khusus untuk akun basecamp tertentu
+  Future<List<SimaksiPermit>> getActivePermitsForBasecamp({
+    required String gunungId,
+    String? basecampId,
+  }) async {
+    final db = await database;
+    String whereClause = 'gunung_id = ? AND status_izin = ?';
+    List<dynamic> whereArgs = [gunungId, AppConstants.statusDiJalur];
+
+    if (basecampId != null && basecampId.isNotEmpty) {
+      whereClause = 'gunung_id = ? AND (basecamp_id = ? OR basecamp_id IS NULL) AND status_izin = ?';
+      whereArgs = [gunungId, basecampId, AppConstants.statusDiJalur];
+    }
+
+    final maps = await db.query(
+      'simaksi_permits',
+      where: whereClause,
+      whereArgs: whereArgs,
       orderBy: 'created_at DESC',
     );
     return maps.map((m) => SimaksiPermit.fromMap(m)).toList();
@@ -525,6 +655,12 @@ class DatabaseService {
     await db.insert('sos_incident_logs', incident.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
+  Future<List<SosIncident>> getAllSosIncidents() async {
+    final db = await database;
+    final maps = await db.query('sos_incident_logs');
+    return maps.map((m) => SosIncident.fromMap(m)).toList();
+  }
+
   Future<List<SosIncident>> getActiveSOSIncidents() async {
     final db = await database;
     final maps = await db.query(
@@ -534,6 +670,35 @@ class DatabaseService {
       orderBy: 'waktu_kejadian DESC',
     );
     return maps.map((m) => SosIncident.fromMap(m)).toList();
+  }
+
+  /// Mengambil insiden SOS darurat aktif khusus untuk akun basecamp terkait
+  Future<List<SosIncident>> getActiveSOSIncidentsForBasecamp({
+    required String gunungId,
+    String? basecampId,
+  }) async {
+    final allActive = await getActiveSOSIncidents();
+    final List<SosIncident> matched = [];
+
+    for (final inc in allActive) {
+      // 1. Cek langsung dari gunung_id dan basecamp_id di SOS incident
+      if (inc.gunungId != null && inc.gunungId == gunungId) {
+        if (basecampId == null || inc.basecampId == null || inc.basecampId == basecampId) {
+          matched.add(inc);
+          continue;
+        }
+      }
+
+      // 2. Jika gunung_id belum tercatat di SOS, cek tiket SIMAKSI pendaki yang berstatus 'Di Jalur'
+      final permit = await getActivePermitForHiker(inc.userId);
+      if (permit != null && permit.gunungId == gunungId) {
+        if (basecampId == null || permit.basecampId == null || permit.basecampId == basecampId) {
+          matched.add(inc);
+        }
+      }
+    }
+
+    return matched;
   }
 
   Future<void> updateSOSStatus(String id, String status) async {

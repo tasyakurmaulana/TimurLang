@@ -73,7 +73,7 @@ class SyncService {
     }
   }
 
-  /// Attempt to sync all pending items
+  /// Attempt to sync all pending items and local data to Supabase
   Future<({int synced, int failed, String message})> syncAll() async {
     if (_isSyncing) {
       return (synced: 0, failed: 0, message: 'Sinkronisasi sedang berlangsung');
@@ -85,7 +85,10 @@ class SyncService {
     }
 
     if (!_supabase.isInitialized) {
-      return (synced: 0, failed: 0, message: 'Supabase belum dikonfigurasi. Data tersimpan lokal.');
+      await _supabase.initialize();
+      if (!_supabase.isInitialized) {
+        return (synced: 0, failed: 0, message: 'Supabase belum terhubung. Periksa konfigurasi URL & API Key.');
+      }
     }
 
     _isSyncing = true;
@@ -93,8 +96,52 @@ class SyncService {
     int failed = 0;
 
     try {
-      final pending = await _db.getPendingSyncItems();
+      // 1. Sync semua Users lokal
+      final allUsers = await _db.getAllUsers();
+      for (final u in allUsers) {
+        final ok = await _supabase.syncUser(u);
+        if (ok) {
+          synced++;
+        } else {
+          failed++;
+        }
+      }
 
+      // 2. Sync semua Basecamp Posts lokal
+      final allBasecamps = await _db.getAllBasecampPosts();
+      for (final bc in allBasecamps) {
+        final ok = await _supabase.syncBasecampPost(bc);
+        if (ok) {
+          synced++;
+        } else {
+          failed++;
+        }
+      }
+
+      // 3. Sync semua Simaksi Permits lokal
+      final allPermits = await _db.getAllPermits();
+      for (final p in allPermits) {
+        final ok = await _supabase.syncPermit(p);
+        if (ok) {
+          synced++;
+        } else {
+          failed++;
+        }
+      }
+
+      // 4. Sync semua SOS Incidents lokal
+      final allSos = await _db.getAllSosIncidents();
+      for (final sos in allSos) {
+        final ok = await _supabase.syncSosIncident(sos);
+        if (ok) {
+          synced++;
+        } else {
+          failed++;
+        }
+      }
+
+      // 5. Proses antrian sync queues
+      final pending = await _db.getPendingSyncItems();
       for (final item in pending) {
         final success = await _syncSingleItem(item);
         if (success) {
@@ -104,10 +151,7 @@ class SyncService {
         }
       }
 
-      final message = pending.isEmpty
-          ? 'Semua data sudah tersinkronisasi'
-          : '$synced berhasil, $failed gagal dari ${pending.length} antrian';
-
+      final message = 'Sinkronisasi online selesai! $synced data berhasil terhubung ke Supabase.';
       return (synced: synced, failed: failed, message: message);
     } finally {
       _isSyncing = false;

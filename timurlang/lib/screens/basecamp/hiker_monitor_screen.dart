@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../models/simaksi_permit.dart';
+import '../../services/auth_service.dart';
 import '../../services/blockchain_service.dart';
 import '../../services/database_service.dart';
 
@@ -26,6 +27,25 @@ class _HikerMonitorScreenState extends State<HikerMonitorScreen> {
   }
 
   Future<void> _loadData() async {
+    final user = AuthService.instance.currentUser;
+    if (user != null) {
+      final post = await DatabaseService.instance.getBasecampByUserId(user.id);
+      final gunungId = user.gunungId ?? post?.gunungId;
+      if (gunungId != null) {
+        final permits = await DatabaseService.instance.getActivePermitsForBasecamp(
+          gunungId: gunungId,
+          basecampId: post?.id,
+        );
+        if (mounted) {
+          setState(() {
+            _activeHikers = permits;
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+    }
+
     final permits = await DatabaseService.instance.getActivePermits();
     if (mounted) {
       setState(() {

@@ -132,9 +132,25 @@ class SosManager {
 
     // Catat insiden SOS ke database lokal SQLite
     final user = AuthService.instance.currentUser;
+
+    // Deteksi gunung dan basecamp tempat pendaki sedang berada dari tiket 'Di Jalur'
+    String? currentGunungId;
+    String? currentBasecampId;
+    String? currentNamaGunung;
+    if (user != null) {
+      final activePermit = await DatabaseService.instance.getActivePermitForHiker(user.id);
+      if (activePermit != null) {
+        currentGunungId = activePermit.gunungId;
+        currentBasecampId = activePermit.basecampId;
+        currentNamaGunung = activePermit.namaGunung;
+      }
+    }
+
     final incident = SosIncident(
       id: const Uuid().v4(),
       userId: user?.id ?? 'guest_user',
+      gunungId: currentGunungId,
+      basecampId: currentBasecampId,
       koordinatLat: lat,
       koordinatLong: lon,
       tipePemicu: AppConstants.sosFallDetection,
@@ -155,10 +171,14 @@ class SosManager {
     _isEmergencyActive = true;
     _notifyListeners();
 
+    final targetPosText = currentNamaGunung != null 
+        ? 'Basecamp $currentNamaGunung' 
+        : 'Pos Basecamp Terkait';
+
     // Tampilkan notifikasi darurat heads-up / alarm di sistem Android
     await NotificationService.instance.showSOSNotification(
       title: '🚨 GUNCANGAN HEBAT TERDETEKSI! (SOS AKTIF)',
-      body: 'Sinyal darurat beserta koordinat ($lat, $lon) telah dikirim ke Basecamp!',
+      body: 'Sinyal darurat beserta koordinat ($lat, $lon) telah dikirim ke $targetPosText!',
       payload: 'sos_emergency',
     );
 
@@ -202,9 +222,25 @@ class SosManager {
     } catch (_) {}
 
     final user = AuthService.instance.currentUser;
+
+    // Cek tiket di jalur untuk SOS manual
+    String? currentGunungId;
+    String? currentBasecampId;
+    String? currentNamaGunung;
+    if (user != null) {
+      final activePermit = await DatabaseService.instance.getActivePermitForHiker(user.id);
+      if (activePermit != null) {
+        currentGunungId = activePermit.gunungId;
+        currentBasecampId = activePermit.basecampId;
+        currentNamaGunung = activePermit.namaGunung;
+      }
+    }
+
     final incident = SosIncident(
       id: const Uuid().v4(),
       userId: user?.id ?? 'guest_user',
+      gunungId: currentGunungId,
+      basecampId: currentBasecampId,
       koordinatLat: lat,
       koordinatLong: lon,
       tipePemicu: AppConstants.sosManual,
@@ -219,9 +255,13 @@ class SosManager {
       await SupabaseService.instance.syncSosIncident(incident);
     } catch (_) {}
 
+    final targetPosText = currentNamaGunung != null 
+        ? 'Basecamp $currentNamaGunung' 
+        : 'Pos Basecamp Terkait';
+
     await NotificationService.instance.showSOSNotification(
       title: '🚨 DARURAT SOS MANUAL DIAKTIFKAN',
-      body: 'Sinyal darurat beserta koordinat ($lat, $lon) dipancarkan ke Pos Terdekat!',
+      body: 'Sinyal darurat beserta koordinat ($lat, $lon) dipancarkan ke $targetPosText!',
       payload: 'sos_emergency',
     );
 

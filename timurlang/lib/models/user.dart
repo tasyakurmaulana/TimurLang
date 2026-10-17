@@ -11,6 +11,8 @@ class User {
   final String? fotoProfilUrl;
   final bool isBiometricEnabled;
   final String? biometricToken;
+  final String? gunungId; // Gunung terkait (khusus akun basecamp)
+  final String? namaBasecamp; // Nama basecamp/pos jalur (khusus akun basecamp)
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -23,6 +25,8 @@ class User {
     this.fotoProfilUrl,
     this.isBiometricEnabled = false,
     this.biometricToken,
+    this.gunungId,
+    this.namaBasecamp,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -37,6 +41,8 @@ class User {
       'foto_profil_url': fotoProfilUrl,
       'is_biometric_enabled': isBiometricEnabled ? 1 : 0,
       'biometric_token': biometricToken,
+      'gunung_id': gunungId,
+      'nama_basecamp': namaBasecamp,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -53,6 +59,8 @@ class User {
       isBiometricEnabled: map['is_biometric_enabled'] == true ||
           map['is_biometric_enabled'] == 1,
       biometricToken: map['biometric_token'] as String?,
+      gunungId: map['gunung_id'] as String?,
+      namaBasecamp: map['nama_basecamp'] as String?,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
     );
@@ -67,6 +75,8 @@ class User {
     String? fotoProfilUrl,
     bool? isBiometricEnabled,
     String? biometricToken,
+    String? gunungId,
+    String? namaBasecamp,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -79,6 +89,8 @@ class User {
       fotoProfilUrl: fotoProfilUrl ?? this.fotoProfilUrl,
       isBiometricEnabled: isBiometricEnabled ?? this.isBiometricEnabled,
       biometricToken: biometricToken ?? this.biometricToken,
+      gunungId: gunungId ?? this.gunungId,
+      namaBasecamp: namaBasecamp ?? this.namaBasecamp,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

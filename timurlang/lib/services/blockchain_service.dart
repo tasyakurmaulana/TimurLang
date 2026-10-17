@@ -8,6 +8,8 @@ import '../models/simaksi_permit.dart';
 import '../config/constants.dart';
 import '../utils/crypto_utils.dart';
 import 'database_service.dart';
+import 'supabase_service.dart';
+import 'sync_service.dart';
 
 class BlockchainService {
   static final BlockchainService instance = BlockchainService._internal();
@@ -19,6 +21,7 @@ class BlockchainService {
   Future<SimaksiPermit> createPermit({
     required String userId,
     required String gunungId,
+    String? basecampId,
     required DateTime tanggalNaik,
     required DateTime tanggalTurun,
     required int jumlahAnggota,
@@ -52,6 +55,7 @@ class BlockchainService {
       id: permitId,
       userId: userId,
       gunungId: gunungId,
+      basecampId: basecampId,
       tanggalNaik: tanggalNaik,
       tanggalTurun: tanggalTurun,
       jumlahAnggota: jumlahAnggota,
@@ -65,7 +69,22 @@ class BlockchainService {
       createdAt: now,
     );
 
+    // Simpan lokal
     await _db.insertPermit(permit);
+
+    // Sinkronkan ke Supabase (online)
+    if (SupabaseService.instance.isInitialized) {
+      final synced = await SupabaseService.instance.syncPermit(permit);
+      if (!synced) {
+        await SyncService.instance.addToQueue(
+          tableName: 'simaksi_permits',
+          recordId: permit.id,
+          action: 'INSERT',
+          payload: permit.toMap(),
+        );
+      }
+    }
+
     return permit;
   }
 
@@ -119,6 +138,9 @@ class BlockchainService {
     }
 
     await _db.updatePermitStatus(permit.id, AppConstants.statusDiJalur);
+    if (SupabaseService.instance.isInitialized) {
+      await SupabaseService.instance.updatePermitStatus(permit.id, AppConstants.statusDiJalur);
+    }
     return (success: true, message: 'Check-in berhasil. Status: Di Jalur');
   }
 
@@ -134,6 +156,9 @@ class BlockchainService {
     }
 
     await _db.updatePermitStatus(permit.id, AppConstants.statusSelesai);
+    if (SupabaseService.instance.isInitialized) {
+      await SupabaseService.instance.updatePermitStatus(permit.id, AppConstants.statusSelesai);
+    }
     return (success: true, message: 'Check-out berhasil. Pendakian selesai!');
   }
 }
