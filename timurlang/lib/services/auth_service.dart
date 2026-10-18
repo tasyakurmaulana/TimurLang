@@ -16,6 +16,7 @@ import '../utils/crypto_utils.dart';
 import 'database_service.dart';
 import 'supabase_service.dart';
 import 'sync_service.dart';
+import 'basecamp_alert_service.dart';
 
 class AuthService {
   static final AuthService instance = AuthService._internal();
@@ -306,6 +307,11 @@ class AuthService {
       // Sync data dua arah di background agar perangkat baru langsung terisi data terkini
       SyncService.instance.syncAll();
 
+      // Jika role basecamp, aktifkan radar siaga darurat di latar belakang
+      if (user.peran == AppConstants.roleBasecamp) {
+        BasecampAlertService.instance.startMonitoring(user: user);
+      }
+
       return (success: true, message: 'Login berhasil!');
     } catch (e) {
       return (success: false, message: 'Gagal login: ${e.toString()}');
@@ -481,6 +487,12 @@ class AuthService {
       _currentUser = user;
       // Sync background data terbaru dari server
       SyncService.instance.pullFromSupabase();
+
+      // Jika akun basecamp, aktifkan pemantauan darurat latar belakang
+      if (user.peran == AppConstants.roleBasecamp) {
+        BasecampAlertService.instance.startMonitoring(user: user);
+      }
+
       return true;
     } catch (e) {
       return false;
@@ -494,6 +506,8 @@ class AuthService {
     await prefs.remove(AppConstants.userRoleKey);
     await prefs.remove(AppConstants.sessionTokenKey);
     await prefs.remove('session_expires_at');
+    // Matikan pemantauan radar basecamp
+    await BasecampAlertService.instance.stopMonitoring();
     // Jangan hapus biometricEnabledKey agar tetap bisa login biometrik
     _currentUser = null;
   }

@@ -16,6 +16,7 @@ import '../../services/database_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/supabase_service.dart';
 import '../../services/sync_service.dart';
+import '../../services/basecamp_alert_service.dart';
 
 class BasecampDashboardScreen extends StatefulWidget {
   const BasecampDashboardScreen({super.key});
@@ -37,12 +38,21 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
   void initState() {
     super.initState();
     _loadData();
-    // Polling setiap 5 detik untuk memeriksa sinyal SOS darurat khusus basecamp ini
+    BasecampAlertService.instance.addListener(_onAlertServiceUpdate);
+    BasecampAlertService.instance.requestIgnoreBatteryOptimizations();
+    // Polling setiap 5 detik untuk sinkronisasi cadangan
     _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) => _loadData(silent: true));
+  }
+
+  void _onAlertServiceUpdate() {
+    if (mounted) {
+      _loadData(silent: true);
+    }
   }
 
   @override
   void dispose() {
+    BasecampAlertService.instance.removeListener(_onAlertServiceUpdate);
     _pollingTimer?.cancel();
     super.dispose();
   }
@@ -63,6 +73,15 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
     final gunungId = user.gunungId ?? post?.gunungId ?? 'mtn-001';
     Mountain? mtn = _mountain;
     mtn ??= await DatabaseService.instance.getMountainById(gunungId);
+
+    // Pastikan monitoring latar belakang aktif untuk pos basecamp ini
+    if (!BasecampAlertService.instance.isMonitoring) {
+      BasecampAlertService.instance.startMonitoring(
+        user: user,
+        post: post,
+        mountainName: mtn?.namaGunung,
+      );
+    }
 
     // Jika online, tarik insiden SOS aktif dan data permit terbaru dari Supabase
     if (SupabaseService.instance.isInitialized) {
@@ -101,7 +120,7 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
         await NotificationService.instance.showSOSNotification(
           title: '🚨 DARURAT PENDAKI DI ${mtn?.namaGunung.toUpperCase() ?? 'JALUR'}!',
           body: 'Pendaki ${inc.namaPendaki ?? 'Anonim'} mengirim sinyal SOS di koordinat (${inc.koordinatLat.toStringAsFixed(4)}, ${inc.koordinatLong.toStringAsFixed(4)})!',
-          payload: 'sos_screen',
+          payload: 'basecamp_sos',
         );
       }
     }
@@ -122,6 +141,7 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
     if (SupabaseService.instance.isInitialized) {
       await SupabaseService.instance.updateSosStatus(sosId, AppConstants.sosHandled);
     }
+    await BasecampAlertService.instance.checkNewSOS();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -239,14 +259,29 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                         ),
                         const Spacer(),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: AppTheme.safeGreen.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(6),
+                            color: AppTheme.safeGreen.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppTheme.safeGreen.withValues(alpha: 0.4)),
                           ),
-                          child: const Text(
-                            'Resmi Terverifikasi',
-                            style: TextStyle(fontSize: 10, color: AppTheme.safeGreen, fontWeight: FontWeight.bold),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 7,
+                                height: 7,
+                                decoration: const BoxDecoration(
+                                  color: AppTheme.safeGreen,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              const Text(
+                                'Radar Siaga Background Aktif',
+                                style: TextStyle(fontSize: 10, color: AppTheme.safeGreen, fontWeight: FontWeight.bold),
+                              ),
+                            ],
                           ),
                         ),
                       ],

@@ -12,6 +12,7 @@ import 'package:uuid/uuid.dart';
 
 import '../app.dart';
 import '../config/constants.dart';
+import '../config/routes.dart';
 import '../models/sos_incident.dart';
 import 'auth_service.dart';
 import 'database_service.dart';
@@ -60,17 +61,19 @@ class SosManager {
   }
 
   void _handleNotificationTap(String? payload) {
-    if (payload == 'sos_emergency' || payload == 'sos_screen') {
-      final nav = MainApp.navigatorKey.currentState;
-      if (nav != null) {
-        nav.push(
-          MaterialPageRoute(
-            builder: (context) => const SosBeaconScreen(
-              triggerType: AppConstants.sosFallDetection,
-            ),
+    final nav = MainApp.navigatorKey.currentState;
+    if (nav == null) return;
+
+    if (payload == 'basecamp_sos' || payload == 'basecamp_dashboard') {
+      nav.pushNamed(AppRoutes.basecampDashboard);
+    } else if (payload == 'sos_emergency' || payload == 'sos_screen') {
+      nav.push(
+        MaterialPageRoute(
+          builder: (context) => const SosBeaconScreen(
+            triggerType: AppConstants.sosFallDetection,
           ),
-        );
-      }
+        ),
+      );
     }
   }
 

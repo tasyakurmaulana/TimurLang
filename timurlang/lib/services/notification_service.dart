@@ -36,6 +36,50 @@ class NotificationService {
         onNotificationTap?.call(response.payload);
       },
     );
+
+    // Inisialisasi Android Notification Channels dengan prioritas tinggi
+    final androidPlugin = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    if (androidPlugin != null) {
+      await androidPlugin.requestNotificationsPermission();
+
+      // Channel 1: SOS Darurat (Maksimum, Heads-up popover, Alarm Sound)
+      await androidPlugin.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'sos_channel',
+          'SOS Darurat',
+          description: 'Notifikasi darurat SOS pendakian',
+          importance: Importance.max,
+          playSound: true,
+          enableVibration: true,
+          audioAttributesUsage: AudioAttributesUsage.alarm,
+        ),
+      );
+
+      // Channel 2: Radar Siaga Basecamp (Foreground Monitoring)
+      await androidPlugin.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'basecamp_radar_channel',
+          'Radar Siaga Basecamp',
+          description: 'Status siaga pemantauan darurat basecamp di latar belakang',
+          importance: Importance.low,
+          playSound: false,
+          enableVibration: false,
+        ),
+      );
+
+      // Channel 3: Sensor Siaga Pendaki
+      await androidPlugin.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'sos_monitor_channel',
+          'Pemantauan Siaga SOS',
+          description: 'Status aktif sensor pendeteksi jatuh & guncangan',
+          importance: Importance.low,
+          playSound: false,
+          enableVibration: false,
+        ),
+      );
+    }
+
     _initialized = true;
   }
 
@@ -72,7 +116,42 @@ class NotificationService {
     await _plugin.show(1, title, body, details, payload: payload ?? 'sos_emergency');
   }
 
-  /// Show ongoing background monitoring notification
+  /// Tampilkan notifikasi persisten Radar Siaga Basecamp di status bar
+  Future<void> showOngoingBasecampMonitoringNotification({
+    required String basecampName,
+    required String mountainName,
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      'basecamp_radar_channel',
+      'Radar Siaga Basecamp',
+      channelDescription: 'Status siaga pemantauan darurat basecamp di latar belakang',
+      importance: Importance.low,
+      priority: Priority.low,
+      ongoing: true,
+      autoCancel: false,
+      showWhen: false,
+    );
+
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(),
+    );
+
+    await _plugin.show(
+      998,
+      '📡 Radar Basecamp Siaga ($mountainName)',
+      '$basecampName siap menerima sinyal SOS pendaki di latar belakang 24/7.',
+      details,
+      payload: 'basecamp_dashboard',
+    );
+  }
+
+  /// Hentikan notifikasi radar siaga basecamp
+  Future<void> dismissOngoingBasecampMonitoringNotification() async {
+    await cancelNotification(998);
+  }
+
+  /// Show ongoing background monitoring notification for Hikers
   Future<void> showOngoingMonitoringNotification() async {
     const androidDetails = AndroidNotificationDetails(
       'sos_monitor_channel',
