@@ -4,9 +4,12 @@
 // ============================================
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../config/theme.dart';
 import '../../config/routes.dart';
 import '../../models/mountain.dart';
+import '../../models/simaksi_permit.dart';
 import '../../services/auth_service.dart';
 import '../../services/blockchain_service.dart';
 import '../../utils/currency_utils.dart';
@@ -42,7 +45,7 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
       final convertedCost = CurrencyUtils.convertFromIDR(totalBiayaIDR, _selectedCurrency);
       final basecampId = _args['basecampId'] as String?;
 
-      await BlockchainService.instance.createPermit(
+      final permit = await BlockchainService.instance.createPermit(
         userId: user.id,
         gunungId: mountain.id,
         basecampId: basecampId,
@@ -55,16 +58,8 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
       );
 
       if (mounted) {
-        // Pop until home, then go to tickets
-        Navigator.popUntil(context, ModalRoute.withName(AppRoutes.home));
-        Navigator.pushNamed(context, AppRoutes.simaksiTicket);
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Pembayaran berhasil! Tiket digital telah dibuat.'),
-            backgroundColor: AppTheme.safeGreen,
-          ),
-        );
+        setState(() => _isProcessing = false);
+        _showSuccessDialog(permit);
       }
     } catch (e) {
       setState(() => _isProcessing = false);
@@ -186,6 +181,121 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
         Text(label, style: const TextStyle(color: Colors.white54)),
         Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
       ],
+    );
+  }
+
+  void _showSuccessDialog(SimaksiPermit permit) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: Dialog(
+          backgroundColor: AppTheme.cardDark,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.safeGreen.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.check_circle, color: AppTheme.safeGreen, size: 44),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Pembayaran Berhasil!',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Tiket Digital Berbasis Blockchain Diterbitkan',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.6)),
+                ),
+                const SizedBox(height: 16),
+                // QR Box
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: QrImageView(
+                    data: permit.blockHash,
+                    version: QrVersions.auto,
+                    size: 160.0,
+                    backgroundColor: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.lock, size: 12, color: AppTheme.accentOrange),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          'Hash: ${permit.blockHash.substring(0, 16)}...',
+                          style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: Colors.white70),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      GestureDetector(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: permit.blockHash));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Hash disalin')),
+                          );
+                        },
+                        child: const Icon(Icons.copy, size: 12, color: Colors.white38),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Tunjukkan QR ini ke pos Basecamp untuk verifikasi izin pendakian.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.5)),
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.popUntil(context, ModalRoute.withName(AppRoutes.home));
+                      Navigator.pushNamed(context, AppRoutes.simaksiTicket);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryGreen,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('Buka Tiket Saya'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

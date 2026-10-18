@@ -18,7 +18,7 @@ class AppConstants {
   static const String userRoleKey = 'user_role';
   // ⏱️ SESSION TIMEOUT: Ubah angka di bawah untuk mengatur durasi sesi (dalam menit)
   // Contoh: 1 = 1 menit, 60 = 1 jam, 1440 = 1 hari, 4320 = 3 hari
-  static const int sessionExpiryHours = 10;
+  static const int sessionExpiryMinutes = 600;
   static const String biometricEnabledKey = 'biometric_enabled';
   static const String lastBiometricUserIdKey = 'last_biometric_user_id';
   static const String registeredBiometricUserIdsKey =

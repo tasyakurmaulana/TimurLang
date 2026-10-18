@@ -91,18 +91,23 @@ class BlockchainService {
   /// Verify a ticket hash integrity
   Future<({bool valid, String message, SimaksiPermit? permit})> verifyTicket(String blockHash) async {
     try {
-      SimaksiPermit? permit = await _db.getPermitByHash(blockHash);
+      final cleanHash = blockHash.replaceAll(RegExp(r'[\u200B-\u200D\uFEFF\r\n]'), '').trim();
+      if (cleanHash.isEmpty) {
+        return (valid: false, message: 'Hash atau data tiket kosong', permit: null);
+      }
+
+      SimaksiPermit? permit = await _db.getPermitByHash(cleanHash);
 
       // Jika belum ada di database lokal perangkat ini, cari di Supabase
       if (permit == null && SupabaseService.instance.isInitialized) {
-        permit = await SupabaseService.instance.getPermitByHash(blockHash);
+        permit = await SupabaseService.instance.getPermitByHash(cleanHash);
         if (permit != null) {
           await _db.insertPermit(permit);
         }
       }
 
       if (permit == null) {
-        return (valid: false, message: 'Tiket tidak ditemukan dalam sistem', permit: null);
+        return (valid: false, message: 'Tiket tidak ditemukan dalam sistem database', permit: null);
       }
 
       // Recompute hash to verify integrity
@@ -116,7 +121,7 @@ class BlockchainService {
       );
 
       if (!isValid) {
-        return (valid: false, message: 'Hash tiket tidak valid - kemungkinan dipalsukan', permit: permit);
+        return (valid: false, message: 'Integritas data tidak valid - hash tidak cocok', permit: permit);
       }
 
       if (permit.statusIzin == AppConstants.statusSelesai) {
@@ -124,7 +129,7 @@ class BlockchainService {
       }
 
       if (permit.statusIzin == AppConstants.statusDitolak) {
-        return (valid: false, message: 'Tiket ditolak', permit: permit);
+        return (valid: false, message: 'Tiket ditolak oleh Basecamp', permit: permit);
       }
 
       return (valid: true, message: 'Tiket valid ✓ - Status: ${permit.statusIzin}', permit: permit);

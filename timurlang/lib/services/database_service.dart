@@ -586,9 +586,24 @@ class DatabaseService {
 
   Future<SimaksiPermit?> getPermitByHash(String blockHash) async {
     final db = await database;
-    final maps = await db.query('simaksi_permits', where: 'block_hash = ?', whereArgs: [blockHash]);
-    if (maps.isEmpty) return null;
-    return SimaksiPermit.fromMap(maps.first);
+    final clean = blockHash.trim();
+    // 1. Cari berdasarkan block_hash (case-insensitive & trim)
+    var maps = await db.query(
+      'simaksi_permits',
+      where: 'LOWER(TRIM(block_hash)) = LOWER(?)',
+      whereArgs: [clean],
+    );
+    if (maps.isNotEmpty) return SimaksiPermit.fromMap(maps.first);
+
+    // 2. Fallback: Cari berdasarkan id tiket (jika barcode membaca ID permit)
+    maps = await db.query(
+      'simaksi_permits',
+      where: 'id = ?',
+      whereArgs: [clean],
+    );
+    if (maps.isNotEmpty) return SimaksiPermit.fromMap(maps.first);
+
+    return null;
   }
 
   Future<List<SimaksiPermit>> getActivePermits() async {

@@ -424,13 +424,23 @@ class SupabaseService {
   Future<SimaksiPermit?> getPermitByHash(String blockHash) async {
     if (!_initialized || _client == null) return null;
     try {
-      final response = await _client!
+      final clean = blockHash.trim();
+      var response = await _client!
           .from('simaksi_permits')
           .select()
-          .eq('block_hash', blockHash)
+          .ilike('block_hash', clean)
           .maybeSingle();
-      if (response == null) return null;
-      return SimaksiPermit.fromMap(response);
+      if (response != null) return SimaksiPermit.fromMap(response);
+
+      // Fallback: Cari by id
+      response = await _client!
+          .from('simaksi_permits')
+          .select()
+          .eq('id', clean)
+          .maybeSingle();
+      if (response != null) return SimaksiPermit.fromMap(response);
+
+      return null;
     } catch (e) {
       debugPrint('❌ Gagal get permit by hash: $e');
       return null;
