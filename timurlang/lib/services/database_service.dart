@@ -8,6 +8,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import '../config/constants.dart';
+import '../data/seed_data.dart';
 import '../models/user.dart';
 import '../models/medical_profile.dart';
 import '../models/mountain.dart';
@@ -46,12 +47,26 @@ class DatabaseService {
       path = join(dbPath, AppConstants.dbName);
     }
 
-    return await openDatabase(
+    final db = await openDatabase(
       path,
       version: AppConstants.dbVersion,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
+
+    // Pastikan seluruh data 46 gunung dan 112 basecamp terisi
+    try {
+      final count = Sqflite.firstIntValue(
+        await db.rawQuery('SELECT COUNT(*) FROM mountains'),
+      ) ?? 0;
+      if (count < 46) {
+        await _seedMountains(db);
+        await _seedBasecamps(db);
+        await _seedBasecampUsers(db);
+      }
+    } catch (_) {}
+
+    return db;
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -193,9 +208,10 @@ class DatabaseService {
       )
     ''');
 
-    // Seed mountain data
+    // Seed data gunung, basecamp, dan akun basecamp
     await _seedMountains(db);
     await _seedBasecamps(db);
+    await _seedBasecampUsers(db);
   }
 
   /// Migrasi database saat versi naik
@@ -224,111 +240,66 @@ class DatabaseService {
         await db.execute('ALTER TABLE sos_incident_logs ADD COLUMN basecamp_id TEXT');
       } catch (_) {}
     }
+    if (oldVersion < 5) {
+      // Hapus data lama sesuai instruksi pengguna:
+      // kosongkan data gunung, basecamp, riwayat simaksi, dan akun basecamp
+      try {
+        await db.delete('simaksi_permits');
+        await db.delete('basecamp_posts');
+        await db.delete('mountains');
+        await db.delete('users', where: 'peran = ?', whereArgs: ['basecamp']);
+      } catch (_) {}
+
+      // Masukkan 46 gunung, 112 basecamp, dan 112 akun pengelola basecamp
+      await _seedMountains(db);
+      await _seedBasecamps(db);
+      await _seedBasecampUsers(db);
+    }
   }
 
   Future<void> _seedMountains(Database db) async {
-    final mountains = [
-      {
-        'id': 'mtn-011', 'nama_gunung': 'Gunung Sumbing', 'elevasi_mdpl': 3371,
-        'tingkat_bahaya': 'Grade 3 - Sulit', 'sumber_air_tersedia': 1,
-        'status_jalur': 'Buka', 'koordinat_lat': -7.384, 'koordinat_long': 110.070,
-        'deskripsi': 'Gunung berapi aktif tipe stratovolcano di Jawa Tengah. Terkenal dengan jalur via Garung, Dukuh Semar, Gajah Mungkur, Bowongso, dan Mangli. Menawarkan pemandangan kawah dan sabana memukau.',
-        'kuota_harian': 400, 'created_at': DateTime.now().toIso8601String(),
-      },
-      {
-        'id': 'mtn-001', 'nama_gunung': 'Gunung Semeru', 'elevasi_mdpl': 3676,
-        'tingkat_bahaya': 'Grade 4 - Sangat Sulit', 'sumber_air_tersedia': 1,
-        'status_jalur': 'Buka', 'koordinat_lat': -8.108, 'koordinat_long': 112.922,
-        'deskripsi': 'Gunung tertinggi di Pulau Jawa dengan puncak Mahameru. Jalur pendakian melalui Ranu Pani melewati savana dan danau Ranu Kumbolo yang ikonik. Erupsi aktif dengan lontaran material vulkanik.',
-        'kuota_harian': 300, 'created_at': DateTime.now().toIso8601String(),
-      },
-      {
-        'id': 'mtn-002', 'nama_gunung': 'Gunung Rinjani', 'elevasi_mdpl': 3726,
-        'tingkat_bahaya': 'Grade 4 - Sangat Sulit', 'sumber_air_tersedia': 1,
-        'status_jalur': 'Buka', 'koordinat_lat': -8.411, 'koordinat_long': 116.457,
-        'deskripsi': 'Gunung berapi aktif tertinggi kedua di Indonesia, terletak di Lombok, NTB. Terdapat Danau Segara Anak di kaldera dan sumber air panas alami.',
-        'kuota_harian': 200, 'created_at': DateTime.now().toIso8601String(),
-      },
-      {
-        'id': 'mtn-003', 'nama_gunung': 'Gunung Kerinci', 'elevasi_mdpl': 3805,
-        'tingkat_bahaya': 'Grade 3 - Sulit', 'sumber_air_tersedia': 1,
-        'status_jalur': 'Buka', 'koordinat_lat': -1.697, 'koordinat_long': 101.264,
-        'deskripsi': 'Gunung tertinggi di Sumatera dan puncak tertinggi di luar Papua. Terletak di Taman Nasional Kerinci Seblat dengan keanekaragaman hayati tinggi.',
-        'kuota_harian': 150, 'created_at': DateTime.now().toIso8601String(),
-      },
-      {
-        'id': 'mtn-004', 'nama_gunung': 'Gunung Merbabu', 'elevasi_mdpl': 3145,
-        'tingkat_bahaya': 'Grade 2 - Sedang', 'sumber_air_tersedia': 0,
-        'status_jalur': 'Buka', 'koordinat_lat': -7.455, 'koordinat_long': 110.440,
-        'deskripsi': 'Gunung dormant di perbatasan Jawa Tengah. Terkenal dengan savana luas dan panorama sunrise yang memukau. Jalur via Selo paling populer.',
-        'kuota_harian': 400, 'created_at': DateTime.now().toIso8601String(),
-      },
-      {
-        'id': 'mtn-005', 'nama_gunung': 'Gunung Prau', 'elevasi_mdpl': 2565,
-        'tingkat_bahaya': 'Grade 1 - Mudah', 'sumber_air_tersedia': 0,
-        'status_jalur': 'Buka', 'koordinat_lat': -7.186, 'koordinat_long': 109.923,
-        'deskripsi': 'Gunung ramah pemula di Dataran Tinggi Dieng, Jawa Tengah. Terkenal dengan golden sunrise dan lautan awan. Jalur pendek dan landai.',
-        'kuota_harian': 500, 'created_at': DateTime.now().toIso8601String(),
-      },
-      {
-        'id': 'mtn-006', 'nama_gunung': 'Gunung Bromo', 'elevasi_mdpl': 2329,
-        'tingkat_bahaya': 'Grade 1 - Mudah', 'sumber_air_tersedia': 0,
-        'status_jalur': 'Waspada Cuaca Ekstrem', 'koordinat_lat': -7.942, 'koordinat_long': 112.953,
-        'deskripsi': 'Gunung berapi aktif di Taman Nasional Bromo Tengger Semeru. Terkenal dengan lautan pasir dan sunrise dari Penanjakan.',
-        'kuota_harian': 600, 'created_at': DateTime.now().toIso8601String(),
-      },
-      {
-        'id': 'mtn-007', 'nama_gunung': 'Gunung Gede Pangrango', 'elevasi_mdpl': 2958,
-        'tingkat_bahaya': 'Grade 2 - Sedang', 'sumber_air_tersedia': 1,
-        'status_jalur': 'Buka', 'koordinat_lat': -6.787, 'koordinat_long': 106.980,
-        'deskripsi': 'Taman Nasional di Jawa Barat dengan Suryakencana sebagai padang edelweiss terluas. Sumber air melimpah sepanjang jalur.',
-        'kuota_harian': 300, 'created_at': DateTime.now().toIso8601String(),
-      },
-      {
-        'id': 'mtn-008', 'nama_gunung': 'Gunung Lawu', 'elevasi_mdpl': 3265,
-        'tingkat_bahaya': 'Grade 3 - Sulit', 'sumber_air_tersedia': 1,
-        'status_jalur': 'Buka', 'koordinat_lat': -7.625, 'koordinat_long': 111.192,
-        'deskripsi': 'Gunung mistis di perbatasan Jawa Tengah-Jawa Timur. Terkenal dengan situs candi peninggalan kerajaan Majapahit dan hutan cemara.',
-        'kuota_harian': 350, 'created_at': DateTime.now().toIso8601String(),
-      },
-      {
-        'id': 'mtn-009', 'nama_gunung': 'Gunung Cartensz Pyramid', 'elevasi_mdpl': 4884,
-        'tingkat_bahaya': 'Grade 5 - Ekstrem', 'sumber_air_tersedia': 1,
-        'status_jalur': 'Tutup', 'koordinat_lat': -4.078, 'koordinat_long': 137.158,
-        'deskripsi': 'Puncak tertinggi Indonesia dan Oseania (Seven Summits). Terletak di Papua dengan akses terbatas, memerlukan izin khusus dan kemampuan rock climbing.',
-        'kuota_harian': 20, 'created_at': DateTime.now().toIso8601String(),
-      },
-      {
-        'id': 'mtn-010', 'nama_gunung': 'Gunung Slamet', 'elevasi_mdpl': 3428,
-        'tingkat_bahaya': 'Grade 3 - Sulit', 'sumber_air_tersedia': 1,
-        'status_jalur': 'Buka', 'koordinat_lat': -7.242, 'koordinat_long': 109.208,
-        'deskripsi': 'Gunung tertinggi kedua di Jawa setelah Semeru. Jalur panjang dan menantang melalui hutan lebat dan medan berpasir.',
-        'kuota_harian': 250, 'created_at': DateTime.now().toIso8601String(),
-      },
-    ];
-
-    for (final m in mountains) {
-      await db.insert('mountains', m);
+    final batch = db.batch();
+    for (final m in SeedData.initialMountains) {
+      batch.insert('mountains', m, conflictAlgorithm: ConflictAlgorithm.replace);
     }
+    await batch.commit(noResult: true);
   }
 
   Future<void> _seedBasecamps(Database db) async {
-    final basecamps = [
-      {'id': 'bc-001', 'gunung_id': 'mtn-001', 'nama_pos': 'Pos Ranu Pani', 'lokasi_deskripsi': 'Desa Ranu Pani, Lumajang, Jawa Timur', 'kontak_pos': '0334-8880001', 'created_at': DateTime.now().toIso8601String()},
-      {'id': 'bc-002', 'gunung_id': 'mtn-002', 'nama_pos': 'Pos Senaru', 'lokasi_deskripsi': 'Desa Senaru, Lombok Utara, NTB', 'kontak_pos': '0370-8880002', 'created_at': DateTime.now().toIso8601String()},
-      {'id': 'bc-003', 'gunung_id': 'mtn-003', 'nama_pos': 'Pos Kersik Tuo', 'lokasi_deskripsi': 'Kersik Tuo, Kayu Aro, Kerinci, Jambi', 'kontak_pos': '0748-8880003', 'created_at': DateTime.now().toIso8601String()},
-      {'id': 'bc-004', 'gunung_id': 'mtn-004', 'nama_pos': 'Pos Selo', 'lokasi_deskripsi': 'Desa Selo, Boyolali, Jawa Tengah', 'kontak_pos': '0276-8880004', 'created_at': DateTime.now().toIso8601String()},
-      {'id': 'bc-005', 'gunung_id': 'mtn-005', 'nama_pos': 'Pos Dieng Kulon', 'lokasi_deskripsi': 'Desa Dieng Kulon, Banjarnegara, Jawa Tengah', 'kontak_pos': '0286-8880005', 'created_at': DateTime.now().toIso8601String()},
-      {'id': 'bc-006', 'gunung_id': 'mtn-006', 'nama_pos': 'Pos Cemoro Lawang', 'lokasi_deskripsi': 'Cemoro Lawang, Probolinggo, Jawa Timur', 'kontak_pos': '0335-8880006', 'created_at': DateTime.now().toIso8601String()},
-      {'id': 'bc-007', 'gunung_id': 'mtn-007', 'nama_pos': 'Pos Cibodas', 'lokasi_deskripsi': 'Cibodas, Cianjur, Jawa Barat', 'kontak_pos': '0263-8880007', 'created_at': DateTime.now().toIso8601String()},
-      {'id': 'bc-008', 'gunung_id': 'mtn-008', 'nama_pos': 'Pos Cemoro Sewu', 'lokasi_deskripsi': 'Cemoro Sewu, Magetan, Jawa Timur', 'kontak_pos': '0351-8880008', 'created_at': DateTime.now().toIso8601String()},
-      {'id': 'bc-009', 'gunung_id': 'mtn-009', 'nama_pos': 'Pos Sugapa', 'lokasi_deskripsi': 'Sugapa, Intan Jaya, Papua', 'kontak_pos': '0901-8880009', 'created_at': DateTime.now().toIso8601String()},
-      {'id': 'bc-010', 'gunung_id': 'mtn-010', 'nama_pos': 'Pos Bambangan', 'lokasi_deskripsi': 'Bambangan, Purbalingga, Jawa Tengah', 'kontak_pos': '0281-8880010', 'created_at': DateTime.now().toIso8601String()},
-    ];
-
-    for (final bc in basecamps) {
-      await db.insert('basecamp_posts', bc);
+    final batch = db.batch();
+    for (final bc in SeedData.initialBasecampPosts) {
+      batch.insert('basecamp_posts', bc, conflictAlgorithm: ConflictAlgorithm.replace);
     }
+    await batch.commit(noResult: true);
+  }
+
+  Future<void> _seedBasecampUsers(Database db) async {
+    final batch = db.batch();
+    for (final u in SeedData.initialBasecampUsers) {
+      batch.insert('users', u, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+    await batch.commit(noResult: true);
+  }
+
+  /// Reset total data gunung, basecamp, riwayat simaksi, dan isi ulang 112 basecamp & 46 gunung
+  Future<void> resetAndSeedBasecampData() async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('simaksi_permits');
+      await txn.delete('basecamp_posts');
+      await txn.delete('mountains');
+      await txn.delete('users', where: 'peran = ?', whereArgs: ['basecamp']);
+
+      for (final m in SeedData.initialMountains) {
+        await txn.insert('mountains', m, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      for (final bc in SeedData.initialBasecampPosts) {
+        await txn.insert('basecamp_posts', bc, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      for (final u in SeedData.initialBasecampUsers) {
+        await txn.insert('users', u, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+    });
   }
 
   // ── USER CRUD ──
