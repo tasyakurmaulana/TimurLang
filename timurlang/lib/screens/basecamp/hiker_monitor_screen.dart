@@ -8,6 +8,7 @@ import '../../models/simaksi_permit.dart';
 import '../../services/auth_service.dart';
 import '../../services/blockchain_service.dart';
 import '../../services/database_service.dart';
+import '../../services/supabase_service.dart';
 
 class HikerMonitorScreen extends StatefulWidget {
   const HikerMonitorScreen({super.key});
@@ -27,6 +28,16 @@ class _HikerMonitorScreenState extends State<HikerMonitorScreen> {
   }
 
   Future<void> _loadData() async {
+    // Tarik permit terbaru dari server Supabase jika online
+    if (SupabaseService.instance.isInitialized) {
+      try {
+        final remotePermits = await SupabaseService.instance.getAllPermits();
+        for (final p in remotePermits) {
+          await DatabaseService.instance.insertPermit(p);
+        }
+      } catch (_) {}
+    }
+
     final user = AuthService.instance.currentUser;
     if (user != null) {
       final post = await DatabaseService.instance.getBasecampByUserId(user.id);

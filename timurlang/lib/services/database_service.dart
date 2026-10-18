@@ -689,7 +689,14 @@ class DatabaseService {
         }
       }
 
-      // 2. Jika gunung_id belum tercatat di SOS, cek tiket SIMAKSI pendaki yang berstatus 'Di Jalur'
+      // 2. Jika sinyal darurat belum memiliki gunungId (SOS umum / pendaki darurat tanpa tiket),
+      // pos basecamp siaga tetap harus menerima peringatan darurat ini
+      if (inc.gunungId == null) {
+        matched.add(inc);
+        continue;
+      }
+
+      // 3. Jika gunung_id belum tercatat di SOS, cek tiket SIMAKSI pendaki yang berstatus 'Di Jalur'
       final permit = await getActivePermitForHiker(inc.userId);
       if (permit != null && permit.gunungId == gunungId) {
         if (basecampId == null || permit.basecampId == null || permit.basecampId == basecampId) {

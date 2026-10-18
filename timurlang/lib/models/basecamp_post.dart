@@ -36,12 +36,14 @@ class BasecampPost {
   factory BasecampPost.fromMap(Map<String, dynamic> map) {
     return BasecampPost(
       id: map['id'] as String,
-      gunungId: map['gunung_id'] as String,
+      gunungId: (map['gunung_id'] as String?) ?? 'mtn-001',
       userIdPetugas: map['user_id_petugas'] as String?,
-      namaPos: map['nama_pos'] as String,
-      lokasiDeskripsi: map['lokasi_deskripsi'] as String,
+      namaPos: (map['nama_pos'] as String?) ?? 'Pos Basecamp',
+      lokasiDeskripsi: (map['lokasi_deskripsi'] as String?) ?? '',
       kontakPos: map['kontak_pos'] as String?,
-      createdAt: DateTime.parse(map['created_at'] as String),
+      createdAt: map['created_at'] != null
+          ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
+          : DateTime.now(),
     );
   }
 }

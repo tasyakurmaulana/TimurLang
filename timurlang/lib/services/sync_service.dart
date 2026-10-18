@@ -151,10 +151,51 @@ class SyncService {
         }
       }
 
-      final message = 'Sinkronisasi online selesai! $synced data berhasil terhubung ke Supabase.';
-      return (synced: synced, failed: failed, message: message);
+      // 6. Tarik data terbaru dari Supabase ke lokal SQLite (Basecamp, Simaksi, SOS)
+      final pullResult = await pullFromSupabase();
+
+      final message = 'Sinkronisasi online selesai! $synced data diunggah, ${pullResult.pulled} data terbaru disinkronkan dari server.';
+      return (synced: synced + pullResult.pulled, failed: failed, message: message);
     } finally {
       _isSyncing = false;
+    }
+  }
+
+  /// Tarik data terbaru dari Supabase ke SQLite lokal (Basecamp, Simaksi, SOS)
+  Future<({int pulled, String message})> pullFromSupabase() async {
+    if (!_supabase.isInitialized) {
+      await _supabase.initialize();
+      if (!_supabase.isInitialized) {
+        return (pulled: 0, message: 'Supabase belum terhubung');
+      }
+    }
+
+    int count = 0;
+    try {
+      // 1. Tarik Basecamp Posts
+      final basecamps = await _supabase.getAllBasecampPosts();
+      for (final bc in basecamps) {
+        await _db.insertBasecampPost(bc);
+        count++;
+      }
+
+      // 2. Tarik Simaksi Permits
+      final permits = await _supabase.getAllPermits();
+      for (final p in permits) {
+        await _db.insertPermit(p);
+        count++;
+      }
+
+      // 3. Tarik Insiden SOS
+      final incidents = await _supabase.getAllSosIncidents();
+      for (final inc in incidents) {
+        await _db.insertSosIncident(inc);
+        count++;
+      }
+
+      return (pulled: count, message: 'Berhasil mengunduh $count data terbaru dari server');
+    } catch (e) {
+      return (pulled: count, message: 'Gagal mengunduh data dari server: $e');
     }
   }
 

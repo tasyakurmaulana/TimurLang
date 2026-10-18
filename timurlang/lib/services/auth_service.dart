@@ -292,6 +292,20 @@ class AuthService {
       _currentUser = user;
       await _saveSession(user);
 
+      // Jika role basecamp, pastikan post basecamp tersimpan di SQLite lokal
+      if (user.peran == AppConstants.roleBasecamp && _supabase.isInitialized) {
+        final existingPost = await _db.getBasecampByUserId(user.id);
+        if (existingPost == null) {
+          final post = await _supabase.getBasecampByUserId(user.id);
+          if (post != null) {
+            await _db.insertBasecampPost(post);
+          }
+        }
+      }
+
+      // Sync data dua arah di background agar perangkat baru langsung terisi data terkini
+      SyncService.instance.syncAll();
+
       return (success: true, message: 'Login berhasil!');
     } catch (e) {
       return (success: false, message: 'Gagal login: ${e.toString()}');
@@ -465,6 +479,8 @@ class AuthService {
       if (user == null) return false;
 
       _currentUser = user;
+      // Sync background data terbaru dari server
+      SyncService.instance.pullFromSupabase();
       return true;
     } catch (e) {
       return false;

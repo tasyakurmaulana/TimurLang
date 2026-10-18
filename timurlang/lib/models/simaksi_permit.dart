@@ -61,20 +61,26 @@ class SimaksiPermit {
   factory SimaksiPermit.fromMap(Map<String, dynamic> map) {
     return SimaksiPermit(
       id: map['id'] as String,
-      userId: map['user_id'] as String,
-      gunungId: map['gunung_id'] as String,
+      userId: (map['user_id'] as String?) ?? '',
+      gunungId: (map['gunung_id'] as String?) ?? '',
       basecampId: map['basecamp_id'] as String?,
-      tanggalNaik: DateTime.parse(map['tanggal_naik'] as String),
-      tanggalTurun: DateTime.parse(map['tanggal_turun'] as String),
-      jumlahAnggota: map['jumlah_anggota'] as int,
-      statusIzin: map['status_izin'] as String,
-      blockHash: map['block_hash'] as String,
-      previousHash: map['previous_hash'] as String,
-      nonce: map['nonce'] as int,
+      tanggalNaik: map['tanggal_naik'] != null
+          ? DateTime.tryParse(map['tanggal_naik'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+      tanggalTurun: map['tanggal_turun'] != null
+          ? DateTime.tryParse(map['tanggal_turun'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+      jumlahAnggota: (map['jumlah_anggota'] as num?)?.toInt() ?? 1,
+      statusIzin: (map['status_izin'] as String?) ?? 'Terdaftar',
+      blockHash: (map['block_hash'] as String?) ?? '',
+      previousHash: (map['previous_hash'] as String?) ?? '',
+      nonce: (map['nonce'] as num?)?.toInt() ?? 0,
       namaGunung: map['nama_gunung'] as String?,
       totalBiaya: map['total_biaya'] != null ? (map['total_biaya'] as num).toDouble() : null,
       matauang: map['matauang'] as String?,
-      createdAt: DateTime.parse(map['created_at'] as String),
+      createdAt: map['created_at'] != null
+          ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
+          : DateTime.now(),
     );
   }
 

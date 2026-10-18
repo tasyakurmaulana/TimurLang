@@ -48,16 +48,21 @@ class SosIncident {
   factory SosIncident.fromMap(Map<String, dynamic> map) {
     return SosIncident(
       id: map['id'] as String,
-      userId: map['user_id'] as String,
+      userId: (map['user_id'] as String?) ?? 'unknown',
       gunungId: map['gunung_id'] as String?,
       basecampId: map['basecamp_id'] as String?,
-      koordinatLat: (map['koordinat_lat'] as num).toDouble(),
-      koordinatLong: (map['koordinat_long'] as num).toDouble(),
-      tipePemicu: map['tipe_pemicu'] as String,
-      statusPenanganan: map['status_penanganan'] as String,
-      waktuKejadian: DateTime.parse(map['waktu_kejadian'] as String),
+      koordinatLat: map['koordinat_lat'] != null ? (map['koordinat_lat'] as num).toDouble() : -8.108,
+      koordinatLong: map['koordinat_long'] != null ? (map['koordinat_long'] as num).toDouble() : 112.922,
+      tipePemicu: (map['tipe_pemicu'] as String?) ?? 'manual',
+      statusPenanganan: (map['status_penanganan'] as String?) ?? 'darurat_aktif',
+      waktuKejadian: map['waktu_kejadian'] != null
+          ? DateTime.tryParse(map['waktu_kejadian'].toString()) ?? DateTime.now()
+          : DateTime.now(),
       namaPendaki: map['nama_pendaki'] as String?,
-      createdAt: DateTime.parse(map['created_at'] as String),
+      createdAt: map['created_at'] != null
+          ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
+          : DateTime.now(),
     );
   }
 }
+

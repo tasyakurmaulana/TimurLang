@@ -53,12 +53,34 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
 
     BasecampPost? post = _basecampPost;
     post ??= await DatabaseService.instance.getBasecampByUserId(user.id);
+    if (post == null && SupabaseService.instance.isInitialized) {
+      post = await SupabaseService.instance.getBasecampByUserId(user.id);
+      if (post != null) {
+        await DatabaseService.instance.insertBasecampPost(post);
+      }
+    }
     
     final gunungId = user.gunungId ?? post?.gunungId ?? 'mtn-001';
     Mountain? mtn = _mountain;
     mtn ??= await DatabaseService.instance.getMountainById(gunungId);
 
-    // Ambil SOS hanya untuk gunung & basecamp ini
+    // Jika online, tarik insiden SOS aktif dan data permit terbaru dari Supabase
+    if (SupabaseService.instance.isInitialized) {
+      try {
+        final remoteSos = await SupabaseService.instance.getActiveSOSIncidents();
+        for (final inc in remoteSos) {
+          await DatabaseService.instance.insertSosIncident(inc);
+        }
+        final remotePermits = await SupabaseService.instance.getAllPermits();
+        for (final p in remotePermits) {
+          await DatabaseService.instance.insertPermit(p);
+        }
+      } catch (e) {
+        debugPrint('⚠️ Gagal pull realtime SOS/Permits dari Supabase: $e');
+      }
+    }
+
+    // Ambil SOS hanya untuk gunung & basecamp ini (atau SOS darurat umum)
     final sosList = await DatabaseService.instance.getActiveSOSIncidentsForBasecamp(
       gunungId: gunungId,
       basecampId: post?.id,
@@ -74,12 +96,13 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
     for (final inc in sosList) {
       if (!_knownSosIds.contains(inc.id)) {
         _knownSosIds.add(inc.id);
-        if (silent) {
-          await NotificationService.instance.showSOSNotification(
-            title: '🚨 DARURAT PENDAKI DI ${mtn?.namaGunung.toUpperCase() ?? 'JALUR'}!',
-            body: 'Pendaki ${inc.namaPendaki ?? 'Anonim'} mengirim sinyal SOS di koordinat (${inc.koordinatLat.toStringAsFixed(4)}, ${inc.koordinatLong.toStringAsFixed(4)})!',
-          );
-        }
+        HapticFeedback.heavyImpact();
+        SystemSound.play(SystemSoundType.alert);
+        await NotificationService.instance.showSOSNotification(
+          title: '🚨 DARURAT PENDAKI DI ${mtn?.namaGunung.toUpperCase() ?? 'JALUR'}!',
+          body: 'Pendaki ${inc.namaPendaki ?? 'Anonim'} mengirim sinyal SOS di koordinat (${inc.koordinatLat.toStringAsFixed(4)}, ${inc.koordinatLong.toStringAsFixed(4)})!',
+          payload: 'sos_screen',
+        );
       }
     }
 
@@ -146,6 +169,7 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
             icon: const Icon(Icons.sync),
             onPressed: () async {
               final res = await SyncService.instance.syncAll();
+              await _loadData();
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res.message)));
             },

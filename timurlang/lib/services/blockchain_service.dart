@@ -91,7 +91,15 @@ class BlockchainService {
   /// Verify a ticket hash integrity
   Future<({bool valid, String message, SimaksiPermit? permit})> verifyTicket(String blockHash) async {
     try {
-      final permit = await _db.getPermitByHash(blockHash);
+      SimaksiPermit? permit = await _db.getPermitByHash(blockHash);
+
+      // Jika belum ada di database lokal perangkat ini, cari di Supabase
+      if (permit == null && SupabaseService.instance.isInitialized) {
+        permit = await SupabaseService.instance.getPermitByHash(blockHash);
+        if (permit != null) {
+          await _db.insertPermit(permit);
+        }
+      }
 
       if (permit == null) {
         return (valid: false, message: 'Tiket tidak ditemukan dalam sistem', permit: null);
@@ -146,7 +154,13 @@ class BlockchainService {
 
   /// Check-out a permit (Basecamp)
   Future<({bool success, String message})> checkOutPermit(String blockHash) async {
-    final permit = await _db.getPermitByHash(blockHash);
+    SimaksiPermit? permit = await _db.getPermitByHash(blockHash);
+    if (permit == null && SupabaseService.instance.isInitialized) {
+      permit = await SupabaseService.instance.getPermitByHash(blockHash);
+      if (permit != null) {
+        await _db.insertPermit(permit);
+      }
+    }
     if (permit == null) {
       return (success: false, message: 'Tiket tidak ditemukan');
     }

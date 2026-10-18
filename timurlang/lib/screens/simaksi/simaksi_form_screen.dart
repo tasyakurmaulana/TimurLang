@@ -8,6 +8,7 @@ import '../../config/routes.dart';
 import '../../models/mountain.dart';
 import '../../models/basecamp_post.dart';
 import '../../services/database_service.dart';
+import '../../services/supabase_service.dart';
 import '../../utils/date_utils.dart';
 import '../../utils/validators.dart';
 import '../../widgets/custom_text_field.dart';
@@ -66,6 +67,18 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
       _isLoadingBasecamps = true;
       _selectedBasecamp = null;
     });
+
+    // Tarik pos basecamp terbaru dari server Supabase agar pos yang baru didaftarkan akun basecamp muncul
+    if (SupabaseService.instance.isInitialized) {
+      try {
+        final remoteBasecamps = await SupabaseService.instance.getBasecampsByMountain(gunungId);
+        for (final bc in remoteBasecamps) {
+          await DatabaseService.instance.insertBasecampPost(bc);
+        }
+      } catch (e) {
+        debugPrint('⚠️ Gagal pull basecamp dari Supabase: $e');
+      }
+    }
 
     final bcs = await DatabaseService.instance.getRegisteredBasecampsByMountain(gunungId);
     if (!mounted) return;
