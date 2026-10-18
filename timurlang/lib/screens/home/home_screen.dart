@@ -3,7 +3,9 @@
 // With Bottom Navigation Bar
 // ============================================
 
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../config/theme.dart';
 import '../../config/routes.dart';
 import '../../services/auth_service.dart';
@@ -132,16 +134,34 @@ class _DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<_DashboardPage> {
   bool _isOnline = false;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
+  Timer? _connectivityTimer;
 
   @override
   void initState() {
     super.initState();
     _checkConnection();
+    // Dengarkan perubahan koneksi secara real-time
+    _connectivitySub = Connectivity().onConnectivityChanged.listen((result) {
+      final online = !result.contains(ConnectivityResult.none);
+      if (mounted && _isOnline != online) {
+        setState(() => _isOnline = online);
+      }
+    });
+    // Timer cadangan: periksa ulang setiap 10 detik
+    _connectivityTimer = Timer.periodic(const Duration(seconds: 10), (_) => _checkConnection());
+  }
+
+  @override
+  void dispose() {
+    _connectivitySub?.cancel();
+    _connectivityTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _checkConnection() async {
     final online = await SyncService.instance.hasConnection();
-    if (mounted) setState(() => _isOnline = online);
+    if (mounted && _isOnline != online) setState(() => _isOnline = online);
   }
 
   @override

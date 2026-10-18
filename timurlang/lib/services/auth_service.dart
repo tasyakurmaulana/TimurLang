@@ -434,7 +434,7 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     final sessionToken = const Uuid().v4();
     final expiresAt = DateTime.now().add(
-      const Duration(hours: AppConstants.sessionExpiryHours),
+      const Duration(minutes: AppConstants.sessionExpiryMinutes),
     );
 
     await prefs.setString(AppConstants.userIdKey, user.id);
