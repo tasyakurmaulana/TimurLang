@@ -297,8 +297,8 @@ class _DashboardPageState extends State<_DashboardPage> {
                 _menuCard('Tiket\nSimaksi', Icons.confirmation_num_rounded, AppTheme.accentOrange, () {
                   Navigator.pushNamed(context, AppRoutes.simaksiTicket);
                 }),
-                _menuCard('Pack\nCarrier', Icons.backpack_rounded, Color(0xFF00695C), () {
-                  Navigator.pushNamed(context, AppRoutes.packCarrier);
+                _menuCard('Pendaki\nGunung', Icons.landscape_rounded, Color(0xFF4527A0), () {
+                  Navigator.pushNamed(context, AppRoutes.mountainClimber);
                 }),
                 _menuCard('Rekam\nMedis', Icons.medical_information_rounded, Color(0xFF1565C0), () {
                   Navigator.pushNamed(context, AppRoutes.medicalProfile);

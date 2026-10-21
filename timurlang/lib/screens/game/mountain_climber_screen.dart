@@ -1,0 +1,1487 @@
+// ============================================
+// TimurLang - Mountain Climber Game Screen
+// Visual Game Theme:
+// - Background Sky: assets/images/background_sky.png
+// - Background Mountain: assets/images/background_mount.png
+// - Background Trees: assets/images/background_tree.png
+// - Land: assets/images/land.png
+// - Hiker: assets/images/hiker.png (9-frame sprite sheet)
+// - Obstacle 1 (Ground): assets/images/fox.png (4-frame sprite sheet)
+// - Obstacle 2 (Air): assets/images/elang.png / eagle.png (4-frame sprite sheet)
+// ============================================
+
+import 'dart:math';
+import 'dart:ui' as ui;
+import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+/// Representasi rintangan game (Rubah di tanah atau Elang di udara)
+class GameObstacle {
+  bool isEagle;
+  double x;
+  GameObstacle({required this.isEagle, required this.x});
+}
+
+/// Entry screen alias for TimurLang app routing
+class MountainClimberScreen extends StatelessWidget {
+  const MountainClimberScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const GameScreen();
+  }
+}
+
+class GameScreen extends StatefulWidget {
+  const GameScreen({super.key});
+
+  @override
+  State<GameScreen> createState() => _GameScreenState();
+}
+
+class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateMixin {
+  late Ticker _ticker;
+  final FocusNode _focusNode = FocusNode();
+
+  // ── Asset Images ──
+  ui.Image? skyImage;
+  ui.Image? mountImage;
+  ui.Image? treeImage;
+  ui.Image? landImage;
+  ui.Image? hikerSpriteSheet;
+  ui.Image? foxSpriteSheet;
+  ui.Image? eagleSpriteSheet;
+  bool isAssetsLoaded = false;
+
+  // ── Animasi Karakter & Rintangan ──
+  int currentRunFrame = 0; // Frame 0..6 untuk lari (7-frame stride cycle)
+  double animTimer = 0;
+
+  int currentFoxFrame = 0; // Frame 0, 1, 2, 3 untuk rubah lari
+  double foxAnimTimer = 0;
+
+  int currentEagleFrame = 0; // Frame 0, 1, 2, 3 untuk kepakan sayap elang
+  double eagleAnimTimer = 0;
+
+  // ── Fisika Karakter Hiker ──
+  double playerY = 0; // 0 = di tanah, negatif = di udara
+  double velocityY = 0;
+  final double gravity = 1500;
+  final double baseHikerHeight = 92.0; // Tinggi berdiri ideal & proporsional
+  bool isDucking = false;
+
+  // ── Parallax & Scroll Offset ──
+  double scrollOffset = 0;
+  double gameSpeed = 270;
+  double _bonusSpeedTimer = 0;
+
+  // ── Ukuran Rintangan ──
+  final double foxWidth = 84.6;
+  final double foxHeight = 44.0;
+  final double eagleWidth = 68.0;
+  final double eagleHeight = 48.0;
+  // Ketinggian elang dari tanah: berdiri pasti kena (92 > 68), menunduk aman lewat di bawah (61.3 < 68)
+  final double eagleAltitude = 68.0;
+
+  // ── Daftar Rintangan Berurutan (Dijamin Tidak Pernah Sejajar) ──
+  List<GameObstacle> _obstacles = [];
+
+  // ── Kontrol Tap 2x / Double Jump ──
+  int _jumpCount = 0; // 0 = di tanah, 1 = lompat biasa, 2 = lompatan kedua (tap 2x)
+  DateTime? _lastTapTime;
+
+  // ── Game State & Skor ──
+  bool isPlaying = false;
+  bool isGameOver = false;
+  double mdplScore = 1200;
+  double highScore = 1200;
+  double _runStartingHighScore = 1200;
+  bool _achievedNewRecord = false;
+  Duration? _lastTime;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAllAssets();
+    _loadHighScore();
+    _ticker = createTicker(_updateGame);
+  }
+
+  Future<ui.Image?> _loadUiImage(String assetPath) async {
+    try {
+      final byteData = await rootBundle.load(assetPath);
+      final codec = await ui.instantiateImageCodec(byteData.buffer.asUint8List());
+      final frame = await codec.getNextFrame();
+      return frame.image;
+    } catch (e) {
+      debugPrint('ℹ️ Info loading $assetPath: $e');
+      return null;
+    }
+  }
+
+  Future<void> _loadAllAssets() async {
+    // Muat semua asset pada resolusi native untuk pemotongan koordinat yang presisi
+    hikerSpriteSheet = await _loadUiImage('assets/images/hiker.png') ??
+        await _loadUiImage('lib/assets/images/hiker.png') ??
+        await _loadUiImage('assets/images/hiker.jpeg');
+
+    skyImage = await _loadUiImage('assets/images/background_sky.png');
+    mountImage = await _loadUiImage('assets/images/background_mount.png');
+    treeImage = await _loadUiImage('assets/images/background_tree.png');
+    landImage = await _loadUiImage('assets/images/land.png');
+    foxSpriteSheet = await _loadUiImage('assets/images/fox.png');
+    eagleSpriteSheet = await _loadUiImage('assets/images/elang.png') ??
+        await _loadUiImage('assets/images/eagle.png');
+
+    if (mounted) {
+      setState(() {
+        isAssetsLoaded = true;
+      });
+    }
+  }
+
+  Future<void> _loadHighScore() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getDouble('mountain_climber_high_score');
+      if (saved != null && mounted) {
+        setState(() {
+          highScore = saved;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveHighScore() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble('mountain_climber_high_score', highScore);
+    } catch (_) {}
+  }
+
+  void _startGame() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    setState(() {
+      playerY = 0;
+      velocityY = 0;
+      _jumpCount = 0;
+      _lastTapTime = null;
+      _bonusSpeedTimer = 0;
+      // Inisialisasi rintangan berurutan dengan jarak aman minimal 480px (tidak mungkin sejajar!)
+      _obstacles = [
+        GameObstacle(isEagle: false, x: screenWidth + 180),
+        GameObstacle(isEagle: true, x: screenWidth + 180 + 480),
+      ];
+      gameSpeed = 270;
+      mdplScore = 1200;
+      isGameOver = false;
+      isPlaying = true;
+      _runStartingHighScore = highScore;
+      _achievedNewRecord = false;
+      isDucking = false;
+      currentRunFrame = 0;
+      animTimer = 0;
+      currentFoxFrame = 0;
+      foxAnimTimer = 0;
+      currentEagleFrame = 0;
+      eagleAnimTimer = 0;
+      _lastTime = null;
+    });
+    HapticFeedback.lightImpact();
+    _ticker.start();
+  }
+
+  void _jump() {
+    if (!isPlaying) {
+      _startGame();
+      return;
+    }
+    if (isDucking) return;
+
+    final now = DateTime.now();
+    final bool isQuickDoubleTap = _lastTapTime != null &&
+        now.difference(_lastTapTime!).inMilliseconds < 350;
+    _lastTapTime = now;
+
+    if (playerY == 0) {
+      if (isQuickDoubleTap) {
+        // Tap 2x cepat langsung dari tanah: Super jump tinggi & jauh (setinggi elang)
+        _jumpCount = 2;
+        const double superPeak = 120.0;
+        velocityY = -sqrt(2 * gravity * superPeak);
+        _bonusSpeedTimer = 0.70;
+        HapticFeedback.heavyImpact();
+      } else {
+        // Tap 1x biasa: Melompati rubah (tinggi 44) dengan nyaman
+        _jumpCount = 1;
+        const double normalJumpHeight = 68.0;
+        velocityY = -sqrt(2 * gravity * normalJumpHeight);
+        HapticFeedback.lightImpact();
+      }
+    } else if (_jumpCount < 2) {
+      // Tap ke-2 di udara (Double Jump): Boost mencapai ketinggian elang & meluncur lebih jauh
+      _jumpCount = 2;
+      const double superPeak = 120.0;
+      final double currentAltitude = -playerY;
+      final double remainingHeight = max(20.0, superPeak - currentAltitude);
+      velocityY = -sqrt(2 * gravity * remainingHeight);
+      _bonusSpeedTimer = 0.65;
+      HapticFeedback.mediumImpact();
+    }
+  }
+
+  void _duck(bool status) {
+    if (!isPlaying) return;
+    if (status) {
+      if (playerY == 0 && !isDucking) {
+        setState(() => isDucking = true);
+        HapticFeedback.selectionClick();
+
+        // Auto stand up setelah 0.7 detik jika tombol tidak dilepas
+        Future.delayed(const Duration(milliseconds: 700), () {
+          if (mounted && isDucking) {
+            setState(() => isDucking = false);
+          }
+        });
+      }
+    } else {
+      if (isDucking) {
+        setState(() => isDucking = false);
+      }
+    }
+  }
+
+  void _updateGame(Duration elapsed) {
+    if (_lastTime == null) {
+      _lastTime = elapsed;
+      return;
+    }
+    final double dt = ((elapsed - _lastTime!).inMicroseconds / 1000000.0).clamp(0.0, 0.05);
+    _lastTime = elapsed;
+
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    setState(() {
+      // 0. Kecepatan Game Efektif (termasuk bonus kecepatan saat lompat jauh)
+      double effectiveGameSpeed = gameSpeed;
+      if (_bonusSpeedTimer > 0) {
+        _bonusSpeedTimer -= dt;
+        effectiveGameSpeed += 110.0;
+      }
+
+      // 1. Update Fisika Lompat Hiker
+      velocityY += gravity * dt;
+      playerY += velocityY * dt;
+      if (playerY >= 0) {
+        playerY = 0;
+        velocityY = 0;
+        _jumpCount = 0;
+      }
+
+      // 2. Update Animasi Lari Hiker (Siklus 6-frame simetris alami: Frame 0..5)
+      if (playerY == 0 && !isDucking) {
+        animTimer += dt;
+        final double frameDuration = (0.075 * (300.0 / effectiveGameSpeed)).clamp(0.045, 0.08);
+        if (animTimer >= frameDuration) {
+          animTimer = 0;
+          currentRunFrame = (currentRunFrame + 1) % 6;
+        }
+      }
+
+      // 3. Update Animasi Lari Rubah (Frame 0, 1, 2, 3)
+      foxAnimTimer += dt;
+      if (foxAnimTimer >= 0.08) {
+        foxAnimTimer = 0;
+        currentFoxFrame = (currentFoxFrame + 1) % 4;
+      }
+
+      // 4. Update Animasi Kepakan Sayap Elang (Frame 0, 1, 2, 3)
+      eagleAnimTimer += dt;
+      if (eagleAnimTimer >= 0.10) {
+        eagleAnimTimer = 0;
+        currentEagleFrame = (currentEagleFrame + 1) % 4;
+      }
+
+      // 5. Update Parallax & Jarak Tempuh
+      scrollOffset += effectiveGameSpeed * dt;
+
+      // 6. Update Pergerakan Rintangan (Sama Kecepatan: DIJAMIN tidak pernah sejajar)
+      for (final obs in _obstacles) {
+        obs.x -= effectiveGameSpeed * dt;
+      }
+
+      // 7. Respawn Rintangan yang Sudah Lewat Layar Kiri
+      for (int i = 0; i < _obstacles.length; i++) {
+        final obs = _obstacles[i];
+        final double obsWidth = obs.isEagle ? eagleWidth : foxWidth;
+        if (obs.x < -obsWidth - 60) {
+          double maxX = screenWidth;
+          for (final other in _obstacles) {
+            if (other != obs && other.x > maxX) {
+              maxX = other.x;
+            }
+          }
+          // Posisi baru selalu di belakang obstacle terjauh dengan jarak minimal 460px
+          obs.x = maxX + 460.0 + Random().nextInt(140);
+          // Ganti jenis rintangan secara bergantian
+          obs.isEagle = !obs.isEagle || Random().nextBool();
+          gameSpeed = (gameSpeed + 3).clamp(270.0, 680.0);
+        }
+      }
+
+      // 8. Skor MDPL
+      mdplScore += 14 * dt;
+      if (mdplScore > highScore) {
+        highScore = mdplScore;
+        if (highScore > _runStartingHighScore && highScore > 1200) {
+          _achievedNewRecord = true;
+        }
+      }
+
+      // 9. Deteksi Tabrakan Presisi Menggunakan Model Ketinggian (Altitude Model)
+      // Altitude dihitung dari permukaan tanah ke atas (Ground = 0.0)
+      const double playerLeft = 65.0;
+      final double standingHikerWidth = baseHikerHeight * 0.74; // ~68.0
+      final double playerXStart = playerLeft + 16.0;
+      final double playerXEnd = playerLeft + standingHikerWidth - 16.0;
+
+      final double jumpAltitude = -playerY; // >= 0
+      final double currentHeight = isDucking
+          ? baseHikerHeight * 0.68 // ~62.5 saat nunduk (aman lewat di bawah elang)
+          : baseHikerHeight; // 92.0 saat berdiri
+
+      final double playerAltBottom = jumpAltitude;
+      final double playerAltTop = jumpAltitude + currentHeight;
+
+      bool hasCollision = false;
+      for (final obs in _obstacles) {
+        if (obs.isEagle) {
+          // Elang di udara: Altitude [eagleAltitude + 8, eagleAltitude + eagleHeight - 8] -> [76, 108]
+          final double eagleXStart = obs.x + 14.0;
+          final double eagleXEnd = obs.x + eagleWidth - 14.0;
+          final double eagleAltBottom = eagleAltitude + 8.0;
+          final double eagleAltTop = eagleAltitude + eagleHeight - 8.0;
+
+          final bool overlapX = playerXEnd > eagleXStart && playerXStart < eagleXEnd;
+          final bool overlapAlt = playerAltTop > eagleAltBottom && playerAltBottom < eagleAltTop;
+
+          if (overlapX && overlapAlt) {
+            hasCollision = true;
+            break;
+          }
+        } else {
+          // Rubah di tanah: Altitude [0, foxHeight - 10] -> [0, 34]
+          final double foxXStart = obs.x + 18.0;
+          final double foxXEnd = obs.x + foxWidth - 18.0;
+          const double foxAltBottom = 0.0;
+          final double foxAltTop = foxHeight - 10.0; // 34.0
+
+          final bool overlapX = playerXEnd > foxXStart && playerXStart < foxXEnd;
+          final bool overlapAlt = playerAltTop > foxAltBottom && playerAltBottom < foxAltTop;
+
+          if (overlapX && overlapAlt) {
+            hasCollision = true;
+            break;
+          }
+        }
+      }
+
+      if (hasCollision) {
+        isGameOver = true;
+        isPlaying = false;
+        if (mdplScore > _runStartingHighScore && mdplScore > 1200) {
+          _achievedNewRecord = true;
+        }
+        _saveHighScore();
+        HapticFeedback.heavyImpact();
+        _ticker.stop();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Size screenSize = MediaQuery.of(context).size;
+    // Permukaan tanah (land grass) tepat di 72% tinggi layar
+    final double groundLevel = screenSize.height * 0.72;
+
+    // Dimensi Hiker sesuai status (Run, Jump, Duck)
+    final double standingHikerWidth = baseHikerHeight * 0.74; // ~68.0
+    final double currentHikerWidth = standingHikerWidth;
+    final double currentHikerHeight = isDucking
+        ? baseHikerHeight * 0.68 // ~62.5 (merunduk lewat di bawah elang)
+        : (playerY < 0
+            ? baseHikerHeight * 1.08 // ~99.4 (melompat tekuk kaki)
+            : baseHikerHeight); // 92.0 (berlari)
+
+    final int activeHikerFrame = isDucking
+        ? 8
+        : (playerY < 0 ? 7 : (isPlaying ? currentRunFrame : 6));
+
+    return Focus(
+      focusNode: _focusNode,
+      autofocus: true,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          if (event.logicalKey == LogicalKeyboardKey.arrowDown ||
+              event.logicalKey == LogicalKeyboardKey.keyS) {
+            _duck(true);
+            return KeyEventResult.handled;
+          } else if (event.logicalKey == LogicalKeyboardKey.arrowUp ||
+              event.logicalKey == LogicalKeyboardKey.space ||
+              event.logicalKey == LogicalKeyboardKey.keyW) {
+            _jump();
+            return KeyEventResult.handled;
+          }
+        } else if (event is KeyUpEvent) {
+          if (event.logicalKey == LogicalKeyboardKey.arrowDown ||
+              event.logicalKey == LogicalKeyboardKey.keyS) {
+            _duck(false);
+            return KeyEventResult.handled;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: GestureDetector(
+        onTap: _jump,
+        onVerticalDragStart: (details) {
+          if (details.localPosition.dy > 0) {
+            _duck(true);
+          }
+        },
+        onVerticalDragUpdate: (details) {
+          if (details.delta.dy > 3) {
+            _duck(true);
+          } else if (details.delta.dy < -3) {
+            _duck(false);
+            _jump();
+          }
+        },
+        onVerticalDragEnd: (_) => _duck(false),
+        child: Scaffold(
+          backgroundColor: const Color(0xFF64B5F6),
+          body: Stack(
+            children: [
+              // 1. BACKGROUND PARALLAX: SKY, MOUNTAIN, TREE, LAND (DENGAN SUASANA BERGANTI SETIAP 1000 MDPL)
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: MountainParallaxBgPainter(
+                    scrollOffset: scrollOffset,
+                    groundLevel: groundLevel,
+                    mdpl: mdplScore,
+                    skyImage: skyImage,
+                    mountImage: mountImage,
+                    treeImage: treeImage,
+                    landImage: landImage,
+                  ),
+                ),
+              ),
+
+              // 2 & 3. RINTANGAN (RUBAH & ELANG - 100% NAPAK TANAH & DIJAMIN TIDAK PERNAH SEJAJAR)
+              ..._obstacles.map((obs) {
+                if (obs.isEagle) {
+                  return Positioned(
+                    bottom: (screenSize.height - groundLevel) + eagleAltitude,
+                    left: obs.x,
+                    child: SizedBox(
+                      width: eagleWidth,
+                      height: eagleHeight,
+                      child: eagleSpriteSheet != null
+                          ? CustomPaint(
+                              painter: EagleSpritePainter(
+                                spriteSheet: eagleSpriteSheet!,
+                                frameIndex: currentEagleFrame,
+                              ),
+                            )
+                          : CustomPaint(
+                              painter: CartoonEagleFallbackPainter(wingFlap: eagleAnimTimer * 8),
+                            ),
+                    ),
+                  );
+                } else {
+                  return Positioned(
+                    bottom: screenSize.height - groundLevel,
+                    left: obs.x,
+                    child: SizedBox(
+                      width: foxWidth,
+                      height: foxHeight,
+                      child: foxSpriteSheet != null
+                          ? CustomPaint(
+                              painter: FoxSpritePainter(
+                                spriteSheet: foxSpriteSheet!,
+                                frameIndex: currentFoxFrame,
+                              ),
+                            )
+                          : CustomPaint(
+                              painter: CartoonPineTreePainter(),
+                            ),
+                    ),
+                  );
+                }
+              }),
+
+              // 4. KARAKTER PENDAKI / HIKER (100% NAPAK TANAH DENGAN KAKI MENEMPEL DI RUMPUT)
+              Positioned(
+                bottom: (screenSize.height - groundLevel) - playerY,
+                left: 65,
+                child: SizedBox(
+                  width: currentHikerWidth,
+                  height: currentHikerHeight,
+                  child: hikerSpriteSheet == null
+                      ? const SizedBox()
+                      : CustomPaint(
+                          painter: HikerSpritePainter(
+                            spriteSheet: hikerSpriteSheet!,
+                            frameIndex: activeHikerFrame,
+                          ),
+                        ),
+                ),
+              ),
+
+              // 4.5 ON-SCREEN HUD CONTROLS (TOMBOL LOMPAT & MERUNDUK KHUSUS LAYAR SENTUH)
+              if (isPlaying && !isGameOver)
+                Positioned(
+                  left: 20,
+                  right: 20,
+                  bottom: 24,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Tombol Nunduk / Slide
+                      GestureDetector(
+                        onTapDown: (_) => _duck(true),
+                        onTapUp: (_) => _duck(false),
+                        onTapCancel: () => _duck(false),
+                        child: Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            color: isDucking
+                                ? const Color(0xFF00E676).withValues(alpha: 0.5)
+                                : const Color(0xFF1E1E1E).withValues(alpha: 0.65),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isDucking ? const Color(0xFF00E676) : Colors.white.withValues(alpha: 0.25),
+                              width: 2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.keyboard_double_arrow_down_rounded,
+                            color: Colors.white,
+                            size: 30,
+                          ),
+                        ),
+                      ),
+
+                      // Tombol Lompat / Jump
+                      GestureDetector(
+                        onTap: _jump,
+                        child: Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFE65100), Color(0xFFFF8F00)],
+                            ),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.3),
+                              width: 2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFE65100).withValues(alpha: 0.4),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.arrow_upward_rounded,
+                            color: Colors.white,
+                            size: 32,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              // 5. TOP BAR: TOMBOL KEMBALI & PANEL SKOR MDPL (TimurLang Dark Theme)
+              Positioned(
+                top: 40,
+                left: 16,
+                right: 16,
+                child: Row(
+                  children: [
+                    // Tombol Kembali
+                    GestureDetector(
+                      onTap: () {
+                        if (Navigator.of(context).canPop()) {
+                          Navigator.of(context).pop();
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E1E1E).withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
+                      ),
+                    ),
+                    const Spacer(),
+
+                    // High Score Card
+                    Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E1E1E).withValues(alpha: 0.85),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.emoji_events_rounded, color: Color(0xFFFFB300), size: 18),
+                          const SizedBox(width: 6),
+                          Text(
+                            'BEST: ${highScore.toInt()} M',
+                            style: GoogleFonts.outfit(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Skor MDPL Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFE65100), Color(0xFFFF8F00)],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFE65100).withValues(alpha: 0.4),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.terrain_rounded, color: Colors.white, size: 18),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${mdplScore.toInt()} MDPL',
+                            style: GoogleFonts.outfit(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // 6. LAYAR MULAI / GAME OVER (Modern Glassmorphic Card TimurLang)
+              if (!isPlaying)
+                Center(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 24),
+                    constraints: const BoxConstraints(maxWidth: 380),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E1E1E).withValues(alpha: 0.94),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.14), width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.6),
+                          blurRadius: 28,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: BackdropFilter(
+                        filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 26),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Icon Badge
+                              Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  gradient: isGameOver
+                                      ? (_achievedNewRecord
+                                          ? const LinearGradient(colors: [Color(0xFFFF8F00), Color(0xFFFFD54F)])
+                                          : const LinearGradient(colors: [Color(0xFFC62828), Color(0xFFEF5350)]))
+                                      : const LinearGradient(colors: [Color(0xFFE65100), Color(0xFFFF8F00)]),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: (isGameOver
+                                              ? (_achievedNewRecord ? const Color(0xFFFF8F00) : const Color(0xFFC62828))
+                                              : const Color(0xFFE65100))
+                                          .withValues(alpha: 0.4),
+                                      blurRadius: 16,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(
+                                  isGameOver
+                                      ? (_achievedNewRecord ? Icons.emoji_events_rounded : Icons.heart_broken_rounded)
+                                      : Icons.terrain_rounded,
+                                  color: Colors.white,
+                                  size: 32,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Judul
+                              Text(
+                                isGameOver
+                                    ? (_achievedNewRecord ? '🏆 REKOR BARU TERCAPAI!' : 'TERJATUH DI JALUR')
+                                    : 'PENDAKI GUNUNG',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.outfit(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+
+                              // Subtitle
+                              Text(
+                                isGameOver
+                                    ? (_achievedNewRecord
+                                        ? 'Luar biasa! Kamu menembus rekor pendakian tertinggi baru!'
+                                        : 'Ketinggian: ${mdplScore.toInt()} MDPL • Rekor: ${highScore.toInt()} MDPL')
+                                    : 'Taklukkan rintangan dan daki setinggi mungkin!',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.outfit(
+                                  color: Colors.white.withValues(alpha: 0.65),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+
+                              // KONDISI 1: Saat Game Over -> Muncul Rekor Baru / Skor dan Tombol Ulang Saja
+                              if (isGameOver) ...[
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF2C2C2C).withValues(alpha: 0.8),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: _achievedNewRecord
+                                          ? const Color(0xFFFFB300).withValues(alpha: 0.6)
+                                          : Colors.white.withValues(alpha: 0.08),
+                                      width: _achievedNewRecord ? 1.5 : 1.0,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      if (_achievedNewRecord) ...[
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            const Icon(Icons.stars_rounded, color: Color(0xFFFFD54F), size: 18),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              'PENCAPAIAN REKOR TERTINGGI',
+                                              style: GoogleFonts.outfit(
+                                                color: const Color(0xFFFFD54F),
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w800,
+                                                letterSpacing: 0.8,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 10),
+                                      ],
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'Ketinggian Dicapai',
+                                            style: GoogleFonts.outfit(
+                                              color: Colors.white.withValues(alpha: 0.7),
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          Text(
+                                            '${mdplScore.toInt()} MDPL',
+                                            style: GoogleFonts.outfit(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const Padding(
+                                        padding: EdgeInsets.symmetric(vertical: 8),
+                                        child: Divider(color: Colors.white12, height: 1),
+                                      ),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'Rekor Terbaik',
+                                            style: GoogleFonts.outfit(
+                                              color: Colors.white.withValues(alpha: 0.7),
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          Text(
+                                            '${highScore.toInt()} MDPL',
+                                            style: GoogleFonts.outfit(
+                                              color: const Color(0xFFFFB300),
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ]
+                              // KONDISI 2: Saat Entrance di Awal -> Tampilkan Controls Guide Hint
+                              else ...[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF2C2C2C).withValues(alpha: 0.75),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      _buildControlTip(
+                                        icon: '🦊',
+                                        action: 'Rubah',
+                                        instruction: 'Ketuk 1x untuk Melompat',
+                                        accentColor: const Color(0xFFFFB74D),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      _buildControlTip(
+                                        icon: '⚡',
+                                        action: 'Tap 2x',
+                                        instruction: 'Lompat Jauh (Setinggi Elang)',
+                                        accentColor: const Color(0xFFFFD54F),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      _buildControlTip(
+                                        icon: '🦅',
+                                        action: 'Elang',
+                                        instruction: 'Geser Bawah untuk Menunduk',
+                                        accentColor: const Color(0xFF81D4FA),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 22),
+
+                              // Tombol Mulai / Main Lagi
+                              Container(
+                                width: double.infinity,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFFE65100), Color(0xFFFF8F00)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFE65100).withValues(alpha: 0.4),
+                                      blurRadius: 14,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: ElevatedButton(
+                                  onPressed: _startGame,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.transparent,
+                                    shadowColor: Colors.transparent,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(isGameOver ? Icons.replay_rounded : Icons.play_arrow_rounded, color: Colors.white, size: 22),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        isGameOver ? 'MAIN LAGI' : 'MULAI PENDAKIAN',
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.white,
+                                          letterSpacing: 1.0,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildControlTip({
+    required String icon,
+    required String action,
+    required String instruction,
+    required Color accentColor,
+  }) {
+    return Row(
+      children: [
+        Text(icon, style: const TextStyle(fontSize: 15)),
+        const SizedBox(width: 8),
+        Text(
+          '$action: ',
+          style: GoogleFonts.outfit(
+            color: accentColor,
+            fontWeight: FontWeight.w700,
+            fontSize: 12.5,
+          ),
+        ),
+        Expanded(
+          child: Text(
+            instruction,
+            style: GoogleFonts.outfit(
+              color: Colors.white.withValues(alpha: 0.85),
+              fontWeight: FontWeight.w500,
+              fontSize: 12.5,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ============================================================================
+// 1. SPRITE PAINTER HIKER (hiker.png 9-FRAME SPRITESHEET)
+// Frame 0..6 : Siklus Berlari 7-Frame (Stride dinamis & halus)
+// Frame 7    : Pose Melompat (Kaki ditekuk ke atas di udara)
+// Frame 8    : Pose Menunduk / Merunduk (Badan rendah lewat di bawah elang)
+// Koordinat persentase presisi: Kaki 100% menempel di dasar (napak tanah)
+// ============================================================================
+class HikerSpritePainter extends CustomPainter {
+  final ui.Image spriteSheet;
+  final int frameIndex;
+
+  HikerSpritePainter({
+    required this.spriteSheet,
+    required this.frameIndex,
+  });
+
+  // Mapping koordinat rasio 9-frame presisi [xRel, yRel, wRel, hRel]
+  // dihitung langsung dari batas alpha pixel aktual (alpha >= 20)
+  static const List<List<double>> _frameSpecs = [
+    [0.2675, 0.4305, 0.5539, 0.3542], // Frame 0: Stride Kanan (Kaki kanan melangkah ke depan)
+    [0.1286, 0.4305, 0.6928, 0.3550], // Frame 1: Push-off Kanan (Tolakan kaki kiri, kaki kanan mendarat)
+    [0.3241, 0.4305, 0.4973, 0.3542], // Frame 2: Passing Kanan (Kaki kiri berayun ke depan lewat tengah)
+    [0.2812, 0.4305, 0.5402, 0.3542], // Frame 3: Stride Kiri (Kaki kiri melangkah ke depan)
+    [0.1286, 0.4305, 0.6928, 0.3550], // Frame 4: Push-off Kiri (Tolakan kaki kanan, kaki kiri mendarat)
+    [0.3241, 0.4305, 0.4973, 0.3542], // Frame 5: Passing Kiri (Kaki kanan berayun ke depan lewat tengah)
+    [0.3241, 0.4305, 0.4973, 0.3542], // Frame 6: Idle / Ready Stand (Berdiri siaga dengan tongkat menancap)
+    [0.3979, 0.1930, 0.5231, 0.3908], // Frame 7: Lompat (Jump - tekuk kaki melayang)
+    [0.3824, 0.5012, 0.4990, 0.2851], // Frame 8: Menunduk (Duck / Slide rendah)
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double fw = spriteSheet.width / 9.0;
+    final double sh = spriteSheet.height.toDouble();
+
+    final int f = frameIndex.clamp(0, 8);
+    final spec = _frameSpecs[f];
+
+    final double srcX = f * fw + (fw * spec[0]);
+    final double srcY = sh * spec[1];
+    final double srcW = fw * spec[2];
+    final double srcH = sh * spec[3];
+
+    final Rect srcRect = Rect.fromLTWH(srcX, srcY, srcW, srcH);
+
+    // Kaki karakter dijamin 100% menempel di dasar tanah (dstY + dstHeight = size.height)
+    final double srcAspect = srcW / srcH;
+    final double dstHeight = size.height;
+    final double dstWidth = dstHeight * srcAspect;
+
+    // Anchor horizontal: Posisi kepala karakter terkunci stabil di tengah widget (size.width / 2)
+    // saat berlari/siaga (Frame 0..6), sehingga karakter tidak goyang/oleng horizontal
+    final double dstX = f <= 6
+        ? (size.width / 2.0) - (((0.5 - spec[0]) / spec[2]) * dstWidth)
+        : (size.width - dstWidth) / 2.0;
+    const double dstY = 0.0;
+    final Rect dstRect = Rect.fromLTWH(dstX, dstY, dstWidth, dstHeight);
+
+    final Paint paint = Paint()
+      ..isAntiAlias = true
+      ..filterQuality = FilterQuality.high;
+
+    canvas.drawImageRect(spriteSheet, srcRect, dstRect, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant HikerSpritePainter oldDelegate) {
+    return oldDelegate.frameIndex != frameIndex ||
+        oldDelegate.spriteSheet != spriteSheet;
+  }
+}
+
+// ============================================================================
+// 2. SPRITE PAINTER RUBAH (fox.png 4-FRAME SPRITESHEET)
+// Koordinat persentase presisi: Kaki rubah 100% menempel di rumput (napak tanah)
+// ============================================================================
+class FoxSpritePainter extends CustomPainter {
+  final ui.Image spriteSheet;
+  final int frameIndex;
+
+  FoxSpritePainter({
+    required this.spriteSheet,
+    required this.frameIndex,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double fw = spriteSheet.width / 4.0;
+    final double sh = spriteSheet.height.toDouble();
+    final int f = frameIndex.clamp(0, 3);
+
+    final double srcX = f * fw + (fw * 0.08);
+    final double srcW = fw * 0.88;
+    const double srcY = 0.0;
+    final double srcH = sh * 0.89;
+
+    final Rect srcRect = Rect.fromLTWH(srcX, srcY, srcW, srcH);
+    final Rect dstRect = Rect.fromLTWH(0, 0, size.width, size.height);
+
+    final Paint paint = Paint()
+      ..isAntiAlias = true
+      ..filterQuality = FilterQuality.high;
+
+    canvas.drawImageRect(spriteSheet, srcRect, dstRect, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant FoxSpritePainter oldDelegate) {
+    return oldDelegate.frameIndex != frameIndex ||
+        oldDelegate.spriteSheet != spriteSheet;
+  }
+}
+
+// ============================================================================
+// 3. SPRITE PAINTER BURUNG ELANG (elang.png 4-FRAME SPRITESHEET)
+// ============================================================================
+class EagleSpritePainter extends CustomPainter {
+  final ui.Image spriteSheet;
+  final int frameIndex;
+
+  EagleSpritePainter({
+    required this.spriteSheet,
+    required this.frameIndex,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double fw = spriteSheet.width / 4.0;
+    final double sh = spriteSheet.height.toDouble();
+    final int f = frameIndex.clamp(0, 3);
+
+    final double srcX = f * fw + (fw * 0.06);
+    final double srcW = fw * 0.92;
+    final double srcY = sh * 0.16;
+    final double srcH = sh * 0.68;
+
+    final Rect srcRect = Rect.fromLTWH(srcX, srcY, srcW, srcH);
+    final Rect dstRect = Rect.fromLTWH(0, 0, size.width, size.height);
+
+    final Paint paint = Paint()
+      ..isAntiAlias = true
+      ..filterQuality = FilterQuality.high;
+
+    canvas.drawImageRect(spriteSheet, srcRect, dstRect, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant EagleSpritePainter oldDelegate) {
+    return oldDelegate.frameIndex != frameIndex ||
+        oldDelegate.spriteSheet != spriteSheet;
+  }
+}
+
+// ============================================================================
+// 4. PARALLAX BACKGROUND PAINTER (SKY, MOUNTAIN, TREE, LAND)
+// Memastikan permukaan rumput land.png sejajar 100% dengan groundLevel
+// ============================================================================
+class MountainParallaxBgPainter extends CustomPainter {
+  final double scrollOffset;
+  final double groundLevel;
+  final double mdpl;
+  final ui.Image? skyImage;
+  final ui.Image? mountImage;
+  final ui.Image? treeImage;
+  final ui.Image? landImage;
+
+  MountainParallaxBgPainter({
+    required this.scrollOffset,
+    required this.groundLevel,
+    required this.mdpl,
+    this.skyImage,
+    this.mountImage,
+    this.treeImage,
+    this.landImage,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint imagePaint = Paint()
+      ..isAntiAlias = true
+      ..filterQuality = FilterQuality.medium;
+
+    // A. SUASANA LANGIT (BERGANTI SETIAP KELIPATAN 1000 MDPL)
+    // 0 = Pagi (Cerah), 1 = Senja (Sunset Oranye/Lembayung), 2 = Malam (Deep Indigo & Bintang)
+    const double skyInterval = 1000.0;
+    const double transitionLen = 200.0;
+    final int cycle = (mdpl / skyInterval).floor();
+    final int phaseIndex = cycle % 3;
+    final double progressInInterval = mdpl % skyInterval;
+    final double transitionStart = skyInterval - transitionLen;
+    final double t = progressInInterval < transitionStart
+        ? 0.0
+        : ((progressInInterval - transitionStart) / transitionLen).clamp(0.0, 1.0);
+
+    double senjaFactor = 0.0;
+    double malamFactor = 0.0;
+
+    if (phaseIndex == 0) {
+      // Pagi -> Senja
+      senjaFactor = t;
+      malamFactor = 0.0;
+    } else if (phaseIndex == 1) {
+      // Senja -> Malam
+      senjaFactor = 1.0 - t;
+      malamFactor = t;
+    } else {
+      // Malam -> Pagi
+      senjaFactor = 0.0;
+      malamFactor = 1.0 - t;
+    }
+
+    if (skyImage != null) {
+      // Gambar background_sky dasar
+      canvas.drawImageRect(
+        skyImage!,
+        Rect.fromLTWH(0, 0, skyImage!.width.toDouble(), skyImage!.height.toDouble()),
+        Rect.fromLTWH(0, 0, size.width, size.height),
+        imagePaint,
+      );
+
+      // Overlay Suasana Senja (Sunset Glow hangat keemasan & oranye)
+      if (senjaFactor > 0.01) {
+        final Rect skyRect = Rect.fromLTWH(0, 0, size.width, size.height);
+        final Paint senjaPaint = Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              const Color(0xFF311B92).withValues(alpha: 0.42 * senjaFactor), // Lembayung ungu atas
+              const Color(0xFFE65100).withValues(alpha: 0.52 * senjaFactor), // Sunset oranye tengah
+              const Color(0xFFFFB300).withValues(alpha: 0.38 * senjaFactor), // Cahaya keemasan horizon
+            ],
+          ).createShader(skyRect);
+        canvas.drawRect(skyRect, senjaPaint);
+      }
+
+      // Overlay Suasana Malam (Deep Indigo & Bintang-Bintang)
+      if (malamFactor > 0.01) {
+        final Rect skyRect = Rect.fromLTWH(0, 0, size.width, size.height);
+        final Paint malamPaint = Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              const Color(0xFF0A0C1E).withValues(alpha: 0.78 * malamFactor),
+              const Color(0xFF141A35).withValues(alpha: 0.68 * malamFactor),
+              const Color(0xFF1F2B4C).withValues(alpha: 0.52 * malamFactor),
+            ],
+          ).createShader(skyRect);
+        canvas.drawRect(skyRect, malamPaint);
+
+        // Bintang-bintang malam
+        final starPaint = Paint()..color = Colors.white;
+        final double starAlphaBase = (malamFactor * 0.9).clamp(0.0, 1.0);
+        for (int i = 0; i < 40; i++) {
+          final double sx = ((i * 137.5) % size.width);
+          final double sy = ((i * 73.1) % (groundLevel * 0.65));
+          final double flicker = 0.5 + 0.5 * sin(scrollOffset * 0.025 + i * 1.7);
+          final double starAlpha = (starAlphaBase * flicker).clamp(0.0, 1.0);
+          final double starR = 1.0 + (i % 3) * 0.7;
+          canvas.drawCircle(Offset(sx, sy), starR, starPaint..color = Colors.white.withValues(alpha: starAlpha));
+        }
+      }
+    } else {
+      // Fallback gradient jika skyImage null
+      final List<Color> currentColors;
+      final List<Color> nextColors;
+      switch (phaseIndex) {
+        case 0:
+          currentColors = const [Color(0xFF29B6F6), Color(0xFFB3E5FC), Color(0xFFFFF9C4)];
+          nextColors = const [Color(0xFF1A237E), Color(0xFFE65100), Color(0xFFFFCC02)];
+          break;
+        case 1:
+          currentColors = const [Color(0xFF1A237E), Color(0xFFE65100), Color(0xFFFFCC02)];
+          nextColors = const [Color(0xFF0D0D2B), Color(0xFF1A1A3E), Color(0xFF2C2C54)];
+          break;
+        case 2:
+        default:
+          currentColors = const [Color(0xFF0D0D2B), Color(0xFF1A1A3E), Color(0xFF2C2C54)];
+          nextColors = const [Color(0xFF29B6F6), Color(0xFFB3E5FC), Color(0xFFFFF9C4)];
+          break;
+      }
+      final colors = List.generate(3, (i) => Color.lerp(currentColors[i], nextColors[i], t)!);
+      final Rect skyRect = Rect.fromLTWH(0, 0, size.width, size.height);
+      final Paint skyPaint = Paint()..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: colors,
+      ).createShader(skyRect);
+      canvas.drawRect(skyRect, skyPaint);
+    }
+
+    // B. PEGUNUNGAN (background_mount.png - Parallax 0.12x)
+    if (mountImage != null) {
+      final double cleanMountW = mountImage!.width > 5300 ? 5302.0 : mountImage!.width.toDouble();
+      final double cleanMountH = mountImage!.height > 1570 ? 1572.0 : mountImage!.height.toDouble();
+      final double mountHeight = size.height * 0.50;
+      final double mountWidth = cleanMountW * (mountHeight / cleanMountH);
+      final double mountY = (groundLevel + 18) - mountHeight;
+      final double offsetM = (scrollOffset * 0.12) % mountWidth;
+
+      double mx = -offsetM;
+      while (mx < size.width) {
+        canvas.drawImageRect(
+          mountImage!,
+          Rect.fromLTWH(0, 0, cleanMountW, cleanMountH),
+          Rect.fromLTWH(mx, mountY, mountWidth, mountHeight),
+          imagePaint,
+        );
+        mx += mountWidth;
+      }
+    }
+
+    // C. POHON & CAMP SIGN (background_tree.png - Parallax 0.40x)
+    if (treeImage != null) {
+      final double cleanTreeW = treeImage!.width > 5320 ? 5324.0 : treeImage!.width.toDouble();
+      final double cleanTreeH = treeImage!.height > 1130 ? 1138.0 : treeImage!.height.toDouble();
+      final double treeHeight = size.height * 0.40;
+      final double treeWidth = cleanTreeW * (treeHeight / cleanTreeH);
+      // Batang pohon & tiang papan CAMP tertancap sedikit ke dalam rumput (10px)
+      final double treeY = (groundLevel + 10) - treeHeight;
+      final double offsetT = (scrollOffset * 0.40) % treeWidth;
+
+      double tx = -offsetT;
+      while (tx < size.width) {
+        canvas.drawImageRect(
+          treeImage!,
+          Rect.fromLTWH(0, 0, cleanTreeW, cleanTreeH),
+          Rect.fromLTWH(tx, treeY, treeWidth, treeHeight),
+          imagePaint,
+        );
+        tx += treeWidth;
+      }
+    }
+
+    // D. TANAH PIJAKAN (land.png - Kecepatan 1.0x)
+    // Pada land.png terbaru (5319x466), permukaan rumput dimulai langsung dari y = 0.
+    // landY tepat sejajar di groundLevel, mengisi penuh ke bawah layar tanpa celah.
+    if (landImage != null) {
+      final double cleanLandW = landImage!.width > 5310 ? 5316.0 : landImage!.width.toDouble();
+      final double cleanLandH = landImage!.height > 460 ? 463.0 : landImage!.height.toDouble();
+      final double landHeight = (size.height - groundLevel) + 4;
+      final double landWidth = cleanLandW * (landHeight / cleanLandH);
+      final double landY = groundLevel;
+      final double offsetL = (scrollOffset * 1.0) % landWidth;
+
+      double lx = -offsetL;
+      while (lx < size.width) {
+        canvas.drawImageRect(
+          landImage!,
+          Rect.fromLTWH(0, 0, cleanLandW, cleanLandH),
+          Rect.fromLTWH(lx, landY, landWidth, landHeight),
+          imagePaint,
+        );
+        lx += landWidth;
+      }
+    } else {
+      // Fallback jika asset land belum terload
+      canvas.drawRect(
+        Rect.fromLTWH(0, groundLevel, size.width, size.height - groundLevel),
+        Paint()..color = const Color(0xFFA97142),
+      );
+      canvas.drawRect(
+        Rect.fromLTWH(0, groundLevel, size.width, 22),
+        Paint()..color = const Color(0xFF66BB6A),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant MountainParallaxBgPainter oldDelegate) {
+    return oldDelegate.scrollOffset != scrollOffset ||
+        oldDelegate.groundLevel != groundLevel ||
+        oldDelegate.mdpl != mdpl ||
+        oldDelegate.skyImage != skyImage ||
+        oldDelegate.mountImage != mountImage ||
+        oldDelegate.treeImage != treeImage ||
+        oldDelegate.landImage != landImage;
+  }
+}
+
+// ============================================================================
+// 5. FALLBACK PAINTERS (JIKA ASSET BELUM TERMUAT)
+// ============================================================================
+class CartoonPineTreePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    const Color outlineColor = Color(0xFF2B2B2B);
+    final Paint outlinePaint = Paint()
+      ..color = outlineColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.5
+      ..strokeJoin = StrokeJoin.round;
+
+    final double cx = size.width / 2;
+
+    // Batang Pohon
+    final RRect trunkRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(cx - 8, size.height * 0.65, 16, size.height * 0.35),
+      const Radius.circular(4),
+    );
+    canvas.drawRRect(trunkRect, Paint()..color = const Color(0xFF8D5B3C));
+    canvas.drawRRect(trunkRect, outlinePaint);
+
+    // Daun Pinus
+    final Path path = Path()
+      ..moveTo(cx, 0)
+      ..lineTo(size.width, size.height * 0.7)
+      ..lineTo(0, size.height * 0.7)
+      ..close();
+    canvas.drawPath(path, Paint()..color = const Color(0xFF43A047));
+    canvas.drawPath(path, outlinePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class CartoonEagleFallbackPainter extends CustomPainter {
+  final double wingFlap;
+
+  CartoonEagleFallbackPainter({required this.wingFlap});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const Color outlineColor = Color(0xFF2B2B2B);
+    final Paint outlinePaint = Paint()
+      ..color = outlineColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.2
+      ..strokeJoin = StrokeJoin.round;
+
+    final double flapOffset = sin(wingFlap) * 8.0;
+    final double cx = size.width / 2;
+    final double cy = size.height / 2;
+
+    // Sayap
+    final Path wing = Path()
+      ..moveTo(cx, cy)
+      ..quadraticBezierTo(cx - size.width * 0.45, cy - 14 + flapOffset, cx - size.width * 0.5, cy + 6 + flapOffset)
+      ..quadraticBezierTo(cx - size.width * 0.25, cy + 4, cx, cy + 6)
+      ..close();
+    canvas.drawPath(wing, Paint()..color = const Color(0xFF5D4037));
+    canvas.drawPath(wing, outlinePaint);
+
+    // Badan
+    final RRect body = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset(cx, cy + 2), width: 22, height: 26),
+      const Radius.circular(10),
+    );
+    canvas.drawRRect(body, Paint()..color = const Color(0xFF4E342E));
+    canvas.drawRRect(body, outlinePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CartoonEagleFallbackPainter oldDelegate) =>
+      oldDelegate.wingFlap != wingFlap;
+}

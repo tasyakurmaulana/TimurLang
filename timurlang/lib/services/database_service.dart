@@ -25,10 +25,11 @@ class DatabaseService {
   DatabaseService._internal();
 
   /// Inisialisasi database factory untuk platform web
-  /// Harus dipanggil di main() SEBELUM menggunakan database
+  /// Menggunakan databaseFactoryFfiWebNoWebWorker agar berjalan langsung di main thread
+  /// dan menghindari isu SharedWorker / postMessage null di berbagai browser
   static void initForWeb() {
     if (kIsWeb) {
-      databaseFactory = databaseFactoryFfiWeb;
+      databaseFactory = databaseFactoryFfiWebNoWebWorker;
     }
   }
 

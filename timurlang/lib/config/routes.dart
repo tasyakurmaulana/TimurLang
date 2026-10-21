@@ -21,8 +21,8 @@ class AppRoutes {
   static const String fallDetection = '/fall-detection';
   static const String sos = '/sos';
   static const String survivalAssistant = '/survival-assistant';
-  static const String packCarrier = '/pack-carrier';
   static const String profile = '/profile';
   static const String medicalProfile = '/medical-profile';
   static const String courseFeedback = '/course-feedback';
+  static const String mountainClimber = '/mountain-climber';
 }
