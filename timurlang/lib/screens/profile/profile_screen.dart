@@ -22,7 +22,6 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _namaCtrl = TextEditingController();
-  final ImagePicker _picker = ImagePicker();
   
   bool _isEditing = false;
   bool _isLoading = false;
@@ -60,170 +59,76 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  /// Show bottom sheet to choose Camera, Gallery, or Delete Photo
-  Future<void> _showPhotoSourceSheet() async {
-    showModalBottomSheet(
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final source = await showModalBottomSheet<ImageSource>(
       context: context,
       backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(
-                    color: AppTheme.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: AppTheme.border,
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                const Text(
-                  'Foto Profil',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryGreen.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.camera_alt, color: AppTheme.primaryGreen),
-                  ),
-                  title: const Text('Ambil dari Kamera', style: TextStyle(color: AppTheme.textPrimary)),
-                  subtitle: const Text('Ambil foto langsung dengan kamera', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _pickImage(ImageSource.camera);
-                  },
-                ),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.accentOrange.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.photo_library, color: AppTheme.accentOrange),
-                  ),
-                  title: const Text('Pilih dari Galeri', style: TextStyle(color: AppTheme.textPrimary)),
-                  subtitle: const Text('Unggah foto dari memori perangkat', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _pickImage(ImageSource.gallery);
-                  },
-                ),
-                if (_currentPhotoUrl != null && _currentPhotoUrl!.isNotEmpty)
-                  ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppTheme.dangerRed.withValues(alpha: 0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.delete_outline, color: AppTheme.dangerRed),
-                    ),
-                    title: const Text('Hapus Foto Profil', style: TextStyle(color: AppTheme.dangerRed)),
-                    subtitle: const Text('Kembalikan ke avatar default', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _removePhoto();
-                    },
-                  ),
-              ],
-            ),
+              ),
+              const Text(
+                'Pilih Sumber Foto Profil',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_outlined, color: AppTheme.primary),
+                title: const Text('Kamera', style: TextStyle(color: AppTheme.textPrimary)),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined, color: AppTheme.primary),
+                title: const Text('Galeri Foto', style: TextStyle(color: AppTheme.textPrimary)),
+                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
-  }
 
-  /// Pick image and convert to base64 Data URI
-  Future<void> _pickImage(ImageSource source) async {
+    if (source == null) return;
+
     try {
-      final XFile? pickedFile = await _picker.pickImage(
+      final XFile? file = await picker.pickImage(
         source: source,
         maxWidth: 600,
         maxHeight: 600,
-        imageQuality: 75,
+        imageQuality: 85,
       );
 
-      if (pickedFile == null) return;
-
-      setState(() => _isLoading = true);
-
-      // Convert image to base64 Data URI
-      final String base64Uri = await ImageHelper.xFileToBase64(pickedFile);
-
-      setState(() {
-        _currentPhotoUrl = base64Uri;
-        _photoChanged = true;
-        _isLoading = false;
-      });
-
-      // If not in full edit mode, save immediately
-      if (!_isEditing) {
-        await _saveProfileDirectly();
+      if (file != null) {
+        final base64String = await ImageHelper.xFileToBase64(file);
+        setState(() {
+          _currentPhotoUrl = base64String;
+          _photoChanged = true;
+        });
       }
     } catch (e) {
-      setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal mengambil gambar: $e'),
+            content: Text('Gagal memilih foto: $e'),
             backgroundColor: AppTheme.dangerRed,
           ),
         );
       }
-    }
-  }
-
-  void _removePhoto() async {
-    setState(() {
-      _currentPhotoUrl = null;
-      _photoChanged = true;
-    });
-
-    if (!_isEditing) {
-      await _saveProfileDirectly();
-    }
-  }
-
-  /// Direct save for photo changes when outside edit mode
-  Future<void> _saveProfileDirectly() async {
-    setState(() => _isLoading = true);
-    final user = AuthService.instance.currentUser;
-    if (user == null) return;
-
-    final result = await AuthService.instance.updateProfile(
-      namaLengkap: user.namaLengkap,
-      fotoProfilUrl: _currentPhotoUrl,
-    );
-
-    setState(() {
-      _isLoading = false;
-      _photoChanged = false;
-    });
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result.success ? 'Foto profil berhasil diperbarui!' : result.message),
-          backgroundColor: result.success ? AppTheme.safeGreen : AppTheme.dangerRed,
-        ),
-      );
     }
   }
 
@@ -277,80 +182,71 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           if (widget.embedded) const SizedBox(height: 32),
 
-          // Profile Photo with interactive tap
-          GestureDetector(
-            onTap: _isLoading ? null : _showPhotoSourceSheet,
+          // Profile Avatar (With Edit Camera Badge in Edit Mode)
+          Center(
             child: Stack(
-              alignment: Alignment.bottomRight,
+              clipBehavior: Clip.none,
               children: [
-                Container(
-                  width: 130,
-                  height: 130,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppTheme.cardDark,
-                    border: Border.all(
-                      color: _photoChanged ? AppTheme.accentOrange : AppTheme.primaryGreen,
-                      width: 3.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryGreen.withValues(alpha: 0.25),
-                        blurRadius: 15,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                    image: imageProvider != null
-                        ? DecorationImage(
-                            image: imageProvider,
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-                  ),
-                  child: imageProvider == null
-                      ? const Icon(Icons.person, size: 70, color: AppTheme.textSecondary)
-                      : null,
-                ),
-                // Camera Badge Button
-                Positioned(
-                  bottom: 2,
-                  right: 2,
+                GestureDetector(
+                  onTap: _isEditing ? _pickImage : null,
                   child: Container(
-                    padding: const EdgeInsets.all(10),
+                    width: 120,
+                    height: 120,
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryGreen,
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppTheme.surfaceDark, width: 2.5),
+                      color: AppTheme.surfaceSubtle,
+                      border: Border.all(
+                        color: _isEditing ? AppTheme.primary : AppTheme.border,
+                        width: 3,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.4),
-                          blurRadius: 6,
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
                         ),
                       ],
+                      image: imageProvider != null
+                          ? DecorationImage(
+                              image: imageProvider,
+                              fit: BoxFit.cover,
+                            )
+                          : null,
                     ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.camera_alt, size: 18, color: Colors.white),
+                    child: imageProvider == null
+                        ? const Icon(Icons.person_rounded, size: 68, color: AppTheme.textSecondary)
+                        : null,
                   ),
                 ),
+                if (_isEditing)
+                  Positioned(
+                    bottom: 2,
+                    right: 2,
+                    child: GestureDetector(
+                      onTap: _pickImage,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppTheme.surface, width: 2.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
-            ),
-          ),
-
-          const SizedBox(height: 12),
-          TextButton.icon(
-            onPressed: _isLoading ? null : _showPhotoSourceSheet,
-            icon: const Icon(Icons.edit, size: 16, color: AppTheme.primaryGreen),
-            label: const Text(
-              'Ganti Foto Profil',
-              style: TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.w600),
             ),
           ),
           const SizedBox(height: 16),
@@ -468,33 +364,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     color: _isPersonalDataComplete ? AppTheme.safeGreen : AppTheme.accentOrange,
                   ),
                 ),
-                title: Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Data Diri Lengkap',
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: AppTheme.textPrimary),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: (_isPersonalDataComplete ? AppTheme.safeGreen : AppTheme.accentOrange)
-                            .withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        _isPersonalDataComplete ? 'Lengkap ✓' : 'Wajib SIMAKSI',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: _isPersonalDataComplete ? AppTheme.safeGreen : AppTheme.accentOrange,
-                        ),
-                      ),
-                    ),
-                  ],
+                title: const Text(
+                  'Data Diri Lengkap',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: AppTheme.textPrimary),
                 ),
                 subtitle: Text(
                   _isPersonalDataComplete
@@ -556,32 +428,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   child: const Icon(Icons.sos_rounded, color: AppTheme.dangerRed, size: 24),
                 ),
-                title: Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'SOS & Deteksi Jatuh',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppTheme.dangerRed.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'Darurat 🚨',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.dangerRed,
-                        ),
-                      ),
-                    ),
-                  ],
+                title: const Text(
+                  'SOS & Deteksi Jatuh',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: AppTheme.textPrimary),
                 ),
                 subtitle: Text(
                   'Sirine darurat, deteksi jatuh otomatis & koordinat SAR',

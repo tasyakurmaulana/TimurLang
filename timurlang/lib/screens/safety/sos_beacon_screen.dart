@@ -1,7 +1,7 @@
 // ============================================
 // TimurLang - SOS Beacon Screen
 // Layar Suar Darurat Berkedip Teks SOS Raksasa
-// Dirancang untuk visibilitas maksimal Tim SAR
+// Dirancang untuk visibilitas maksimal Tim SAR (Tegas & Jelas)
 // ============================================
 
 import 'dart:async';
@@ -106,6 +106,7 @@ class _SosBeaconScreenState extends State<SosBeaconScreen>
   }
 
   void _toggleSiren() {
+    HapticFeedback.selectionClick();
     if (_isSoundPlaying) {
       _stopSiren();
     } else {
@@ -149,6 +150,7 @@ class _SosBeaconScreenState extends State<SosBeaconScreen>
   }
 
   void _switchMode(int mode) {
+    HapticFeedback.selectionClick();
     setState(() {
       _strobeMode = mode;
       _startStrobe();
@@ -160,27 +162,41 @@ class _SosBeaconScreenState extends State<SosBeaconScreen>
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.cardDark,
+        backgroundColor: AppTheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
             Icon(Icons.check_circle_outline, color: AppTheme.safeGreen, size: 28),
             SizedBox(width: 10),
-            Text('Matikan Sinyal SOS?'),
+            Text(
+              'Matikan Sinyal SOS?',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimary,
+              ),
+            ),
           ],
         ),
         content: const Text(
           'Pastikan Anda sudah dalam kondisi aman atau Tim SAR/Basecamp telah tiba di lokasi Anda.',
-          style: TextStyle(color: Colors.white70),
+          style: TextStyle(
+            fontSize: 13,
+            height: 1.45,
+            color: AppTheme.textSecondary,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Tetap Aktifkan', style: TextStyle(color: Colors.white54)),
+            child: const Text('Tetap Aktifkan', style: TextStyle(color: AppTheme.textSecondary)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.safeGreen),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.safeGreen,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Ya, Saya Aman (Matikan)'),
           ),
         ],
@@ -231,7 +247,7 @@ class _SosBeaconScreenState extends State<SosBeaconScreen>
     final isFall = widget.triggerType == AppConstants.sosFallDetection;
 
     return PopScope(
-      canPop: false, // Mencegah tombol back menutup layar secara tidak sengaja
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
           _cancelSOS();
@@ -270,7 +286,7 @@ class _SosBeaconScreenState extends State<SosBeaconScreen>
                           ),
                           const SizedBox(width: 8),
                           const Text(
-                            '🚨 SUAR TIM SAR AKTIF',
+                            'SUAR TIM SAR AKTIF',
                             style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -288,7 +304,7 @@ class _SosBeaconScreenState extends State<SosBeaconScreen>
 
               const Spacer(flex: 1),
 
-              // Tulisan SOS Raksasa Berkedip
+              // Tulisan SOS Raksasa Berkedip (Tegas, Jelas, Terbaca Jauh)
               ScaleTransition(
                 scale: _pulseAnim,
                 child: Container(
@@ -375,7 +391,7 @@ class _SosBeaconScreenState extends State<SosBeaconScreen>
                         fontFamily: 'monospace',
                       ),
                     ),
-                    const Divider(height: 16, color: Colors.white24),
+                    Divider(height: 16, color: isWhite ? Colors.black12 : Colors.white24),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -425,11 +441,11 @@ class _SosBeaconScreenState extends State<SosBeaconScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _modeButton(0, '⚡ Kedap-Kedip', isWhite),
+                  _modeButton(0, 'Kedap-Kedip', isWhite),
                   const SizedBox(width: 8),
-                  _modeButton(1, '📡 Kode Morse', isWhite),
+                  _modeButton(1, 'Kode Morse', isWhite),
                   const SizedBox(width: 8),
-                  _modeButton(2, '💡 Tetap Nyala', isWhite),
+                  _modeButton(2, 'Tetap Nyala', isWhite),
                 ],
               ),
 
@@ -518,7 +534,7 @@ class _SosBeaconScreenState extends State<SosBeaconScreen>
               size: 16,
               color: _isSoundPlaying
                   ? (isWhite ? Colors.white : const Color(0xFFD50000))
-                  : Colors.white70,
+                  : (isWhite ? Colors.black87 : Colors.white70),
             ),
             const SizedBox(width: 6),
             Text(
@@ -528,7 +544,7 @@ class _SosBeaconScreenState extends State<SosBeaconScreen>
                 fontWeight: FontWeight.bold,
                 color: _isSoundPlaying
                     ? (isWhite ? Colors.white : const Color(0xFFD50000))
-                    : Colors.white70,
+                    : (isWhite ? Colors.black87 : Colors.white70),
               ),
             ),
           ],

@@ -139,7 +139,7 @@ class NotificationService {
 
     await _plugin.show(
       998,
-      '📡 Radar Basecamp Siaga ($mountainName)',
+      'Radar Basecamp Siaga ($mountainName)',
       '$basecampName siap menerima sinyal SOS pendaki di latar belakang 24/7.',
       details,
       payload: 'basecamp_dashboard',
@@ -171,7 +171,7 @@ class NotificationService {
 
     await _plugin.show(
       999,
-      '🛡️ Siaga SOS Aktif',
+      'Siaga SOS Aktif',
       'Sensor guncangan & jatuh aktif memantau di latar belakang.',
       details,
       payload: 'sos_screen',
@@ -205,7 +205,7 @@ class NotificationService {
 
     await _plugin.show(
       2,
-      '⚠️ Peringatan Matahari Terbenam',
+      'Peringatan Matahari Terbenam',
       'Tersisa $minutesRemaining menit sebelum batas jam operasional (18:00). Segera turun ke pos terdekat!',
       details,
     );

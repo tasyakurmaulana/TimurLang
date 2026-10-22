@@ -182,40 +182,36 @@ class _MedicalProfileScreenState extends State<MedicalProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _infoCard('Golongan Darah', _profile!.golonganDarah, Icons.bloodtype, AppTheme.dangerRed),
-        _infoCard('Riwayat Penyakit', _profile!.riwayatPenyakit, Icons.sick, AppTheme.warningYellow),
-        _infoCard('Alergi', _profile!.alergi, Icons.coronavirus, AppTheme.accentAmber),
+        _infoCard('Golongan Darah', _profile!.golonganDarah),
+        _infoCard('Riwayat Penyakit', _profile!.riwayatPenyakit),
+        _infoCard('Alergi', _profile!.alergi),
         const SizedBox(height: 16),
         const Text('Kontak Darurat', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
         const SizedBox(height: 8),
-        _infoCard('Nama Kontak', _profile!.kontakDaruratNama, Icons.person, AppTheme.skyBlue),
-        _infoCard('No. Telepon', _profile!.kontakDaruratTelepon, Icons.phone, AppTheme.skyBlue),
+        _infoCard('Nama Kontak', _profile!.kontakDaruratNama),
+        _infoCard('No. Telepon', _profile!.kontakDaruratTelepon),
       ],
     );
   }
 
-  Widget _infoCard(String title, String value, IconData icon, Color color) {
+  Widget _infoCard(String title, String value) {
     return Container(
+      width: double.infinity,
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppTheme.border, width: 1),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                const SizedBox(height: 4),
-                Text(value.isEmpty ? '-' : value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
-              ],
-            ),
+          Text(title, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+          const SizedBox(height: 4),
+          Text(
+            value.isEmpty ? '-' : value,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
           ),
         ],
       ),

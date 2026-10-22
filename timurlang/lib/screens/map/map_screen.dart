@@ -6,6 +6,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
 import '../../config/theme.dart';
 import '../../config/routes.dart';
@@ -40,21 +41,21 @@ class _MapScreenState extends State<MapScreen> {
   MapLayerType _selectedLayer = MapLayerType.standard;
 
   // Layer tile configurations
-  final Map<MapLayerType, Map<String, String>> _layerConfigs = {
+  final Map<MapLayerType, Map<String, dynamic>> _layerConfigs = {
     MapLayerType.standard: {
       'name': 'Peta Standar (OSM)',
       'url': 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-      'icon': '🗺️',
+      'icon': Icons.map_outlined,
     },
     MapLayerType.topographic: {
       'name': 'Topografi & Kontur',
       'url': 'https://tile.opentopomap.org/{z}/{x}/{y}.png',
-      'icon': '⛰️',
+      'icon': Icons.terrain_outlined,
     },
     MapLayerType.satellite: {
       'name': 'Citra Satelit Asli',
       'url': 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      'icon': '🛰️',
+      'icon': Icons.satellite_alt_outlined,
     },
   };
 
@@ -107,7 +108,7 @@ class _MapScreenState extends State<MapScreen> {
   void _showLayerSelector() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppTheme.cardDark,
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -123,29 +124,45 @@ class _MapScreenState extends State<MapScreen> {
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                    color: Colors.white24,
+                    color: AppTheme.border,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                const Text(
+                Text(
                   'Pilih Tampilan Peta',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 ...MapLayerType.values.map((type) {
                   final config = _layerConfigs[type]!;
                   final isSelected = _selectedLayer == type;
                   return ListTile(
-                    leading: Text(config['icon']!, style: const TextStyle(fontSize: 24)),
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppTheme.primarySubtle : AppTheme.surfaceSubtle,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        config['icon'] as IconData,
+                        color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+                        size: 20,
+                      ),
+                    ),
                     title: Text(
-                      config['name']!,
-                      style: TextStyle(
-                        color: isSelected ? AppTheme.primaryGreen : Colors.white,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      config['name'] as String,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: isSelected ? AppTheme.primary : AppTheme.textPrimary,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
                       ),
                     ),
                     trailing: isSelected
-                        ? const Icon(Icons.check_circle, color: AppTheme.primaryGreen)
+                        ? const Icon(Icons.check_circle, color: AppTheme.primary)
                         : null,
                     onTap: () {
                       setState(() => _selectedLayer = type);
@@ -166,16 +183,16 @@ class _MapScreenState extends State<MapScreen> {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppTheme.cardDark,
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
         final statusColor = mountain.statusJalur == 'Buka'
-            ? AppTheme.safeGreen
+            ? AppTheme.success
             : mountain.statusJalur.contains('Waspada')
-                ? AppTheme.warningYellow
-                : AppTheme.dangerRed;
+                ? AppTheme.warning
+                : AppTheme.error;
 
         return SafeArea(
           child: Padding(
@@ -190,19 +207,27 @@ class _MapScreenState extends State<MapScreen> {
                     Expanded(
                       child: Text(
                         mountain.namaGunung,
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textPrimary,
+                        ),
                       ),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: statusColor.withValues(alpha: 0.2),
+                        color: statusColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: statusColor),
                       ),
                       child: Text(
                         mountain.statusJalur,
-                        style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.bold),
+                        style: GoogleFonts.plusJakartaSans(
+                          color: statusColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
@@ -210,7 +235,7 @@ class _MapScreenState extends State<MapScreen> {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    _buildInfoBadge(Icons.height, '${mountain.elevasiMdpl} MDPL', AppTheme.primaryGreen),
+                    _buildInfoBadge(Icons.height, '${mountain.elevasiMdpl} MDPL', AppTheme.primary),
                     const SizedBox(width: 8),
                     _buildInfoBadge(
                       Icons.water_drop,
@@ -218,7 +243,7 @@ class _MapScreenState extends State<MapScreen> {
                       mountain.sumberAirTersedia ? Colors.blue : Colors.grey,
                     ),
                     const SizedBox(width: 8),
-                    _buildInfoBadge(Icons.alt_route, '${trails.length} Basecamp', AppTheme.accentOrange),
+                    _buildInfoBadge(Icons.alt_route, '${trails.length} Basecamp', AppTheme.secondary),
                   ],
                 ),
                 if (mountain.deskripsi != null) ...[
@@ -227,7 +252,7 @@ class _MapScreenState extends State<MapScreen> {
                     mountain.deskripsi!,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    style: GoogleFonts.plusJakartaSans(color: AppTheme.textSecondary, fontSize: 13),
                   ),
                 ],
                 const SizedBox(height: 16),
@@ -271,14 +296,14 @@ class _MapScreenState extends State<MapScreen> {
   void _showBasecampDetails(HikingTrail trail) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppTheme.cardDark,
+      backgroundColor: AppTheme.surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
         final isBuka = trail.statusJalur.toLowerCase() == 'buka';
-        final statusColor = isBuka ? AppTheme.safeGreen : AppTheme.dangerRed;
+        final statusColor = isBuka ? AppTheme.success : AppTheme.error;
 
         return DraggableScrollableSheet(
           initialChildSize: 0.55,
@@ -298,7 +323,7 @@ class _MapScreenState extends State<MapScreen> {
                       height: 4,
                       margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
-                        color: Colors.white24,
+                        color: AppTheme.border,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -309,7 +334,7 @@ class _MapScreenState extends State<MapScreen> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: trail.color.withValues(alpha: 0.2),
+                          color: trail.color.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: trail.color),
                         ),
@@ -322,12 +347,20 @@ class _MapScreenState extends State<MapScreen> {
                           children: [
                             Text(
                               trail.basecampName,
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.textPrimary,
+                              ),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               'Jalur Resmi ${trail.mountainName}',
-                              style: TextStyle(fontSize: 13, color: trail.color, fontWeight: FontWeight.w600),
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                color: trail.color,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ],
                         ),
@@ -335,13 +368,17 @@ class _MapScreenState extends State<MapScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: statusColor.withValues(alpha: 0.15),
+                          color: statusColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: statusColor),
                         ),
                         child: Text(
                           trail.statusJalur,
-                          style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.bold),
+                          style: GoogleFonts.plusJakartaSans(
+                            color: statusColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ],
@@ -349,19 +386,19 @@ class _MapScreenState extends State<MapScreen> {
                   const SizedBox(height: 16),
                   // Trail metrics
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white10),
+                      color: AppTheme.surfaceSubtle,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppTheme.border),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         _metricItem(Icons.straighten, '${trail.distanceKm} km', 'Panjang Jalur'),
-                        Container(width: 1, height: 30, color: Colors.white12),
+                        Container(width: 1, height: 30, color: AppTheme.border),
                         _metricItem(Icons.timer_outlined, '±${trail.estimatedHours} Jam', 'Estimasi Waktu'),
-                        Container(width: 1, height: 30, color: Colors.white12),
+                        Container(width: 1, height: 30, color: AppTheme.border),
                         _metricItem(
                           Icons.confirmation_number_outlined,
                           'Rp ${trail.basecampPost.hargaSimaksi.toInt()}',
@@ -373,14 +410,18 @@ class _MapScreenState extends State<MapScreen> {
                   const SizedBox(height: 16),
                   Text(
                     trail.basecampPost.lokasiDeskripsi,
-                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    style: GoogleFonts.plusJakartaSans(color: AppTheme.textSecondary, fontSize: 13, height: 1.4),
                   ),
                   const SizedBox(height: 16),
-                  const Divider(color: Colors.white12),
+                  const Divider(color: AppTheme.border),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'Titik Pos & Checkpoint Pendakian:',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimary,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   // Checkpoint sequence
@@ -407,7 +448,7 @@ class _MapScreenState extends State<MapScreen> {
                             }
                           : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryGreen,
+                        backgroundColor: AppTheme.primary,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
@@ -427,10 +468,20 @@ class _MapScreenState extends State<MapScreen> {
   Widget _metricItem(IconData icon, String value, String label) {
     return Column(
       children: [
-        Icon(icon, size: 18, color: AppTheme.primaryGreen),
+        Icon(icon, size: 18, color: AppTheme.primary),
         const SizedBox(height: 4),
-        Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white)),
-        Text(label, style: const TextStyle(fontSize: 10, color: Colors.white54)),
+        Text(
+          value,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+        Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(fontSize: 10.5, color: AppTheme.textSecondary),
+        ),
       ],
     );
   }
@@ -448,7 +499,7 @@ class _MapScreenState extends State<MapScreen> {
                 height: 14,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isLast ? Colors.redAccent : isFirst ? trailColor : AppTheme.cardDark,
+                  color: isLast ? Colors.redAccent : isFirst ? trailColor : AppTheme.surface,
                   border: Border.all(color: trailColor, width: 2),
                 ),
               ),
@@ -470,21 +521,25 @@ class _MapScreenState extends State<MapScreen> {
                   children: [
                     Text(
                       cp.name,
-                      style: TextStyle(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
-                        color: isLast ? Colors.redAccent : Colors.white,
+                        color: isLast ? Colors.redAccent : AppTheme.textPrimary,
                       ),
                     ),
                     Text(
                       '${cp.elevationMdpl} MDPL',
-                      style: const TextStyle(fontSize: 11, color: Colors.white60, fontWeight: FontWeight.w600),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        color: AppTheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
                 Text(
                   cp.description,
-                  style: const TextStyle(fontSize: 11, color: Colors.white54),
+                  style: GoogleFonts.plusJakartaSans(fontSize: 11, color: AppTheme.textSecondary),
                 ),
               ],
             ),
@@ -714,21 +769,23 @@ class _MapScreenState extends State<MapScreen> {
                       avatar: Icon(
                         Icons.terrain,
                         size: 16,
-                        color: isSelected ? Colors.white : AppTheme.primaryGreen,
+                        color: isSelected ? Colors.white : AppTheme.primary,
                       ),
                       label: Text(
                         '${m.namaGunung.replaceAll('Gunung ', '')}${bcCount > 0 ? ' ($bcCount Jalur)' : ''}',
                       ),
-                      backgroundColor: isSelected ? AppTheme.primaryGreen : AppTheme.cardDark.withValues(alpha: 0.9),
-                      labelStyle: TextStyle(
-                        color: isSelected ? Colors.white : Colors.white70,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      backgroundColor: isSelected ? AppTheme.primary : AppTheme.surface,
+                      labelStyle: GoogleFonts.plusJakartaSans(
+                        color: isSelected ? Colors.white : AppTheme.textPrimary,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
                         fontSize: 12,
                       ),
+                      elevation: 2,
+                      shadowColor: Colors.black.withValues(alpha: 0.1),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                         side: BorderSide(
-                          color: isSelected ? AppTheme.primaryGreen : Colors.white24,
+                          color: isSelected ? AppTheme.primary : AppTheme.border,
                         ),
                       ),
                       onPressed: () => _focusMountain(m),
@@ -746,13 +803,17 @@ class _MapScreenState extends State<MapScreen> {
               bottom: 24,
               child: Container(
                 constraints: const BoxConstraints(maxWidth: 240, maxHeight: 180),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: AppTheme.cardDark.withValues(alpha: 0.92),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white12),
+                  color: AppTheme.surface.withValues(alpha: 0.96),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.border),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 8),
+                    BoxShadow(
+                      color: AppTheme.textPrimary.withValues(alpha: 0.12),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
                   ],
                 ),
                 child: SingleChildScrollView(
@@ -766,18 +827,33 @@ class _MapScreenState extends State<MapScreen> {
                           Flexible(
                             child: Text(
                               _selectedMountain!.namaGunung,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white),
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: AppTheme.textPrimary,
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          Text(
-                            '${activeTrails.length} Jalur',
-                            style: const TextStyle(fontSize: 10, color: AppTheme.primaryGreen, fontWeight: FontWeight.bold),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primarySubtle,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '${activeTrails.length} Jalur',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10.5,
+                                color: AppTheme.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 6),
-                      const Divider(color: Colors.white12, height: 1),
+                      const Divider(color: AppTheme.border, height: 1),
                       const SizedBox(height: 6),
                       for (final trail in activeTrails) ...[
                         InkWell(
@@ -786,7 +862,7 @@ class _MapScreenState extends State<MapScreen> {
                             _showBasecampDetails(trail);
                           },
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 3),
+                            padding: const EdgeInsets.symmetric(vertical: 4),
                             child: Row(
                               children: [
                                 Container(
@@ -801,17 +877,17 @@ class _MapScreenState extends State<MapScreen> {
                                 Expanded(
                                   child: Text(
                                     trail.basecampName,
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: _highlightedTrail?.id == trail.id ? FontWeight.bold : FontWeight.normal,
-                                      color: _highlightedTrail?.id == trail.id ? trail.color : Colors.white70,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 11,
+                                      fontWeight: _highlightedTrail?.id == trail.id ? FontWeight.bold : FontWeight.w500,
+                                      color: _highlightedTrail?.id == trail.id ? trail.color : AppTheme.textPrimary,
                                     ),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 Text(
                                   '${trail.distanceKm} km',
-                                  style: const TextStyle(fontSize: 9, color: Colors.white38),
+                                  style: GoogleFonts.plusJakartaSans(fontSize: 10, color: AppTheme.textSecondary),
                                 ),
                               ],
                             ),
@@ -834,37 +910,41 @@ class _MapScreenState extends State<MapScreen> {
                 // Layer button
                 FloatingActionButton.small(
                   heroTag: 'map_layer_fab',
-                  backgroundColor: AppTheme.cardDark,
+                  backgroundColor: AppTheme.surface,
+                  elevation: 3,
                   onPressed: _showLayerSelector,
-                  child: const Icon(Icons.layers, color: Colors.white),
+                  child: const Icon(Icons.layers_outlined, color: AppTheme.textPrimary),
                 ),
                 const SizedBox(height: 8),
                 // Zoom in
                 FloatingActionButton.small(
                   heroTag: 'zoom_in_fab',
-                  backgroundColor: AppTheme.cardDark,
+                  backgroundColor: AppTheme.surface,
+                  elevation: 3,
                   onPressed: () {
                     final zoom = _mapController.camera.zoom + 1;
                     _mapController.move(_mapController.camera.center, zoom);
                   },
-                  child: const Icon(Icons.add, color: Colors.white),
+                  child: const Icon(Icons.add, color: AppTheme.textPrimary),
                 ),
                 const SizedBox(height: 8),
                 // Zoom out
                 FloatingActionButton.small(
                   heroTag: 'zoom_out_fab',
-                  backgroundColor: AppTheme.cardDark,
+                  backgroundColor: AppTheme.surface,
+                  elevation: 3,
                   onPressed: () {
                     final zoom = _mapController.camera.zoom - 1;
                     _mapController.move(_mapController.camera.center, zoom);
                   },
-                  child: const Icon(Icons.remove, color: Colors.white),
+                  child: const Icon(Icons.remove, color: AppTheme.textPrimary),
                 ),
                 const SizedBox(height: 8),
                 // Re-center on selected mountain
                 FloatingActionButton.small(
                   heroTag: 'center_fab',
-                  backgroundColor: AppTheme.primaryGreen,
+                  backgroundColor: AppTheme.primary,
+                  elevation: 3,
                   onPressed: () {
                     if (_selectedMountain != null) {
                       _focusMountain(_selectedMountain!);

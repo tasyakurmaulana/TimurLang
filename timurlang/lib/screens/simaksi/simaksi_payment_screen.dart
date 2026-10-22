@@ -14,6 +14,7 @@ import '../../services/auth_service.dart';
 import '../../services/blockchain_service.dart';
 import '../../services/midtrans_service.dart';
 import '../../utils/currency_utils.dart';
+import '../../utils/time_zone_helper.dart';
 import 'midtrans_payment_screen.dart';
 
 class SimaksiPaymentScreen extends StatefulWidget {
@@ -117,13 +118,16 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.cardDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppTheme.border),
+        ),
         title: const Row(
           children: [
-            Icon(Icons.vpn_key_outlined, color: AppTheme.accentOrange),
+            Icon(Icons.vpn_key_outlined, color: AppTheme.secondary),
             SizedBox(width: 8),
-            Text('Kunci Midtrans Belum Diatur', style: TextStyle(fontSize: 16)),
+            Text('Kunci Midtrans Belum Diatur', style: TextStyle(fontSize: 16, color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
           ],
         ),
         content: const Column(
@@ -132,7 +136,7 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
           children: [
             Text(
               'Server Key Midtrans belum dimasukkan pada file:',
-              style: TextStyle(color: Colors.white70, fontSize: 13),
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
             ),
             SizedBox(height: 8),
             Text(
@@ -140,21 +144,21 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
               style: TextStyle(
                 fontFamily: 'monospace',
                 fontSize: 12,
-                color: AppTheme.primaryGreen,
+                color: AppTheme.primary,
                 fontWeight: FontWeight.bold,
               ),
             ),
             SizedBox(height: 12),
             Text(
               'Apakah Anda ingin melakukan Simulasi Pembayaran Berhasil untuk pengujian sekarang?',
-              style: TextStyle(color: Colors.white70, fontSize: 12),
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal', style: TextStyle(color: Colors.white60)),
+            child: const Text('Batal', style: TextStyle(color: AppTheme.textSecondary)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -162,7 +166,7 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
               _issuePermitAfterPayment();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryGreen,
+              backgroundColor: AppTheme.primary,
               foregroundColor: Colors.white,
             ),
             child: const Text('Simulasi Bayar'),
@@ -234,21 +238,22 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.cardDark,
+                color: AppTheme.surface,
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.border),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(mountain.namaGunung, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(mountain.namaGunung, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
                   if (namaBasecamp != null) ...[
                     const SizedBox(height: 4),
                     Text(
                       'Via $namaBasecamp',
-                      style: const TextStyle(fontSize: 14, color: AppTheme.primaryGreen, fontWeight: FontWeight.w600),
+                      style: const TextStyle(fontSize: 14, color: AppTheme.primary, fontWeight: FontWeight.w600),
                     ),
                   ],
-                  const Divider(height: 24),
+                  const Divider(height: 24, color: AppTheme.border),
                   _summaryRow('Rombongan', '${_args['jumlahAnggota']} Orang'),
                   const SizedBox(height: 8),
                   _summaryRow('Tarif SIMAKSI', 'Rp ${hargaSimaksi.toInt()} / orang'),
@@ -261,14 +266,14 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
 
                   // Rincian Anggota
                   if (membersList != null && membersList.isNotEmpty) ...[
-                    const Divider(height: 24),
+                    const Divider(height: 24, color: AppTheme.border),
                     const Row(
                       children: [
-                        Icon(Icons.groups, size: 16, color: AppTheme.accentOrange),
+                        Icon(Icons.groups, size: 16, color: AppTheme.secondary),
                         SizedBox(width: 6),
                         Text(
                           'Daftar Pendaki:',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                         ),
                       ],
                     ),
@@ -279,17 +284,19 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              membersList[i]['is_ketua'] == true ? '👑 ' : '👤 ',
-                              style: const TextStyle(fontSize: 13),
+                            Icon(
+                              membersList[i]['is_ketua'] == true ? Icons.star_rounded : Icons.person_outline_rounded,
+                              size: 15,
+                              color: membersList[i]['is_ketua'] == true ? AppTheme.primary : AppTheme.textSecondary,
                             ),
+                            const SizedBox(width: 6),
                             Expanded(
                               child: Text(
                                 '${membersList[i]['nama'] ?? '-'}${membersList[i]['is_ketua'] == true ? ' (Ketua)' : ''}',
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: membersList[i]['is_ketua'] == true ? FontWeight.bold : FontWeight.normal,
-                                  color: Colors.white70,
+                                  color: AppTheme.textSecondary,
                                 ),
                               ),
                             ),
@@ -304,21 +311,22 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
             const SizedBox(height: 24),
             
             // Currency Converter
-            const Text('Pilih Mata Uang', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text('Pilih Mata Uang', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: AppTheme.cardDark,
+                color: AppTheme.surface,
                 borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppTheme.border),
               ),
               child: DropdownButton<String>(
                 value: _selectedCurrency,
                 isExpanded: true,
                 underline: const SizedBox(),
-                dropdownColor: AppTheme.cardDarkElevated,
+                dropdownColor: AppTheme.surface,
                 items: CurrencyUtils.availableCurrencies.map((c) {
-                  return DropdownMenuItem(value: c, child: Text(c));
+                  return DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(color: AppTheme.textPrimary)));
                 }).toList(),
                 onChanged: (v) => setState(() => _selectedCurrency = v!),
               ),
@@ -330,16 +338,16 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
             Center(
               child: Column(
                 children: [
-                  const Text('Total Pembayaran', style: TextStyle(color: Colors.white54)),
+                  const Text('Total Pembayaran', style: TextStyle(color: AppTheme.textSecondary)),
                   const SizedBox(height: 4),
                   Text(
                     displayPrice,
-                    style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen),
+                    style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppTheme.primary),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     '(${_args['jumlahAnggota']} Orang x Rp ${hargaSimaksi.toInt()})',
-                    style: const TextStyle(fontSize: 12, color: Colors.white60),
+                    style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                   ),
                 ],
               ),
@@ -352,9 +360,14 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
               height: 50,
               child: ElevatedButton(
                 onPressed: _isProcessing ? null : _processPayment,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
                 child: _isProcessing
                     ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Bayar Sekarang'),
+                    : const Text('Bayar Sekarang', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               ),
             ),
           ],
@@ -367,8 +380,8 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white54)),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+        Text(label, style: const TextStyle(color: AppTheme.textSecondary)),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
       ],
     );
   }
@@ -380,8 +393,11 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
       builder: (ctx) => PopScope(
         canPop: false,
         child: Dialog(
-          backgroundColor: AppTheme.cardDark,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: AppTheme.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: AppTheme.border),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -390,10 +406,10 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppTheme.safeGreen.withValues(alpha: 0.2),
+                    color: AppTheme.success.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.check_circle, color: AppTheme.safeGreen, size: 44),
+                  child: const Icon(Icons.check_circle, color: AppTheme.success, size: 44),
                 ),
                 const SizedBox(height: 12),
                 const Text(
@@ -401,14 +417,14 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: AppTheme.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
+                const Text(
                   'Tiket Digital Berbasis Blockchain Diterbitkan',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.6)),
+                  style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                 ),
                 const SizedBox(height: 16),
                 // QR Box
@@ -417,6 +433,14 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppTheme.border),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: QrImageView(
                     data: permit.blockHash,
@@ -429,18 +453,19 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.05),
+                    color: AppTheme.primarySubtle,
                     borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppTheme.border),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.lock, size: 12, color: AppTheme.accentOrange),
+                      const Icon(Icons.lock, size: 12, color: AppTheme.secondary),
                       const SizedBox(width: 6),
                       Flexible(
                         child: Text(
                           'Hash: ${permit.blockHash.substring(0, 16)}...',
-                          style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: Colors.white70),
+                          style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: AppTheme.textPrimary),
                         ),
                       ),
                       const SizedBox(width: 4),
@@ -451,32 +476,78 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
                             const SnackBar(content: Text('Hash disalin')),
                           );
                         },
-                        child: const Icon(Icons.copy, size: 12, color: Colors.white38),
+                        child: const Icon(Icons.copy, size: 12, color: AppTheme.textSecondary),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 10),
-                Text(
+                const Text(
                   'Tunjukkan QR ini ke pos Basecamp untuk verifikasi check-in.\n(QR Code ini bersifat sekali pakai dan otomatis hangus setelah di-scan)',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.6)),
+                  style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
+
+                // Jadwal Check-in Basecamp
+                Builder(
+                  builder: (context) {
+                    final zone = TimeZoneHelper.getMountainTimeZone(mountainName: permit.namaGunung);
+                    return Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primarySubtle,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.schedule_rounded, size: 16, color: AppTheme.primary),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Jadwal Check-in Basecamp Resmi',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                ),
+                                Text(
+                                  '07:00 - 16:00 $zone (${TimeZoneHelper.getTimeZoneFullName(zone)})',
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
 
                 // Persyaratan Hardfile di Basecamp
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppTheme.warningYellow.withValues(alpha: 0.12),
+                    color: const Color(0xFFFEF3C7),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.warningYellow.withValues(alpha: 0.5)),
+                    border: Border.all(color: const Color(0xFFFDE68A)),
                   ),
                   child: const Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.assignment_late_outlined, color: AppTheme.warningYellow, size: 20),
+                      Icon(Icons.assignment_late_outlined, color: Color(0xFF92400E), size: 20),
                       SizedBox(width: 10),
                       Expanded(
                         child: Column(
@@ -487,7 +558,7 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
-                                color: AppTheme.warningYellow,
+                                color: Color(0xFF92400E),
                                 letterSpacing: 0.5,
                               ),
                             ),
@@ -496,7 +567,7 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
                               'Tiap pendaki (ketua & seluruh anggota) WAJIB membawa hardfile Surat Keterangan Sehat dan Kartu Identitas Asli (KTP/identitas diri) untuk verifikasi di pos basecamp.',
                               style: TextStyle(
                                 fontSize: 10.5,
-                                color: Colors.white,
+                                color: Color(0xFF78350F),
                                 height: 1.35,
                               ),
                             ),
@@ -517,7 +588,7 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
                       Navigator.pushNamed(context, AppRoutes.simaksiTicket);
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryGreen,
+                      backgroundColor: AppTheme.primary,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),

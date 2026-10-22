@@ -1,10 +1,12 @@
 // ============================================
 // TimurLang - Ticket Verification Screen
 // Supports QR Code Camera Scanning & Blockchain Verification
+// Aura Travel Design System
 // ============================================
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../config/constants.dart';
 import '../../config/theme.dart';
 import '../../services/blockchain_service.dart';
@@ -36,7 +38,10 @@ class _TicketVerifyScreenState extends State<TicketVerifyScreen> {
     final hash = (inputHash ?? _hashCtrl.text).replaceAll(RegExp(r'[\u200B-\u200D\uFEFF\r\n]'), '').trim();
     if (hash.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Harap masukkan atau pindai hash tiket')),
+        SnackBar(
+          content: Text('Harap masukkan atau pindai hash tiket', style: GoogleFonts.plusJakartaSans()),
+          backgroundColor: AppTheme.error,
+        ),
       );
       return;
     }
@@ -90,8 +95,8 @@ class _TicketVerifyScreenState extends State<TicketVerifyScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result.message),
-          backgroundColor: result.success ? AppTheme.safeGreen : AppTheme.dangerRed,
+          content: Text(result.message, style: GoogleFonts.plusJakartaSans()),
+          backgroundColor: result.success ? AppTheme.success : AppTheme.error,
           duration: const Duration(seconds: 4),
         ),
       );
@@ -108,62 +113,92 @@ class _TicketVerifyScreenState extends State<TicketVerifyScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Verifikasi Tiket Simaksi')),
+      backgroundColor: AppTheme.background,
+      appBar: AppBar(
+        title: Text(
+          'Verifikasi Tiket Simaksi',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+        backgroundColor: AppTheme.surface,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        iconTheme: const IconThemeData(color: AppTheme.textPrimary),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: AppTheme.border, height: 1),
+        ),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Quick QR Scanner Hero Card
+            // Quick QR Scanner Hero Card (Solid Surface, High Contrast)
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppTheme.accentOrange.withValues(alpha: 0.18),
-                    AppTheme.primaryGreen.withValues(alpha: 0.15),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.accentOrange.withValues(alpha: 0.35)),
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3), width: 1.2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: AppTheme.accentOrange.withValues(alpha: 0.2),
+                      color: AppTheme.primarySubtle,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.qr_code_scanner, size: 40, color: AppTheme.accentOrange),
+                    child: const Icon(Icons.qr_code_scanner, size: 36, color: AppTheme.primary),
                   ),
-                  const SizedBox(height: 12),
-                  const Text(
+                  const SizedBox(height: 14),
+                  Text(
                     'Pindai QR Tiket Pendaki',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textPrimary,
+                    ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
                     'Pindai QR code tiket untuk memverifikasi integritas Block Hash SHA-256 secara langsung.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.7)),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12.5,
+                      color: AppTheme.textSecondary,
+                      height: 1.4,
+                    ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 18),
                   SizedBox(
                     width: double.infinity,
                     height: 48,
                     child: ElevatedButton.icon(
                       onPressed: _openQrScanner,
-                      icon: const Icon(Icons.camera_alt),
+                      icon: const Icon(Icons.camera_alt, size: 18),
                       label: const Text('Buka Kamera Pemindai QR'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.accentOrange,
+                        backgroundColor: AppTheme.primary,
                         foregroundColor: Colors.white,
-                        elevation: 4,
+                        elevation: 0,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        textStyle: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
@@ -175,23 +210,23 @@ class _TicketVerifyScreenState extends State<TicketVerifyScreen> {
             // Divider: Or manual
             Row(
               children: [
-                Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.15))),
+                const Expanded(child: Divider(color: AppTheme.border)),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
                   child: Text(
                     'ATAU MASUKKAN MANUAL',
-                    style: TextStyle(
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1,
-                      color: Colors.white.withValues(alpha: 0.4),
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8,
+                      color: AppTheme.textSecondary,
                     ),
                   ),
                 ),
-                Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.15))),
+                const Expanded(child: Divider(color: AppTheme.border)),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
 
             // Manual Hash Input
             CustomTextField(
@@ -201,21 +236,25 @@ class _TicketVerifyScreenState extends State<TicketVerifyScreen> {
               prefixIcon: Icons.fingerprint,
               maxLines: 2,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               height: 48,
               child: ElevatedButton.icon(
                 onPressed: _isVerifying ? null : () => _verifyHash(),
                 icon: _isVerifying
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Icon(Icons.search),
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Icon(Icons.search, size: 18),
                 label: const Text('Verifikasi Integritas Blockchain'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.cardDark,
+                  backgroundColor: AppTheme.primary,
                   foregroundColor: Colors.white,
-                  side: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                  elevation: 0,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  textStyle: GoogleFonts.plusJakartaSans(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -228,11 +267,11 @@ class _TicketVerifyScreenState extends State<TicketVerifyScreen> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: _isValid
-                      ? AppTheme.safeGreen.withValues(alpha: 0.12)
-                      : AppTheme.dangerRed.withValues(alpha: 0.12),
+                      ? AppTheme.success.withValues(alpha: 0.08)
+                      : AppTheme.error.withValues(alpha: 0.08),
                   border: Border.all(
-                    color: _isValid ? AppTheme.safeGreen : AppTheme.dangerRed,
-                    width: 1.5,
+                    color: _isValid ? AppTheme.success.withValues(alpha: 0.4) : AppTheme.error.withValues(alpha: 0.4),
+                    width: 1.2,
                   ),
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -240,27 +279,27 @@ class _TicketVerifyScreenState extends State<TicketVerifyScreen> {
                   children: [
                     Icon(
                       _isValid ? Icons.verified_user : Icons.gpp_bad,
-                      color: _isValid ? AppTheme.safeGreen : AppTheme.dangerRed,
-                      size: 42,
+                      color: _isValid ? AppTheme.success : AppTheme.error,
+                      size: 38,
                     ),
                     const SizedBox(height: 8),
                     Text(
                       _isValid ? 'DATA BLOCKCHAIN VALID' : 'VERIFIKASI GAGAL',
-                      style: TextStyle(
-                        fontSize: 14,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13.5,
                         fontWeight: FontWeight.w800,
-                        letterSpacing: 1,
-                        color: _isValid ? AppTheme.safeGreen : AppTheme.dangerRed,
+                        letterSpacing: 0.8,
+                        color: _isValid ? AppTheme.success : AppTheme.error,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       _message!,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
-                        color: _isValid ? Colors.white : AppTheme.dangerRed,
+                        color: _isValid ? AppTheme.textPrimary : AppTheme.error,
                       ),
                     ),
                   ],
@@ -271,57 +310,72 @@ class _TicketVerifyScreenState extends State<TicketVerifyScreen> {
 
             // Permit Data Card
             if (_permit != null && _isValid) ...[
-              const Text(
+              Text(
                 'Data Izin Pendakian',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                ),
               ),
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppTheme.cardDark,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.border, width: 1.2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _dataRow('ID Pendaki', _permit!.userId),
-                    const Divider(height: 16),
+                    const Divider(height: 16, color: AppTheme.border),
                     _dataRow('Gunung', _permit!.namaGunung ?? _permit!.gunungId),
-                    const Divider(height: 16),
+                    const Divider(height: 16, color: AppTheme.border),
                     _dataRow('Rombongan', '${_permit!.jumlahAnggota} Orang'),
-                    const Divider(height: 16),
+                    const Divider(height: 16, color: AppTheme.border),
                     _dataRow('Status Tiket', _permit!.statusIzin),
-                    const Divider(height: 16),
+                    const Divider(height: 16, color: AppTheme.border),
                     _dataRow(
                       'Block Hash',
-                      '${_permit!.blockHash.substring(0, 16)}... (Valid SHA-256)',
+                      '${_permit!.blockHash.length > 16 ? _permit!.blockHash.substring(0, 16) : _permit!.blockHash}... (SHA-256 Valid)',
                     ),
                     if (_permit!.members.isNotEmpty) ...[
-                      const Divider(height: 20),
-                      const Row(
+                      const Divider(height: 20, color: AppTheme.border),
+                      Row(
                         children: [
-                          Icon(Icons.groups, size: 16, color: AppTheme.accentOrange),
-                          SizedBox(width: 6),
+                          const Icon(Icons.groups, size: 18, color: AppTheme.primary),
+                          const SizedBox(width: 8),
                           Text(
                             'Identitas Anggota Rombongan:',
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textPrimary,
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 10),
                       for (int i = 0; i < _permit!.members.length; i++) ...[
                         Container(
                           margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(10),
+                          padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.04),
-                            borderRadius: BorderRadius.circular(8),
+                            color: AppTheme.surfaceSubtle,
+                            borderRadius: BorderRadius.circular(10),
                             border: Border.all(
                               color: _permit!.members[i].isKetua
-                                  ? AppTheme.primaryGreen.withValues(alpha: 0.4)
-                                  : Colors.white.withValues(alpha: 0.08),
+                                  ? AppTheme.primary.withValues(alpha: 0.3)
+                                  : AppTheme.border,
                             ),
                           ),
                           child: Column(
@@ -329,32 +383,49 @@ class _TicketVerifyScreenState extends State<TicketVerifyScreen> {
                             children: [
                               Row(
                                 children: [
-                                  Text(_permit!.members[i].isKetua ? '👑 ' : '👤 '),
+                                  Icon(
+                                    _permit!.members[i].isKetua ? Icons.verified_user : Icons.person_outline_rounded,
+                                    size: 16,
+                                    color: _permit!.members[i].isKetua ? AppTheme.primary : AppTheme.textSecondary,
+                                  ),
+                                  const SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
                                       _permit!.members[i].nama,
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                        color: AppTheme.textPrimary,
+                                      ),
                                     ),
                                   ),
                                   if (_permit!.members[i].isKetua)
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(
-                                        color: AppTheme.primaryGreen.withValues(alpha: 0.2),
+                                        color: AppTheme.primarySubtle,
                                         borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
                                       ),
-                                      child: const Text('Ketua', style: TextStyle(fontSize: 10, color: AppTheme.primaryGreen, fontWeight: FontWeight.bold)),
+                                      child: Text(
+                                        'Ketua',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 10,
+                                          color: AppTheme.primary,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
                                     ),
                                 ],
                               ),
                               const SizedBox(height: 4),
                               Text(
                                 'Alamat: ${_permit!.members[i].alamat}',
-                                style: const TextStyle(fontSize: 11, color: Colors.white70),
+                                style: GoogleFonts.plusJakartaSans(fontSize: 11.5, color: AppTheme.textSecondary),
                               ),
                               Text(
                                 'Kontak Darurat: ${_permit!.members[i].kontakDarurat}',
-                                style: const TextStyle(fontSize: 11, color: AppTheme.skyBlue),
+                                style: GoogleFonts.plusJakartaSans(fontSize: 11.5, color: AppTheme.secondary, fontWeight: FontWeight.w600),
                               ),
                             ],
                           ),
@@ -372,18 +443,18 @@ class _TicketVerifyScreenState extends State<TicketVerifyScreen> {
                   margin: const EdgeInsets.only(bottom: 14),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppTheme.skyBlue.withValues(alpha: 0.12),
+                    color: AppTheme.primarySubtle,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppTheme.skyBlue.withValues(alpha: 0.4)),
+                    border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.checklist_rtl_rounded, color: AppTheme.skyBlue, size: 22),
-                      SizedBox(width: 10),
+                      const Icon(Icons.checklist_rtl_rounded, color: AppTheme.primary, size: 22),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           'Pemeriksaan Pos: Pastikan telah menerima hardfile fisik Surat Sehat dan memeriksa Kartu Identitas asli tiap pendaki.',
-                          style: TextStyle(fontSize: 11, color: Colors.white, height: 1.35),
+                          style: GoogleFonts.plusJakartaSans(fontSize: 11.5, color: AppTheme.textPrimary, height: 1.35),
                         ),
                       ),
                     ],
@@ -391,18 +462,19 @@ class _TicketVerifyScreenState extends State<TicketVerifyScreen> {
                 ),
                 SizedBox(
                   width: double.infinity,
-                  height: 50,
+                  height: 48,
                   child: ElevatedButton.icon(
                     onPressed: _processCheckIn,
                     icon: const Icon(Icons.check_circle_outline),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.safeGreen,
+                      backgroundColor: AppTheme.primary,
                       foregroundColor: Colors.white,
+                      elevation: 0,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    label: const Text(
+                    label: Text(
                       'Konfirmasi Pendaki Naik (Check-in)',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                      style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700),
                     ),
                   ),
                 ),
@@ -411,21 +483,21 @@ class _TicketVerifyScreenState extends State<TicketVerifyScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                   decoration: BoxDecoration(
-                    color: AppTheme.safeGreen.withValues(alpha: 0.15),
+                    color: AppTheme.success.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.safeGreen.withValues(alpha: 0.4)),
+                    border: Border.all(color: AppTheme.success.withValues(alpha: 0.35)),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.verified, color: AppTheme.safeGreen, size: 22),
-                      SizedBox(width: 8),
+                      const Icon(Icons.verified, color: AppTheme.success, size: 22),
+                      const SizedBox(width: 8),
                       Text(
                         'Pendaki Sudah Check-in (Sedang Di Jalur)',
-                        style: TextStyle(
-                          color: AppTheme.safeGreen,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                        style: GoogleFonts.plusJakartaSans(
+                          color: AppTheme.success,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13.5,
                         ),
                       ),
                     ],
@@ -447,13 +519,20 @@ class _TicketVerifyScreenState extends State<TicketVerifyScreen> {
         children: [
           Expanded(
             flex: 2,
-            child: Text(label, style: const TextStyle(fontSize: 13, color: Colors.white54)),
+            child: Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(fontSize: 12.5, color: AppTheme.textSecondary),
+            ),
           ),
           Expanded(
             flex: 3,
             child: Text(
               value,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimary,
+              ),
             ),
           ),
         ],

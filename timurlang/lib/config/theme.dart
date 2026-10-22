@@ -23,6 +23,7 @@ class AppTheme {
   static const Color success = Color(0xFF2E7D32);
   static const Color warning = Color(0xFFD97706);
   static const Color error = Color(0xFFDC2626);
+  static const Color accent = warning;
 
   // ── Legacy Aliases for Seamless App Compatibility ──
   static const Color primaryGreen = primary;
@@ -230,21 +231,21 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(9999),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: border, width: 1),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(9999),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: border, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(9999),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: borderFocus, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(9999),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: error, width: 1),
         ),
         hintStyle: GoogleFonts.plusJakartaSans(

@@ -103,7 +103,7 @@ class _MountainListScreenState extends State<MountainListScreen> {
               if (widget.embedded) ...[
                 const SizedBox(height: 32),
                 const Text(
-                  'Jelajahi Gunung 🏔️',
+                  'Jelajahi Gunung',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 16),

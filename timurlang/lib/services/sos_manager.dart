@@ -180,7 +180,7 @@ class SosManager {
 
     // Tampilkan notifikasi darurat heads-up / alarm di sistem Android
     await NotificationService.instance.showSOSNotification(
-      title: '🚨 GUNCANGAN HEBAT TERDETEKSI! (SOS AKTIF)',
+      title: 'GUNCANGAN HEBAT TERDETEKSI! (SOS AKTIF)',
       body: 'Sinyal darurat beserta koordinat ($lat, $lon) telah dikirim ke $targetPosText!',
       payload: 'sos_emergency',
     );
@@ -263,7 +263,7 @@ class SosManager {
         : 'Pos Basecamp Terkait';
 
     await NotificationService.instance.showSOSNotification(
-      title: '🚨 DARURAT SOS MANUAL DIAKTIFKAN',
+      title: 'DARURAT SOS MANUAL DIAKTIFKAN',
       body: 'Sinyal darurat beserta koordinat ($lat, $lon) dipancarkan ke $targetPosText!',
       payload: 'sos_emergency',
     );

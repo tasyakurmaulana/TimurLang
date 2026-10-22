@@ -1,10 +1,12 @@
 // ============================================
 // TimurLang - Basecamp Dashboard Screen
+// Aura Travel Design System
 // ============================================
 
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../config/theme.dart';
 import '../../config/constants.dart';
 import '../../config/routes.dart';
@@ -158,9 +160,9 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
     await BasecampAlertService.instance.checkNewSOS();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Status darurat ditandai: DITANGANI'),
-        backgroundColor: AppTheme.safeGreen,
+      SnackBar(
+        content: Text('Status darurat ditandai: DITANGANI', style: GoogleFonts.plusJakartaSans()),
+        backgroundColor: AppTheme.success,
       ),
     );
     _loadData();
@@ -170,10 +172,14 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Keluar'),
-        content: const Text('Apakah Anda yakin ingin keluar dari akun Basecamp?'),
+        title: Text('Keluar', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
+        content: Text('Apakah Anda yakin ingin keluar dari akun Basecamp?', style: GoogleFonts.plusJakartaSans()),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Batal', style: GoogleFonts.plusJakartaSans(color: AppTheme.textSecondary)),
+          ),
           ElevatedButton(
             onPressed: () async {
               await AuthService.instance.logout();
@@ -181,7 +187,11 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
               Navigator.pop(context);
               Navigator.pushReplacementNamed(context, AppRoutes.login);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.dangerRed),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
             child: const Text('Keluar'),
           ),
         ],
@@ -196,39 +206,67 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
     final displayMountainName = _mountain?.namaGunung ?? 'Gunung Wilayah';
 
     return Scaffold(
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('Dashboard Basecamp'),
+        title: Text(
+          'Dashboard Basecamp',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+        backgroundColor: AppTheme.surface,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        iconTheme: const IconThemeData(color: AppTheme.textPrimary),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: AppTheme.border, height: 1),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.sync),
+            icon: const Icon(Icons.sync_rounded),
+            tooltip: 'Sinkronisasi Data',
             onPressed: () async {
               final res = await SyncService.instance.syncAll();
               await _loadData();
               if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res.message)));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(res.message, style: GoogleFonts.plusJakartaSans())),
+              );
             },
           ),
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout_rounded),
+            tooltip: 'Keluar',
             onPressed: _showLogoutDialog,
           ),
         ],
       ),
       body: RefreshIndicator(
+        color: AppTheme.primary,
         onRefresh: () => _loadData(),
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Info Petugas & Basecamp Card
+              // Info Petugas & Basecamp Card (Solid Surface, High Contrast)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  gradient: AppTheme.darkCardGradient,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.3)),
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: AppTheme.border, width: 1.2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,10 +276,10 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: AppTheme.primaryGreen.withValues(alpha: 0.15),
-                            shape: BoxShape.circle,
+                            color: AppTheme.primarySubtle,
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.home_work, color: AppTheme.primaryGreen, size: 28),
+                          child: const Icon(Icons.holiday_village_outlined, color: AppTheme.primary, size: 28),
                         ),
                         const SizedBox(width: 14),
                         Expanded(
@@ -250,34 +288,42 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                             children: [
                               Text(
                                 displayBasecampName,
-                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.textPrimary,
+                                ),
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 displayMountainName,
-                                style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.w600, fontSize: 13),
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: AppTheme.primary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
                               ),
                             ],
                           ),
                         ),
                       ],
                     ),
-                    const Divider(height: 20, color: Colors.white12),
+                    const Divider(height: 22, color: AppTheme.border),
                     Row(
                       children: [
-                        const Icon(Icons.badge_outlined, size: 16, color: Colors.white54),
+                        const Icon(Icons.badge_outlined, size: 16, color: AppTheme.textSecondary),
                         const SizedBox(width: 6),
                         Text(
                           'Petugas: ${user?.namaLengkap ?? 'Pengelola'}',
-                          style: const TextStyle(fontSize: 12, color: Colors.white70),
+                          style: GoogleFonts.plusJakartaSans(fontSize: 12.5, color: AppTheme.textSecondary),
                         ),
                         const Spacer(),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
                           decoration: BoxDecoration(
-                            color: AppTheme.safeGreen.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppTheme.safeGreen.withValues(alpha: 0.4)),
+                            color: AppTheme.success.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: AppTheme.success.withValues(alpha: 0.3)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -286,14 +332,18 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                                 width: 7,
                                 height: 7,
                                 decoration: const BoxDecoration(
-                                  color: AppTheme.safeGreen,
+                                  color: AppTheme.success,
                                   shape: BoxShape.circle,
                                 ),
                               ),
                               const SizedBox(width: 5),
-                              const Text(
-                                'Radar Siaga Background Aktif',
-                                style: TextStyle(fontSize: 10, color: AppTheme.safeGreen, fontWeight: FontWeight.bold),
+                              Text(
+                                'Radar Siaga Aktif',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10.5,
+                                  color: AppTheme.success,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ],
                           ),
@@ -314,9 +364,9 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.dangerRed.withValues(alpha: 0.4),
-                        blurRadius: 16,
-                        spreadRadius: 2,
+                        color: AppTheme.error.withValues(alpha: 0.35),
+                        blurRadius: 14,
+                        spreadRadius: 1,
                       ),
                     ],
                   ),
@@ -325,19 +375,23 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.warning, color: Colors.white, size: 28),
+                          const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 28),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
+                                Text(
                                   'PERINGATAN DARURAT AKTIF!',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 15.5,
+                                    color: Colors.white,
+                                  ),
                                 ),
                                 Text(
-                                  '$_activeSOS pendaki di jalur Anda membunyikan sinyal darurat!',
-                                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                                  '$_activeSOS pendaki di jalur membunyikan sinyal darurat!',
+                                  style: GoogleFonts.plusJakartaSans(color: Colors.white.withValues(alpha: 0.9), fontSize: 12),
                                 ),
                               ],
                             ),
@@ -351,7 +405,7 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                           margin: const EdgeInsets.only(top: 8),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.35),
+                            color: Colors.black.withValues(alpha: 0.25),
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(color: Colors.white24),
                           ),
@@ -360,17 +414,21 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                             children: [
                               Row(
                                 children: [
-                                  const Icon(Icons.person_pin_circle, color: Colors.yellowAccent, size: 20),
+                                  const Icon(Icons.person_pin_circle, color: Color(0xFFFDE047), size: 20),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
                                       sos.namaPendaki ?? 'Pendaki',
-                                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                      ),
                                     ),
                                   ),
                                   Text(
                                     sos.tipePemicu == AppConstants.sosFallDetection ? 'Jatuh Terdeteksi' : 'Pemicu Manual',
-                                    style: const TextStyle(fontSize: 11, color: Colors.white70),
+                                    style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.white.withValues(alpha: 0.8)),
                                   ),
                                 ],
                               ),
@@ -380,17 +438,19 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                                   Expanded(
                                     child: Text(
                                       'GPS: ${sos.koordinatLat.toStringAsFixed(5)}, ${sos.koordinatLong.toStringAsFixed(5)}',
-                                      style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Colors.white70),
+                                      style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Colors.white),
                                     ),
                                   ),
                                   GestureDetector(
                                     onTap: () {
                                       Clipboard.setData(ClipboardData(text: '${sos.koordinatLat}, ${sos.koordinatLong}'));
                                       ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Koordinat disalin ke clipboard')),
+                                        SnackBar(
+                                          content: Text('Koordinat disalin ke clipboard', style: GoogleFonts.plusJakartaSans()),
+                                        ),
                                       );
                                     },
-                                    child: const Icon(Icons.copy, size: 16, color: Colors.white70),
+                                    child: const Icon(Icons.copy, size: 16, color: Colors.white),
                                   ),
                                 ],
                               ),
@@ -403,9 +463,11 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                                   label: const Text('Tandai Sudah Ditangani / Evakuasi'),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.white,
-                                    foregroundColor: AppTheme.dangerRed,
+                                    foregroundColor: AppTheme.error,
                                     elevation: 0,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                     padding: const EdgeInsets.symmetric(vertical: 8),
+                                    textStyle: GoogleFonts.plusJakartaSans(fontSize: 12.5, fontWeight: FontWeight.w700),
                                   ),
                                 ),
                               ),
@@ -419,7 +481,7 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                 const SizedBox(height: 20),
               ],
 
-              // Stat Cards (Real-time per basecamp)
+              // Stat Cards (Real-time per basecamp, Solid Surface)
               Row(
                 children: [
                   Expanded(
@@ -427,7 +489,7 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                       'Pendaki di Jalur',
                       '$_activeHikers Orang',
                       Icons.hiking,
-                      AppTheme.skyBlue,
+                      AppTheme.primary,
                       subtitle: '$_activePermitsCount Rombongan',
                     ),
                   ),
@@ -436,8 +498,8 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                     child: _statCard(
                       'Sisa Kuota Hari Ini',
                       '${_basecampPost?.sisaKuotaHariIni ?? 0} Orang',
-                      Icons.people_alt,
-                      AppTheme.accentOrange,
+                      Icons.people_alt_outlined,
+                      AppTheme.secondary,
                       subtitle: 'Kapasitas: ${_basecampPost?.kuotaHarian ?? 100}',
                     ),
                   ),
@@ -451,7 +513,7 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                       'Status Jalur',
                       _basecampPost?.statusJalur ?? 'Buka',
                       _basecampPost?.isBuka == true ? Icons.check_circle_outline : Icons.cancel_outlined,
-                      _basecampPost?.isBuka == true ? AppTheme.safeGreen : AppTheme.dangerRed,
+                      _basecampPost?.isBuka == true ? AppTheme.success : AppTheme.error,
                       subtitle: _basecampPost?.isBuka == true ? 'Jalur Dibuka' : 'Jalur Ditutup',
                     ),
                   ),
@@ -461,7 +523,7 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                       'Tarif SIMAKSI',
                       'Rp ${(_basecampPost?.hargaSimaksi ?? 15000).toInt()}',
                       Icons.payments_outlined,
-                      AppTheme.primaryGreen,
+                      AppTheme.primary,
                       subtitle: 'per orang',
                     ),
                   ),
@@ -470,13 +532,20 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
               const SizedBox(height: 28),
 
               // Actions
-              const Text('Operasional Basecamp', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              Text(
+                'Operasional Basecamp',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
               const SizedBox(height: 12),
               _actionCard(
                 'Verifikasi Tiket Simaksi',
                 'Pindai QR check-in pendaki & kurangi kuota otomatis secara realtime',
                 Icons.qr_code_scanner,
-                AppTheme.primaryGreen,
+                AppTheme.primary,
                 () => Navigator.pushNamed(context, AppRoutes.ticketVerify).then((_) => _loadData()),
               ),
               const SizedBox(height: 12),
@@ -484,7 +553,7 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                 'Monitor Pendaki di Jalur',
                 'Pantau seluruh pendaki ($_activeHikers orang) yang sedang aktif di jalur',
                 Icons.radar,
-                AppTheme.skyBlue,
+                AppTheme.secondary,
                 () => Navigator.pushNamed(context, AppRoutes.hikerMonitor).then((_) => _loadData()),
               ),
               const SizedBox(height: 12),
@@ -492,7 +561,7 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                 'Pengaturan Jalur & SIMAKSI',
                 'Atur status Buka/Tutup, kuota harian, sisa kuota, dan tarif SIMAKSI basecamp',
                 Icons.tune,
-                AppTheme.accentOrange,
+                AppTheme.primary,
                 _showBasecampSettingsModal,
               ),
             ],
@@ -506,9 +575,16 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppTheme.cardDark,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        border: Border.all(color: AppTheme.border, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -520,21 +596,33 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
               if (subtitle != null)
                 Text(
                   subtitle,
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 10, fontWeight: FontWeight.w500),
+                  style: GoogleFonts.plusJakartaSans(
+                    color: AppTheme.textSecondary,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
             ],
           ),
           const SizedBox(height: 10),
           Text(
             value,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.textPrimary,
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 2),
           Text(
             title,
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11),
+            style: GoogleFonts.plusJakartaSans(
+              color: AppTheme.textSecondary,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
@@ -544,7 +632,9 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
   void _showBasecampSettingsModal() {
     if (_basecampPost == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Data basecamp belum siap')),
+        SnackBar(
+          content: Text('Data basecamp belum siap', style: GoogleFonts.plusJakartaSans()),
+        ),
       );
       return;
     }
@@ -560,7 +650,7 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.cardDark,
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -584,39 +674,50 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: AppTheme.accentOrange.withValues(alpha: 0.15),
+                            color: AppTheme.primarySubtle,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.tune, color: AppTheme.accentOrange, size: 24),
+                          child: const Icon(Icons.tune, color: AppTheme.primary, size: 22),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 'Pengaturan Jalur & SIMAKSI',
-                                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 16.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.textPrimary,
+                                ),
                               ),
                               Text(
                                 post.namaPos,
-                                style: const TextStyle(fontSize: 12, color: Colors.white54),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  color: AppTheme.textSecondary,
+                                ),
                               ),
                             ],
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.close, color: Colors.white54),
+                          icon: const Icon(Icons.close, color: AppTheme.textSecondary),
                           onPressed: () => Navigator.pop(ctx),
                         ),
                       ],
                     ),
-                    const Divider(height: 20, color: Colors.white12),
+                    const Divider(height: 20, color: AppTheme.border),
 
                     // Status Jalur (Buka / Tutup)
-                    const Text(
+                    Text(
                       'Status Jalur Basecamp',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimary,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Row(
@@ -629,27 +730,29 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               decoration: BoxDecoration(
                                 color: selectedStatus.toLowerCase() == 'buka'
-                                    ? AppTheme.safeGreen.withValues(alpha: 0.2)
-                                    : Colors.white.withValues(alpha: 0.05),
+                                    ? AppTheme.success.withValues(alpha: 0.12)
+                                    : AppTheme.surfaceSubtle,
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: selectedStatus.toLowerCase() == 'buka' ? AppTheme.safeGreen : Colors.white12,
-                                  width: selectedStatus.toLowerCase() == 'buka' ? 2 : 1,
+                                  color: selectedStatus.toLowerCase() == 'buka' ? AppTheme.success : AppTheme.border,
+                                  width: selectedStatus.toLowerCase() == 'buka' ? 1.8 : 1,
                                 ),
                               ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.check_circle,
-                                      size: 18,
-                                      color: selectedStatus.toLowerCase() == 'buka' ? AppTheme.safeGreen : Colors.white38),
+                                  Icon(
+                                    Icons.check_circle,
+                                    size: 18,
+                                    color: selectedStatus.toLowerCase() == 'buka' ? AppTheme.success : AppTheme.textSecondary.withValues(alpha: 0.4),
+                                  ),
                                   const SizedBox(width: 8),
                                   Text(
                                     'JALUR BUKA',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontWeight: FontWeight.w700,
                                       fontSize: 12,
-                                      color: selectedStatus.toLowerCase() == 'buka' ? AppTheme.safeGreen : Colors.white60,
+                                      color: selectedStatus.toLowerCase() == 'buka' ? AppTheme.success : AppTheme.textSecondary,
                                     ),
                                   ),
                                 ],
@@ -666,27 +769,29 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               decoration: BoxDecoration(
                                 color: selectedStatus.toLowerCase() == 'tutup'
-                                    ? AppTheme.dangerRed.withValues(alpha: 0.2)
-                                    : Colors.white.withValues(alpha: 0.05),
+                                    ? AppTheme.error.withValues(alpha: 0.12)
+                                    : AppTheme.surfaceSubtle,
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: selectedStatus.toLowerCase() == 'tutup' ? AppTheme.dangerRed : Colors.white12,
-                                  width: selectedStatus.toLowerCase() == 'tutup' ? 2 : 1,
+                                  color: selectedStatus.toLowerCase() == 'tutup' ? AppTheme.error : AppTheme.border,
+                                  width: selectedStatus.toLowerCase() == 'tutup' ? 1.8 : 1,
                                 ),
                               ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.cancel,
-                                      size: 18,
-                                      color: selectedStatus.toLowerCase() == 'tutup' ? AppTheme.dangerRed : Colors.white38),
+                                  Icon(
+                                    Icons.cancel,
+                                    size: 18,
+                                    color: selectedStatus.toLowerCase() == 'tutup' ? AppTheme.error : AppTheme.textSecondary.withValues(alpha: 0.4),
+                                  ),
                                   const SizedBox(width: 8),
                                   Text(
                                     'JALUR TUTUP',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontWeight: FontWeight.w700,
                                       fontSize: 12,
-                                      color: selectedStatus.toLowerCase() == 'tutup' ? AppTheme.dangerRed : Colors.white60,
+                                      color: selectedStatus.toLowerCase() == 'tutup' ? AppTheme.error : AppTheme.textSecondary,
                                     ),
                                   ),
                                 ],
@@ -699,21 +804,37 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                     const SizedBox(height: 16),
 
                     // Harga Tiket SIMAKSI
-                    const Text(
+                    Text(
                       'Harga Tiket SIMAKSI (per Orang)',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimary,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     TextField(
                       controller: hargaCtrl,
                       keyboardType: TextInputType.number,
+                      style: GoogleFonts.plusJakartaSans(color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
                       decoration: InputDecoration(
                         prefixText: 'Rp ',
-                        prefixStyle: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold),
+                        prefixStyle: GoogleFonts.plusJakartaSans(color: AppTheme.primary, fontWeight: FontWeight.bold),
                         hintText: 'Contoh: 15000',
                         filled: true,
-                        fillColor: Colors.white.withValues(alpha: 0.05),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                        fillColor: AppTheme.surfaceSubtle,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: AppTheme.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: AppTheme.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: AppTheme.primary, width: 1.5),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -725,19 +846,35 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 'Kuota Harian (Total)',
-                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.textPrimary,
+                                ),
                               ),
                               const SizedBox(height: 8),
                               TextField(
                                 controller: kuotaCtrl,
                                 keyboardType: TextInputType.number,
+                                style: GoogleFonts.plusJakartaSans(color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
                                 decoration: InputDecoration(
                                   suffixText: 'Orang',
                                   filled: true,
-                                  fillColor: Colors.white.withValues(alpha: 0.05),
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                                  fillColor: AppTheme.surfaceSubtle,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: const BorderSide(color: AppTheme.border),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: const BorderSide(color: AppTheme.border),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: const BorderSide(color: AppTheme.primary, width: 1.5),
+                                  ),
                                 ),
                               ),
                             ],
@@ -748,19 +885,35 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 'Sisa Kuota Hari Ini',
-                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.textPrimary,
+                                ),
                               ),
                               const SizedBox(height: 8),
                               TextField(
                                 controller: sisaKuotaCtrl,
                                 keyboardType: TextInputType.number,
+                                style: GoogleFonts.plusJakartaSans(color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
                                 decoration: InputDecoration(
                                   suffixText: 'Orang',
                                   filled: true,
-                                  fillColor: Colors.white.withValues(alpha: 0.05),
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                                  fillColor: AppTheme.surfaceSubtle,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: const BorderSide(color: AppTheme.border),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: const BorderSide(color: AppTheme.border),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: const BorderSide(color: AppTheme.primary, width: 1.5),
+                                  ),
                                 ),
                               ),
                             ],
@@ -777,8 +930,15 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                             sisaKuotaCtrl.text = kuotaCtrl.text;
                           });
                         },
-                        icon: const Icon(Icons.refresh, size: 16, color: AppTheme.skyBlue),
-                        label: const Text('Reset Sisa Kuota ke Penuh', style: TextStyle(fontSize: 12, color: AppTheme.skyBlue)),
+                        icon: const Icon(Icons.refresh, size: 16, color: AppTheme.primary),
+                        label: Text(
+                          'Reset Sisa Kuota ke Penuh',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            color: AppTheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
                       ),
                     ),
@@ -822,9 +982,12 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                                 if (mounted) {
                                   await _loadData();
                                   messenger.showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Pengaturan operasional basecamp berhasil disimpan! ✓'),
-                                      backgroundColor: AppTheme.safeGreen,
+                                    SnackBar(
+                                      content: Text(
+                                        'Pengaturan operasional basecamp berhasil disimpan!',
+                                        style: GoogleFonts.plusJakartaSans(),
+                                      ),
+                                      backgroundColor: AppTheme.success,
                                     ),
                                   );
                                 }
@@ -833,13 +996,17 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                             ? const SizedBox(
                                 width: 18,
                                 height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                               )
-                            : const Icon(Icons.save),
-                        label: Text(isSaving ? 'Menyimpan...' : 'Simpan Pengaturan Basecamp'),
+                            : const Icon(Icons.save, size: 18),
+                        label: Text(
+                          isSaving ? 'Menyimpan...' : 'Simpan Pengaturan Basecamp',
+                          style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700),
+                        ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryGreen,
-                          foregroundColor: Colors.black,
+                          backgroundColor: AppTheme.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                       ),
@@ -861,31 +1028,54 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppTheme.cardDark,
-          borderRadius: BorderRadius.circular(12),
-          border: Border(left: BorderSide(color: color, width: 4)),
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.border, width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: color),
+              child: Icon(icon, color: color, size: 24),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  Text(subtitle, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12)),
+                  Text(
+                    title,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: AppTheme.textSecondary,
+                      fontSize: 12,
+                      height: 1.35,
+                    ),
+                  ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Colors.white54),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary, size: 22),
           ],
         ),
       ),

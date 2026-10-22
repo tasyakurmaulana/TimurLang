@@ -155,7 +155,7 @@ class WeatherData {
       }
       return 'Kondisi atmosfer buruk, jarak pandang terbatas.';
     } else if (weatherId == 800) {
-      return 'Langit cerah, kondisi ideal untuk pendakian! ☀️';
+      return 'Langit cerah, kondisi ideal untuk pendakian.';
     } else if (weatherId == 801) {
       return 'Sedikit berawan, cuaca cukup baik untuk pendakian.';
     } else if (weatherId == 802) {

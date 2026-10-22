@@ -17,6 +17,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../config/theme.dart';
 
 /// Representasi rintangan game (Rubah di tanah atau Elang di udara)
 class GameObstacle {
@@ -569,28 +570,28 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                         onTapUp: (_) => _duck(false),
                         onTapCancel: () => _duck(false),
                         child: Container(
-                          width: 60,
-                          height: 60,
+                          width: 62,
+                          height: 62,
                           decoration: BoxDecoration(
                             color: isDucking
-                                ? const Color(0xFF00E676).withValues(alpha: 0.5)
-                                : const Color(0xFF1E1E1E).withValues(alpha: 0.65),
+                                ? AppTheme.primary
+                                : AppTheme.surface.withValues(alpha: 0.92),
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: isDucking ? const Color(0xFF00E676) : Colors.white.withValues(alpha: 0.25),
-                              width: 2,
+                              color: isDucking ? AppTheme.primaryHover : AppTheme.border,
+                              width: 1.8,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
+                                color: AppTheme.textPrimary.withValues(alpha: 0.12),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
                               ),
                             ],
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.keyboard_double_arrow_down_rounded,
-                            color: Colors.white,
+                            color: isDucking ? Colors.white : AppTheme.textPrimary,
                             size: 30,
                           ),
                         ),
@@ -600,21 +601,21 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                       GestureDetector(
                         onTap: _jump,
                         child: Container(
-                          width: 64,
-                          height: 64,
+                          width: 66,
+                          height: 66,
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [Color(0xFFE65100), Color(0xFFFF8F00)],
+                              colors: [AppTheme.primary, AppTheme.secondary],
                             ),
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.3),
+                              color: Colors.white.withValues(alpha: 0.4),
                               width: 2,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFFE65100).withValues(alpha: 0.4),
-                                blurRadius: 10,
+                                color: AppTheme.primary.withValues(alpha: 0.35),
+                                blurRadius: 12,
                                 offset: const Offset(0, 4),
                               ),
                             ],
@@ -630,7 +631,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                   ),
                 ),
 
-              // 5. TOP BAR: TOMBOL KEMBALI & PANEL SKOR MDPL (TimurLang Dark Theme)
+              // 5. TOP BAR: TOMBOL KEMBALI & PANEL SKOR MDPL (Aura Travel Design System)
               Positioned(
                 top: 40,
                 left: 16,
@@ -647,18 +648,18 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                       child: Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1E1E1E).withValues(alpha: 0.85),
+                          color: AppTheme.surface.withValues(alpha: 0.94),
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                          border: Border.all(color: AppTheme.border),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.3),
+                              color: AppTheme.textPrimary.withValues(alpha: 0.08),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
                           ],
                         ),
-                        child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
+                        child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: AppTheme.textPrimary),
                       ),
                     ),
                     const Spacer(),
@@ -668,12 +669,12 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                       margin: const EdgeInsets.only(right: 8),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1E1E1E).withValues(alpha: 0.85),
+                        color: AppTheme.surface.withValues(alpha: 0.94),
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                        border: Border.all(color: AppTheme.border),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.3),
+                            color: AppTheme.textPrimary.withValues(alpha: 0.08),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -682,13 +683,13 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.emoji_events_rounded, color: Color(0xFFFFB300), size: 18),
+                          const Icon(Icons.emoji_events_rounded, color: AppTheme.warning, size: 18),
                           const SizedBox(width: 6),
                           Text(
                             'BEST: ${highScore.toInt()} M',
-                            style: GoogleFonts.outfit(
-                              color: Colors.white,
-                              fontSize: 13,
+                            style: GoogleFonts.plusJakartaSans(
+                              color: AppTheme.textPrimary,
+                              fontSize: 12.5,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -701,12 +702,12 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [Color(0xFFE65100), Color(0xFFFF8F00)],
+                          colors: [AppTheme.primary, AppTheme.secondary],
                         ),
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFE65100).withValues(alpha: 0.4),
+                            color: AppTheme.primary.withValues(alpha: 0.35),
                             blurRadius: 10,
                             offset: const Offset(0, 3),
                           ),
@@ -719,9 +720,9 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                           const SizedBox(width: 6),
                           Text(
                             '${mdplScore.toInt()} MDPL',
-                            style: GoogleFonts.outfit(
+                            style: GoogleFonts.plusJakartaSans(
                               color: Colors.white,
-                              fontSize: 15,
+                              fontSize: 14,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -732,19 +733,19 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                 ),
               ),
 
-              // 6. LAYAR MULAI / GAME OVER (Modern Glassmorphic Card TimurLang)
+              // 6. LAYAR MULAI / GAME OVER (Aura Travel Design System Card)
               if (!isPlaying)
                 Center(
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 24),
                     constraints: const BoxConstraints(maxWidth: 380),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E1E1E).withValues(alpha: 0.94),
+                      color: AppTheme.surface.withValues(alpha: 0.96),
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.14), width: 1.5),
+                      border: Border.all(color: AppTheme.border, width: 1.5),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.6),
+                          color: AppTheme.textPrimary.withValues(alpha: 0.16),
                           blurRadius: 28,
                           offset: const Offset(0, 10),
                         ),
@@ -753,7 +754,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(24),
                       child: BackdropFilter(
-                        filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 26),
                           child: Column(
@@ -765,16 +766,16 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                 decoration: BoxDecoration(
                                   gradient: isGameOver
                                       ? (_achievedNewRecord
-                                          ? const LinearGradient(colors: [Color(0xFFFF8F00), Color(0xFFFFD54F)])
-                                          : const LinearGradient(colors: [Color(0xFFC62828), Color(0xFFEF5350)]))
-                                      : const LinearGradient(colors: [Color(0xFFE65100), Color(0xFFFF8F00)]),
+                                          ? const LinearGradient(colors: [Color(0xFFD97706), Color(0xFFF59E0B)])
+                                          : const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFFEF4444)]))
+                                      : const LinearGradient(colors: [AppTheme.primary, AppTheme.secondary]),
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
                                       color: (isGameOver
-                                              ? (_achievedNewRecord ? const Color(0xFFFF8F00) : const Color(0xFFC62828))
-                                              : const Color(0xFFE65100))
-                                          .withValues(alpha: 0.4),
+                                              ? (_achievedNewRecord ? AppTheme.warning : AppTheme.error)
+                                              : AppTheme.primary)
+                                          .withValues(alpha: 0.35),
                                       blurRadius: 16,
                                       offset: const Offset(0, 6),
                                     ),
@@ -794,13 +795,13 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                               Text(
                                 isGameOver
                                     ? (_achievedNewRecord ? '🏆 REKOR BARU TERCAPAI!' : 'TERJATUH DI JALUR')
-                                    : 'PENDAKI GUNUNG',
+                                    : 'MINIGAMES PENDAKI',
                                 textAlign: TextAlign.center,
-                                style: GoogleFonts.outfit(
-                                  color: Colors.white,
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: AppTheme.textPrimary,
                                   fontSize: 20,
                                   fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.5,
+                                  letterSpacing: -0.2,
                                 ),
                               ),
                               const SizedBox(height: 6),
@@ -811,28 +812,29 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                     ? (_achievedNewRecord
                                         ? 'Luar biasa! Kamu menembus rekor pendakian tertinggi baru!'
                                         : 'Ketinggian: ${mdplScore.toInt()} MDPL • Rekor: ${highScore.toInt()} MDPL')
-                                    : 'Taklukkan rintangan dan daki setinggi mungkin!',
+                                    : 'Hindari rintangan rubah dan elang, daki gunung setinggi mungkin!',
                                 textAlign: TextAlign.center,
-                                style: GoogleFonts.outfit(
-                                  color: Colors.white.withValues(alpha: 0.65),
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: AppTheme.textSecondary,
                                   fontSize: 13,
                                   fontWeight: FontWeight.w500,
+                                  height: 1.35,
                                 ),
                               ),
                               const SizedBox(height: 18),
 
-                              // KONDISI 1: Saat Game Over -> Muncul Rekor Baru / Skor dan Tombol Ulang Saja
+                              // KONDISI 1: Saat Game Over -> Muncul Rekor Baru / Skor dan Tombol Ulang
                               if (isGameOver) ...[
                                 Container(
                                   width: double.infinity,
                                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF2C2C2C).withValues(alpha: 0.8),
+                                    color: AppTheme.surfaceSubtle,
                                     borderRadius: BorderRadius.circular(16),
                                     border: Border.all(
                                       color: _achievedNewRecord
-                                          ? const Color(0xFFFFB300).withValues(alpha: 0.6)
-                                          : Colors.white.withValues(alpha: 0.08),
+                                          ? AppTheme.warning.withValues(alpha: 0.5)
+                                          : AppTheme.border,
                                       width: _achievedNewRecord ? 1.5 : 1.0,
                                     ),
                                   ),
@@ -842,15 +844,15 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                         Row(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
-                                            const Icon(Icons.stars_rounded, color: Color(0xFFFFD54F), size: 18),
+                                            const Icon(Icons.stars_rounded, color: AppTheme.warning, size: 18),
                                             const SizedBox(width: 6),
                                             Text(
                                               'PENCAPAIAN REKOR TERTINGGI',
-                                              style: GoogleFonts.outfit(
-                                                color: const Color(0xFFFFD54F),
+                                              style: GoogleFonts.plusJakartaSans(
+                                                color: AppTheme.warning,
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w800,
-                                                letterSpacing: 0.8,
+                                                letterSpacing: 0.5,
                                               ),
                                             ),
                                           ],
@@ -862,16 +864,16 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                         children: [
                                           Text(
                                             'Ketinggian Dicapai',
-                                            style: GoogleFonts.outfit(
-                                              color: Colors.white.withValues(alpha: 0.7),
+                                            style: GoogleFonts.plusJakartaSans(
+                                              color: AppTheme.textSecondary,
                                               fontSize: 13,
                                               fontWeight: FontWeight.w500,
                                             ),
                                           ),
                                           Text(
                                             '${mdplScore.toInt()} MDPL',
-                                            style: GoogleFonts.outfit(
-                                              color: Colors.white,
+                                            style: GoogleFonts.plusJakartaSans(
+                                              color: AppTheme.textPrimary,
                                               fontSize: 16,
                                               fontWeight: FontWeight.w800,
                                             ),
@@ -880,23 +882,23 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                       ),
                                       const Padding(
                                         padding: EdgeInsets.symmetric(vertical: 8),
-                                        child: Divider(color: Colors.white12, height: 1),
+                                        child: Divider(color: AppTheme.border, height: 1),
                                       ),
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
                                             'Rekor Terbaik',
-                                            style: GoogleFonts.outfit(
-                                              color: Colors.white.withValues(alpha: 0.7),
+                                            style: GoogleFonts.plusJakartaSans(
+                                              color: AppTheme.textSecondary,
                                               fontSize: 13,
                                               fontWeight: FontWeight.w500,
                                             ),
                                           ),
                                           Text(
                                             '${highScore.toInt()} MDPL',
-                                            style: GoogleFonts.outfit(
-                                              color: const Color(0xFFFFB300),
+                                            style: GoogleFonts.plusJakartaSans(
+                                              color: AppTheme.warning,
                                               fontSize: 15,
                                               fontWeight: FontWeight.w800,
                                             ),
@@ -912,9 +914,9 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF2C2C2C).withValues(alpha: 0.75),
+                                    color: AppTheme.surfaceSubtle,
                                     borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                                    border: Border.all(color: AppTheme.border),
                                   ),
                                   child: Column(
                                     children: [
@@ -922,21 +924,21 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                         icon: '🦊',
                                         action: 'Rubah',
                                         instruction: 'Ketuk 1x untuk Melompat',
-                                        accentColor: const Color(0xFFFFB74D),
+                                        accentColor: AppTheme.primary,
                                       ),
                                       const SizedBox(height: 8),
                                       _buildControlTip(
                                         icon: '⚡',
                                         action: 'Tap 2x',
                                         instruction: 'Lompat Jauh (Setinggi Elang)',
-                                        accentColor: const Color(0xFFFFD54F),
+                                        accentColor: AppTheme.warning,
                                       ),
                                       const SizedBox(height: 8),
                                       _buildControlTip(
                                         icon: '🦅',
                                         action: 'Elang',
                                         instruction: 'Geser Bawah untuk Menunduk',
-                                        accentColor: const Color(0xFF81D4FA),
+                                        accentColor: AppTheme.secondary,
                                       ),
                                     ],
                                   ),
@@ -950,12 +952,12 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                 height: 50,
                                 decoration: BoxDecoration(
                                   gradient: const LinearGradient(
-                                    colors: [Color(0xFFE65100), Color(0xFFFF8F00)],
+                                    colors: [AppTheme.primary, AppTheme.secondary],
                                   ),
                                   borderRadius: BorderRadius.circular(16),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFFE65100).withValues(alpha: 0.4),
+                                      color: AppTheme.primary.withValues(alpha: 0.35),
                                       blurRadius: 14,
                                       offset: const Offset(0, 4),
                                     ),
@@ -975,11 +977,11 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                       const SizedBox(width: 8),
                                       Text(
                                         isGameOver ? 'MAIN LAGI' : 'MULAI PENDAKIAN',
-                                        style: GoogleFonts.outfit(
+                                        style: GoogleFonts.plusJakartaSans(
                                           fontSize: 15,
                                           fontWeight: FontWeight.w800,
                                           color: Colors.white,
-                                          letterSpacing: 1.0,
+                                          letterSpacing: 0.8,
                                         ),
                                       ),
                                     ],
@@ -1012,7 +1014,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
         const SizedBox(width: 8),
         Text(
           '$action: ',
-          style: GoogleFonts.outfit(
+          style: GoogleFonts.plusJakartaSans(
             color: accentColor,
             fontWeight: FontWeight.w700,
             fontSize: 12.5,
@@ -1021,8 +1023,8 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
         Expanded(
           child: Text(
             instruction,
-            style: GoogleFonts.outfit(
-              color: Colors.white.withValues(alpha: 0.85),
+            style: GoogleFonts.plusJakartaSans(
+              color: AppTheme.textPrimary,
               fontWeight: FontWeight.w500,
               fontSize: 12.5,
             ),

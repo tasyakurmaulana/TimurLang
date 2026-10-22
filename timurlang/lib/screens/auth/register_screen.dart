@@ -3,6 +3,7 @@
 // ============================================
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../config/theme.dart';
 import '../../config/constants.dart';
 import '../../config/routes.dart';
@@ -66,18 +67,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (_selectedRole == AppConstants.roleBasecamp) {
       if (_selectedMountainId == null || _selectedMountainId!.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Silakan pilih gunung tempat basecamp berada'),
-            backgroundColor: AppTheme.dangerRed,
+          SnackBar(
+            content: Text(
+              'Silakan pilih gunung tempat basecamp berada',
+              style: GoogleFonts.plusJakartaSans(color: Colors.white),
+            ),
+            backgroundColor: AppTheme.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
         return;
       }
       if (_namaBasecampCtrl.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Nama pos / basecamp wajib diisi'),
-            backgroundColor: AppTheme.dangerRed,
+          SnackBar(
+            content: Text(
+              'Nama pos / basecamp wajib diisi',
+              style: GoogleFonts.plusJakartaSans(color: Colors.white),
+            ),
+            backgroundColor: AppTheme.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
         return;
@@ -101,7 +112,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!mounted) return;
 
     if (result.success) {
-      // Auto-login setelah registrasi berhasil
       final loginResult = await AuthService.instance.autoLoginAfterRegister(
         email: email,
         password: password,
@@ -110,18 +120,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
 
       if (loginResult.success) {
-        // Cek apakah perangkat mendukung biometrik
         final biometricAvailable =
             await AuthService.instance.checkBiometricAvailability();
 
         if (biometricAvailable && mounted) {
-          // Tampilkan dialog aktivasi sidik jari
           await _showBiometricDialog();
         }
 
         if (!mounted) return;
 
-        // Navigasi ke home sesuai peran
         final user = AuthService.instance.currentUser!;
         if (user.peran == 'basecamp') {
           Navigator.pushReplacementNamed(context, AppRoutes.basecampDashboard);
@@ -129,11 +136,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
           Navigator.pushReplacementNamed(context, AppRoutes.home);
         }
       } else {
-        // Auto-login gagal, kembali ke login manual
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Registrasi berhasil! Silakan login.'),
-            backgroundColor: AppTheme.safeGreen,
+          SnackBar(
+            content: Text(
+              'Registrasi berhasil! Silakan login.',
+              style: GoogleFonts.plusJakartaSans(color: Colors.white),
+            ),
+            backgroundColor: AppTheme.primary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
         Navigator.pop(context);
@@ -141,8 +152,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result.message),
-          backgroundColor: AppTheme.dangerRed,
+          content: Text(
+            result.message,
+            style: GoogleFonts.plusJakartaSans(color: Colors.white),
+          ),
+          backgroundColor: AppTheme.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
     }
@@ -156,69 +172,106 @@ class _RegisterScreenState extends State<RegisterScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
           children: [
-            Icon(Icons.fingerprint, color: AppTheme.primaryGreen, size: 32),
-            SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.primarySubtle,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppTheme.border),
+              ),
+              child: const Icon(Icons.fingerprint_rounded, color: AppTheme.primary, size: 28),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 'Aktifkan Sidik Jari?',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                ),
               ),
             ),
           ],
         ),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Gunakan sidik jari untuk:',
-              style: TextStyle(color: Colors.white70),
+              'Gunakan biometrik untuk pengalaman lebih cepat & aman:',
+              style: GoogleFonts.plusJakartaSans(
+                color: AppTheme.textSecondary,
+                fontSize: 13,
+              ),
             ),
-            SizedBox(height: 12),
-            _BiometricFeatureItem(
-              icon: Icons.login,
+            const SizedBox(height: 14),
+            const _BiometricFeatureItem(
+              icon: Icons.login_rounded,
               text: 'Login cepat tanpa kata sandi',
             ),
-            SizedBox(height: 8),
-            _BiometricFeatureItem(
-              icon: Icons.medical_information,
+            const SizedBox(height: 10),
+            const _BiometricFeatureItem(
+              icon: Icons.medical_information_rounded,
               text: 'Akses data rekam medis darurat',
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
               'Anda bisa mengaktifkan atau menonaktifkan ini nanti di pengaturan profil.',
-              style: TextStyle(color: Colors.white38, fontSize: 12),
+              style: GoogleFonts.plusJakartaSans(
+                color: AppTheme.textSecondary.withValues(alpha: 0.8),
+                fontSize: 11.5,
+              ),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Nanti Saja', style: TextStyle(color: Colors.white54)),
+            child: Text(
+              'Nanti Saja',
+              style: GoogleFonts.plusJakartaSans(
+                color: AppTheme.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
           ElevatedButton.icon(
             onPressed: () => Navigator.pop(context, true),
-            icon: const Icon(Icons.fingerprint, size: 20),
-            label: const Text('Aktifkan'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              elevation: 0,
+            ),
+            icon: const Icon(Icons.fingerprint_rounded, size: 18),
+            label: Text(
+              'Aktifkan',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),
     );
 
     if (shouldEnable == true && mounted) {
-      // Proses verifikasi sidik jari
       final result = await AuthService.instance.enableBiometric();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result.message),
-            backgroundColor: result.success ? AppTheme.safeGreen : AppTheme.dangerRed,
+            content: Text(
+              result.message,
+              style: GoogleFonts.plusJakartaSans(color: Colors.white),
+            ),
+            backgroundColor: result.success ? AppTheme.primary : AppTheme.error,
             duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
         if (result.success) {
@@ -231,107 +284,157 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF0D3B13), Color(0xFF121212)],
-          ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Back button
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: AppTheme.cardDark,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+      backgroundColor: AppTheme.background,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Back button
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppTheme.border),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.textPrimary.withValues(alpha: 0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: AppTheme.textPrimary,
+                    size: 18,
                   ),
                 ),
-                const SizedBox(height: 32),
-                const Text(
-                  'Daftar Akun',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 24),
+
+              // Title
+              Text(
+                'Daftar Akun',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.textPrimary,
+                  letterSpacing: -0.4,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Buat akun baru untuk mulai mendaki',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Buat akun baru untuk mulai menjelajah & mendaki',
+                style: GoogleFonts.plusJakartaSans(
+                  color: AppTheme.textSecondary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
                 ),
-                const SizedBox(height: 32),
-                // Role selection
-                const Text(
-                  'Daftar Sebagai',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 24),
+
+              // Role selection header
+              Text(
+                'Daftar Sebagai',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textSecondary,
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _roleCard(
-                        'Pendaki',
-                        Icons.hiking,
-                        AppConstants.rolePendaki,
-                      ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _roleCard(
+                      'Pendaki',
+                      Icons.hiking_rounded,
+                      AppConstants.rolePendaki,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _roleCard(
-                        'Basecamp',
-                        Icons.house,
-                        AppConstants.roleBasecamp,
-                      ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _roleCard(
+                      'Basecamp',
+                      Icons.house_rounded,
+                      AppConstants.roleBasecamp,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Form Container Card
+              Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: AppTheme.border, width: 1.2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.textPrimary.withValues(alpha: 0.05),
+                      blurRadius: 20,
+                      offset: const Offset(0, 6),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-                // Form
-                Form(
+                child: Form(
                   key: _formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (_selectedRole == AppConstants.roleBasecamp) ...[
-                        const Text(
+                        Text(
                           'Pilih Gunung',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white70),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textSecondary,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                           decoration: BoxDecoration(
-                            color: AppTheme.cardDark,
+                            color: AppTheme.surface,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                            border: Border.all(color: AppTheme.border, width: 1.2),
                           ),
                           child: DropdownButtonHideUnderline(
                             child: DropdownButton<String>(
                               value: _selectedMountainId,
                               isExpanded: true,
-                              dropdownColor: AppTheme.cardDark,
-                              hint: const Text('Pilih Gunung', style: TextStyle(color: Colors.white54)),
-                              icon: const Icon(Icons.arrow_drop_down, color: AppTheme.primaryGreen),
+                              dropdownColor: AppTheme.surface,
+                              hint: Text(
+                                'Pilih Gunung',
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              icon: const Icon(Icons.arrow_drop_down, color: AppTheme.primary),
                               items: _mountains.map((m) {
                                 return DropdownMenuItem<String>(
                                   value: m.id,
                                   child: Row(
                                     children: [
-                                      const Icon(Icons.terrain, color: AppTheme.primaryGreen, size: 20),
+                                      const Icon(Icons.terrain_rounded, color: AppTheme.primary, size: 20),
                                       const SizedBox(width: 10),
                                       Expanded(
                                         child: Text(
                                           '${m.namaGunung} (${m.elevasiMdpl} mdpl)',
-                                          style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontWeight: FontWeight.w600,
+                                            color: AppTheme.textPrimary,
+                                            fontSize: 14,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -348,7 +451,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         CustomTextField(
                           controller: _namaBasecampCtrl,
                           label: 'Nama Basecamp / Jalur',
-                          hint: 'Contoh: Basecamp via Garung / Gajah Mungkur',
+                          hint: 'Contoh: Basecamp via Garung',
                           prefixIcon: Icons.signpost_outlined,
                           validator: (v) {
                             if (_selectedRole == AppConstants.roleBasecamp && (v == null || v.trim().isEmpty)) {
@@ -363,7 +466,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         label: _selectedRole == AppConstants.roleBasecamp
                             ? 'Nama Pengelola / Petugas'
                             : 'Nama Lengkap',
-                        prefixIcon: Icons.person_outline,
+                        prefixIcon: Icons.person_outline_rounded,
                         validator: (v) => Validators.required(v, 'Nama'),
                       ),
                       CustomTextField(
@@ -376,37 +479,93 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       CustomTextField(
                         controller: _passwordCtrl,
                         label: 'Kata Sandi',
-                        prefixIcon: Icons.lock_outline,
+                        prefixIcon: Icons.lock_outline_rounded,
                         isPassword: true,
                         validator: Validators.password,
                       ),
                       CustomTextField(
                         controller: _confirmCtrl,
                         label: 'Konfirmasi Kata Sandi',
-                        prefixIcon: Icons.lock_outline,
+                        prefixIcon: Icons.lock_outline_rounded,
                         isPassword: true,
                         validator: (v) => Validators.confirmPassword(v, _passwordCtrl.text),
                       ),
-                      const SizedBox(height: 8),
-                      SizedBox(
+                      const SizedBox(height: 12),
+                      Container(
                         width: double.infinity,
                         height: 50,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [AppTheme.primary, AppTheme.secondary],
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.primary.withValues(alpha: 0.3),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _register,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
                           child: _isLoading
                               ? const SizedBox(
                                   width: 20,
                                   height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
                                 )
-                              : const Text('Daftar'),
+                              : Text(
+                                  'Daftar Sekarang',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 24),
+
+              // Bottom back to login link
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Sudah memiliki akun? ',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: AppTheme.textSecondary,
+                      fontSize: 14,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Text(
+                      'Masuk Di Sini',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: AppTheme.primary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -419,24 +578,44 @@ class _RegisterScreenState extends State<RegisterScreen> {
       onTap: () => setState(() => _selectedRole = role),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.15) : AppTheme.cardDark,
-          borderRadius: BorderRadius.circular(12),
+          color: isSelected ? AppTheme.primarySubtle : AppTheme.surface,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? AppTheme.primaryGreen : Colors.white.withValues(alpha: 0.1),
-            width: isSelected ? 2 : 1,
+            color: isSelected ? AppTheme.primary : AppTheme.border,
+            width: isSelected ? 1.8 : 1.2,
           ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppTheme.primary.withValues(alpha: 0.12),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: AppTheme.textPrimary.withValues(alpha: 0.03),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
         ),
         child: Column(
           children: [
-            Icon(icon, color: isSelected ? AppTheme.primaryGreen : Colors.white54, size: 28),
+            Icon(
+              icon,
+              color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+              size: 28,
+            ),
             const SizedBox(height: 8),
             Text(
               label,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: isSelected ? AppTheme.primaryGreen : Colors.white54,
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+                fontSize: 14,
               ),
             ),
           ],
@@ -457,10 +636,25 @@ class _BiometricFeatureItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, color: AppTheme.primaryGreen, size: 20),
-        const SizedBox(width: 10),
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: AppTheme.primarySubtle,
+            shape: BoxShape.circle,
+            border: Border.all(color: AppTheme.border),
+          ),
+          child: Icon(icon, color: AppTheme.primary, size: 16),
+        ),
+        const SizedBox(width: 12),
         Expanded(
-          child: Text(text, style: const TextStyle(color: Colors.white70)),
+          child: Text(
+            text,
+            style: GoogleFonts.plusJakartaSans(
+              color: AppTheme.textPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ),
       ],
     );

@@ -1,5 +1,6 @@
 // ============================================
 // TimurLang - Ticket Card Widget
+// Boarding pass with interactive WIB, WITA, WIT time zone converter
 // ============================================
 
 import 'package:flutter/material.dart';
@@ -10,22 +11,40 @@ import '../config/constants.dart';
 import '../config/theme.dart';
 import '../models/simaksi_permit.dart';
 import '../utils/date_utils.dart';
+import '../utils/time_zone_helper.dart';
 
-class TicketCard extends StatelessWidget {
+class TicketCard extends StatefulWidget {
   final SimaksiPermit permit;
   final VoidCallback? onTap;
 
   const TicketCard({super.key, required this.permit, this.onTap});
 
+  @override
+  State<TicketCard> createState() => _TicketCardState();
+}
+
+class _TicketCardState extends State<TicketCard> {
+  late String _nativeZone;
+  late String _selectedZone;
+
+  @override
+  void initState() {
+    super.initState();
+    _nativeZone = TimeZoneHelper.getMountainTimeZone(
+      mountainName: widget.permit.namaGunung,
+    );
+    _selectedZone = _nativeZone;
+  }
+
   /// QR hanya aktif saat tiket baru terdaftar / diajukan.
   /// Setelah di-scan dan divalidasi oleh Basecamp (Di Jalur, Selesai, Ditolak),
   /// QR code otomatis hangus / hilang (single-use).
   bool get _isQrActive =>
-      permit.statusIzin == AppConstants.statusTerdaftar ||
-      permit.statusIzin == AppConstants.statusDiajukan;
+      widget.permit.statusIzin == AppConstants.statusTerdaftar ||
+      widget.permit.statusIzin == AppConstants.statusDiajukan;
 
   Color _getStatusColor() {
-    switch (permit.statusIzin) {
+    switch (widget.permit.statusIzin) {
       case 'Terdaftar':
         return AppTheme.skyBlue;
       case 'Tervalidasi':
@@ -44,7 +63,7 @@ class TicketCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
@@ -80,7 +99,7 @@ class TicketCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(9999),
                     ),
                     child: Text(
-                      permit.statusIzin,
+                      widget.permit.statusIzin,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -91,6 +110,7 @@ class TicketCard extends StatelessWidget {
                 ],
               ),
             ),
+
             // Inward Notch Edge Separator with Dotted Line
             Row(
               children: [
@@ -141,6 +161,7 @@ class TicketCard extends StatelessWidget {
                 ),
               ],
             ),
+
             // Body
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 4, 18, 16),
@@ -148,7 +169,7 @@ class TicketCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    permit.namaGunung ?? 'Gunung',
+                    widget.permit.namaGunung ?? 'Gunung',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
@@ -158,9 +179,9 @@ class TicketCard extends StatelessWidget {
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      _info('Naik', AppDateUtils.formatDateIndonesian(permit.tanggalNaik)),
+                      _info('Naik', AppDateUtils.formatDateIndonesian(widget.permit.tanggalNaik)),
                       const SizedBox(width: 24),
-                      _info('Turun', AppDateUtils.formatDateIndonesian(permit.tanggalTurun)),
+                      _info('Turun', AppDateUtils.formatDateIndonesian(widget.permit.tanggalTurun)),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -168,8 +189,8 @@ class TicketCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      _info('Rombongan', '${permit.jumlahAnggota} orang'),
-                      if (permit.members.isNotEmpty)
+                      _info('Rombongan', '${widget.permit.jumlahAnggota} orang'),
+                      if (widget.permit.members.isNotEmpty)
                         GestureDetector(
                           onTap: () => _showMembersDialog(context),
                           child: Container(
@@ -198,6 +219,105 @@ class TicketCard extends StatelessWidget {
                         ),
                     ],
                   ),
+
+                  // ── Jadwal Masuk Basecamp & Dynamic Timezone Switcher ──
+                  Container(
+                    margin: const EdgeInsets.only(top: 14),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceSubtle,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppTheme.border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header Bar: Title & Subtitle
+                        Row(
+                          children: [
+                            const Icon(Icons.schedule_rounded, size: 15, color: AppTheme.primary),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Jadwal Masuk Basecamp',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              _selectedZone == _nativeZone
+                                  ? 'Zona Asli Pos'
+                                  : 'Lokal: $_nativeZone',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+
+                        // Interactive WIB, WITA, WIT, London Switcher
+                        _buildTimeZoneChips(),
+                        const SizedBox(height: 10),
+
+                        // Time Range Display
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  TimeZoneHelper.convertTimeRange('07:00 - 16:00', _nativeZone, _selectedZone),
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTheme.primary,
+                                    letterSpacing: -0.2,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primary.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    _selectedZone,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppTheme.primary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Flexible(
+                              child: Text(
+                                _selectedZone == _nativeZone
+                                    ? 'Waktu Lokal Gunung'
+                                    : '(Lokal: 07:00 - 16:00 $_nativeZone)',
+                                textAlign: TextAlign.right,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
                   const SizedBox(height: 16),
                   // QR Code Section (Single-Use: hanya muncul saat belum divalidasi)
                   if (_isQrActive) ...[
@@ -211,7 +331,7 @@ class TicketCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.3),
+                                color: Colors.black.withValues(alpha: 0.15),
                                 blurRadius: 10,
                                 offset: const Offset(0, 4),
                               ),
@@ -220,7 +340,7 @@ class TicketCard extends StatelessWidget {
                           child: Column(
                             children: [
                               QrImageView(
-                                data: permit.blockHash,
+                                data: widget.permit.blockHash,
                                 version: QrVersions.auto,
                                 size: 150.0,
                                 backgroundColor: Colors.white,
@@ -247,134 +367,88 @@ class TicketCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.skyBlue.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppTheme.skyBlue.withValues(alpha: 0.3)),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.qr_code_scanner, size: 12, color: AppTheme.skyBlue),
-                            SizedBox(width: 6),
-                            Text(
-                              'QR Sekali Pakai (Hangus setelah di-scan Basecamp)',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: AppTheme.skyBlue,
-                              ),
-                            ),
-                          ],
+                      child: Text(
+                        'Tunjukkan kode QR kepada petugas di pos basecamp saat check-in.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11.5,
+                          color: AppTheme.textSecondary,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
                   ] else ...[
                     _buildUsedQrSection(context),
                   ],
-
-                  // Keterangan Wajib Bawa Berkas Hardfile
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.only(top: 14),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.warningYellow.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppTheme.warningYellow.withValues(alpha: 0.35)),
-                    ),
-                    child: const Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(Icons.assignment_turned_in_outlined, size: 18, color: AppTheme.warningYellow),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Persyaratan Wajib di Basecamp:',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.warningYellow,
-                                ),
-                              ),
-                              SizedBox(height: 3),
-                              Text(
-                                'Setiap pendaki (ketua & seluruh anggota) wajib membawa hardfile Surat Keterangan Sehat dan Kartu Identitas Diri asli (KTP) untuk verifikasi di pos basecamp.',
-                                style: TextStyle(
-                                  fontSize: 10.5,
-                                  color: Colors.white,
-                                  height: 1.35,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  // Hash display
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.security, size: 14, color: AppTheme.accentOrange),
-                            const SizedBox(width: 6),
-                            const Text(
-                              'BLOCKCHAIN HASH (SHA-256)',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.8,
-                                color: AppTheme.accentOrange,
-                              ),
-                            ),
-                            const Spacer(),
-                            GestureDetector(
-                              onTap: () {
-                                Clipboard.setData(ClipboardData(text: permit.blockHash));
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Hash disalin ke clipboard')),
-                                );
-                              },
-                              child: const Icon(Icons.copy, size: 14, color: Colors.white38),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          permit.blockHash,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontFamily: 'monospace',
-                            color: Colors.white.withValues(alpha: 0.5),
-                            height: 1.4,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTimeZoneChips() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(2.5),
+      decoration: BoxDecoration(
+        color: AppTheme.border.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: TimeZoneHelper.supportedTimeZones.map((zone) {
+          final isSelected = _selectedZone == zone;
+          final isNative = _nativeZone == zone;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _selectedZone = zone);
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppTheme.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        zone,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10.5,
+                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                          color: isSelected ? Colors.white : AppTheme.textSecondary,
+                        ),
+                      ),
+                    ),
+                    if (isNative && !isSelected) ...[
+                      const SizedBox(width: 3),
+                      Container(
+                        width: 4,
+                        height: 4,
+                        decoration: const BoxDecoration(
+                          color: AppTheme.primary,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -388,14 +462,15 @@ class TicketCard extends StatelessWidget {
           style: GoogleFonts.plusJakartaSans(
             fontSize: 11,
             color: AppTheme.textSecondary,
+            fontWeight: FontWeight.w500,
           ),
         ),
         const SizedBox(height: 2),
         Text(
           value,
           style: GoogleFonts.plusJakartaSans(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
             color: AppTheme.textPrimary,
           ),
         ),
@@ -404,10 +479,9 @@ class TicketCard extends StatelessWidget {
   }
 
   Widget _buildUsedQrSection(BuildContext context) {
-    final isDiJalur = permit.statusIzin == AppConstants.statusDiJalur ||
-        permit.statusIzin == AppConstants.statusTervalidasi;
-    final isSelesai = permit.statusIzin == AppConstants.statusSelesai;
-    final isDitolak = permit.statusIzin == AppConstants.statusDitolak;
+    final isDiJalur = widget.permit.statusIzin == AppConstants.statusDiJalur;
+    final isSelesai = widget.permit.statusIzin == AppConstants.statusSelesai;
+    final isDitolak = widget.permit.statusIzin == AppConstants.statusDitolak;
 
     final Color primaryColor = isDiJalur
         ? AppTheme.safeGreen
@@ -475,9 +549,9 @@ class TicketCard extends StatelessWidget {
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 11,
-                color: Colors.white.withValues(alpha: 0.7),
+                color: AppTheme.textSecondary,
                 height: 1.4,
               ),
             ),
@@ -499,7 +573,7 @@ class TicketCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    'Status: ${permit.statusIzin}',
+                    'Status: ${widget.permit.statusIzin}',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -520,7 +594,7 @@ class TicketCard extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'QR Code sekali pakai ini sudah tervalidasi dan hangus (Status: ${permit.statusIzin}).',
+            'QR Code sekali pakai ini sudah tervalidasi dan hangus (Status: ${widget.permit.statusIzin}).',
           ),
           backgroundColor: AppTheme.cardDark,
         ),
@@ -531,8 +605,11 @@ class TicketCard extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: AppTheme.cardDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppTheme.border),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -540,19 +617,19 @@ class TicketCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.qr_code_2, color: AppTheme.accentOrange, size: 24),
+                  const Icon(Icons.qr_code_2, color: AppTheme.secondary, size: 24),
                   const SizedBox(width: 8),
                   const Text(
                     'QR Tiket Simaksi',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: AppTheme.textPrimary,
                     ),
                   ),
                   const Spacer(),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white54, size: 20),
+                    icon: const Icon(Icons.close, color: AppTheme.textSecondary, size: 20),
                     onPressed: () => Navigator.pop(ctx),
                   ),
                 ],
@@ -563,9 +640,17 @@ class TicketCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.border),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: QrImageView(
-                  data: permit.blockHash,
+                  data: widget.permit.blockHash,
                   version: QrVersions.auto,
                   size: 220.0,
                   backgroundColor: Colors.white,
@@ -573,68 +658,21 @@ class TicketCard extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               Text(
-                permit.namaGunung ?? 'Gunung',
+                widget.permit.namaGunung ?? 'Gunung',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: AppTheme.textPrimary,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
-                'Tunjukkan ke petugas Basecamp untuk validasi Blockchain.\n(QR Code ini hanya berlaku sekali)',
+                'Jam Check-in: ${TimeZoneHelper.convertTimeRange('07:00 - 16:00', _nativeZone, _selectedZone)} $_selectedZone\n(QR Code ini hanya berlaku sekali di pos basecamp)',
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 11,
-                  color: Colors.white.withValues(alpha: 0.6),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppTheme.warningYellow.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppTheme.warningYellow.withValues(alpha: 0.45)),
-                ),
-                child: const Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.assignment_turned_in_outlined, size: 16, color: AppTheme.warningYellow),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Setiap pendaki (ketua & anggota) wajib membawa hardfile Surat Sehat dan KTP asli saat di pos basecamp.',
-                        style: TextStyle(fontSize: 10.5, color: Colors.white, height: 1.3),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.lock, size: 12, color: AppTheme.safeGreen),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        'Hash: ${permit.blockHash.substring(0, 16)}...',
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontFamily: 'monospace',
-                          color: Colors.white70,
-                        ),
-                      ),
-                    ),
-                  ],
+                  color: AppTheme.textSecondary,
+                  height: 1.35,
                 ),
               ),
             ],
@@ -648,8 +686,11 @@ class TicketCard extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: AppTheme.cardDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: const BorderSide(color: AppTheme.border),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -658,20 +699,20 @@ class TicketCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.groups, color: AppTheme.accentOrange, size: 24),
+                  const Icon(Icons.groups, color: AppTheme.secondary, size: 24),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Anggota Rombongan (${permit.jumlahAnggota} Orang)',
+                      'Anggota Rombongan (${widget.permit.jumlahAnggota} Orang)',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: AppTheme.textPrimary,
                       ),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white54, size: 20),
+                    icon: const Icon(Icons.close, color: AppTheme.textSecondary, size: 20),
                     onPressed: () => Navigator.pop(ctx),
                   ),
                 ],
@@ -681,19 +722,19 @@ class TicketCard extends StatelessWidget {
                 constraints: const BoxConstraints(maxHeight: 350),
                 child: ListView.builder(
                   shrinkWrap: true,
-                  itemCount: permit.members.length,
+                  itemCount: widget.permit.members.length,
                   itemBuilder: (context, i) {
-                    final m = permit.members[i];
+                    final m = widget.permit.members[i];
                     return Container(
                       margin: const EdgeInsets.only(bottom: 10),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.04),
+                        color: AppTheme.surfaceSubtle,
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color: m.isKetua
-                              ? AppTheme.primaryGreen.withValues(alpha: 0.4)
-                              : Colors.white.withValues(alpha: 0.08),
+                              ? AppTheme.primary.withValues(alpha: 0.4)
+                              : AppTheme.border,
                         ),
                       ),
                       child: Column(
@@ -701,21 +742,27 @@ class TicketCard extends StatelessWidget {
                         children: [
                           Row(
                             children: [
-                              Text(m.isKetua ? '👑 ' : '👤 ', style: const TextStyle(fontSize: 14)),
+                              Icon(
+                                m.isKetua ? Icons.star_rounded : Icons.person_outline_rounded,
+                                size: 16,
+                                color: m.isKetua ? AppTheme.primary : AppTheme.textSecondary,
+                              ),
+                              const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
                                   m.nama,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary),
                                 ),
                               ),
                               if (m.isKetua)
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.primaryGreen.withValues(alpha: 0.2),
+                                    color: AppTheme.primarySubtle,
                                     borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(color: const Color(0xFFD4E0D2)),
                                   ),
-                                  child: const Text('Ketua', style: TextStyle(fontSize: 10, color: AppTheme.primaryGreen, fontWeight: FontWeight.bold)),
+                                  child: const Text('Ketua', style: TextStyle(fontSize: 10, color: AppTheme.primary, fontWeight: FontWeight.bold)),
                                 ),
                             ],
                           ),
@@ -723,12 +770,12 @@ class TicketCard extends StatelessWidget {
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.home_outlined, size: 14, color: Colors.white38),
+                              const Icon(Icons.home_outlined, size: 14, color: AppTheme.textSecondary),
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
                                   m.alamat,
-                                  style: const TextStyle(fontSize: 12, color: Colors.white70),
+                                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                                 ),
                               ),
                             ],
@@ -736,11 +783,11 @@ class TicketCard extends StatelessWidget {
                           const SizedBox(height: 4),
                           Row(
                             children: [
-                              const Icon(Icons.phone_outlined, size: 14, color: AppTheme.skyBlue),
+                              const Icon(Icons.phone_outlined, size: 14, color: AppTheme.secondary),
                               const SizedBox(width: 6),
                               Text(
                                 'Darurat: ${m.kontakDarurat}',
-                                style: const TextStyle(fontSize: 12, color: AppTheme.skyBlue, fontWeight: FontWeight.w500),
+                                style: const TextStyle(fontSize: 12, color: AppTheme.secondary, fontWeight: FontWeight.w600),
                               ),
                             ],
                           ),

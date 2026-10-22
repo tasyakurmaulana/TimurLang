@@ -22,14 +22,14 @@ class _SurvivalAssistantScreenState extends State<SurvivalAssistantScreen> {
   bool _isOnline = true;
 
   final List<String> _quickSuggestions = [
-    '🏔️ Rekomendasi Gunung Pemula',
-    '🎒 Tips Packing & Perlengkapan',
-    '🌤️ Fenomena Cuaca di Gunung',
-    '🏃 Panduan Latihan Fisik',
-    '📋 Cara Booking Simaksi',
-    '😄 Tebak-tebakan Santai',
-    '🌿 Etika Leave No Trace',
-    '🏥 Panduan P3K Lapangan',
+    'Rekomendasi Gunung Pemula',
+    'Tips Packing & Perlengkapan',
+    'Fenomena Cuaca di Gunung',
+    'Panduan Latihan Fisik',
+    'Cara Booking Simaksi',
+    'Tebak-tebakan Santai',
+    'Etika Leave No Trace',
+    'Panduan P3K Lapangan',
   ];
 
   @override
@@ -91,19 +91,30 @@ class _SurvivalAssistantScreenState extends State<SurvivalAssistantScreen> {
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: AppTheme.primaryGreen.withValues(alpha: 0.2),
+                color: AppTheme.primary.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.auto_awesome, color: AppTheme.primaryGreen, size: 20),
+              child: const Icon(Icons.auto_awesome, color: AppTheme.primary, size: 20),
             ),
             const SizedBox(width: 10),
             const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('TimurLang AI', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 Text(
-                  'Asisten Universal Cerdas',
-                  style: TextStyle(fontSize: 11, color: Colors.white54, fontWeight: FontWeight.normal),
+                  'Tbot AI',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                Text(
+                  'Asisten Cerdas TimurLang',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.textSecondary,
+                    fontWeight: FontWeight.normal,
+                  ),
                 ),
               ],
             ),
@@ -111,7 +122,7 @@ class _SurvivalAssistantScreenState extends State<SurvivalAssistantScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete_outline),
+            icon: const Icon(Icons.delete_outline, color: AppTheme.textSecondary),
             tooltip: 'Bersihkan Riwayat',
             onPressed: () {
               setState(() {
@@ -127,16 +138,20 @@ class _SurvivalAssistantScreenState extends State<SurvivalAssistantScreen> {
           if (!_isOnline)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-              color: AppTheme.warningYellow.withValues(alpha: 0.2),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              color: AppTheme.warning.withValues(alpha: 0.15),
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.wifi_off, size: 14, color: AppTheme.warningYellow),
+                  Icon(Icons.wifi_off, size: 14, color: AppTheme.warning),
                   SizedBox(width: 6),
                   Text(
                     'Mode Luring: Menggunakan AI Offline Engine lokal.',
-                    style: TextStyle(color: AppTheme.warningYellow, fontSize: 12),
+                    style: TextStyle(
+                      color: AppTheme.warning,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
@@ -165,12 +180,16 @@ class _SurvivalAssistantScreenState extends State<SurvivalAssistantScreen> {
                     SizedBox(
                       width: 12,
                       height: 12,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryGreen),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary),
                     ),
                     SizedBox(width: 8),
                     Text(
-                      'TimurLang AI sedang mengetik...',
-                      style: TextStyle(color: Colors.white54, fontSize: 12, fontStyle: FontStyle.italic),
+                      'Tbot sedang mengetik...',
+                      style: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
                   ],
                 ),
@@ -180,7 +199,7 @@ class _SurvivalAssistantScreenState extends State<SurvivalAssistantScreen> {
           // Quick Topic Suggestions Carousel
           Container(
             height: 38,
-            margin: const EdgeInsets.symmetric(vertical: 4),
+            margin: const EdgeInsets.symmetric(vertical: 6),
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -189,9 +208,19 @@ class _SurvivalAssistantScreenState extends State<SurvivalAssistantScreen> {
               itemBuilder: (context, index) {
                 final suggestion = _quickSuggestions[index];
                 return ActionChip(
-                  label: Text(suggestion, style: const TextStyle(fontSize: 12)),
-                  backgroundColor: AppTheme.cardDark,
-                  side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                  label: Text(
+                    suggestion,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textPrimary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  backgroundColor: AppTheme.surface,
+                  side: const BorderSide(color: AppTheme.border),
+                  elevation: 0,
+                  pressElevation: 1,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(19)),
                   onPressed: _isTyping ? null : () => _sendMessage(suggestion),
                 );
               },
@@ -200,41 +229,54 @@ class _SurvivalAssistantScreenState extends State<SurvivalAssistantScreen> {
 
           // Input field
           Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppTheme.cardDark,
-              border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.08))),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: const BoxDecoration(
+              color: AppTheme.surface,
+              border: Border(top: BorderSide(color: AppTheme.border)),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _textCtrl,
-                    decoration: InputDecoration(
-                      hintText: 'Tanyakan apa saja (alam, sains, tips, obrolan)...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide.none,
+            child: SafeArea(
+              top: false,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _textCtrl,
+                      style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                      decoration: InputDecoration(
+                        hintText: 'Tanyakan apa saja ke Tbot...',
+                        hintStyle: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: const BorderSide(color: AppTheme.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: const BorderSide(color: AppTheme.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: const BorderSide(color: AppTheme.primary, width: 1.5),
+                        ),
+                        filled: true,
+                        fillColor: AppTheme.surfaceSubtle,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
                       ),
-                      filled: true,
-                      fillColor: Colors.white.withValues(alpha: 0.05),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      onSubmitted: (_) => _sendMessage(),
                     ),
-                    onSubmitted: (_) => _sendMessage(),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  decoration: const BoxDecoration(
-                    color: AppTheme.primaryGreen,
-                    shape: BoxShape.circle,
+                  const SizedBox(width: 8),
+                  Container(
+                    decoration: const BoxDecoration(
+                      color: AppTheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                      onPressed: _isTyping ? null : () => _sendMessage(),
+                    ),
                   ),
-                  child: IconButton(
-                    icon: const Icon(Icons.send_rounded, color: Colors.white),
-                    onPressed: _isTyping ? null : () => _sendMessage(),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -252,7 +294,7 @@ class _SurvivalAssistantScreenState extends State<SurvivalAssistantScreen> {
           maxWidth: MediaQuery.of(context).size.width * 0.84,
         ),
         decoration: BoxDecoration(
-          color: msg.isUser ? AppTheme.primaryGreen : AppTheme.cardDarkElevated,
+          color: msg.isUser ? AppTheme.primary : AppTheme.surface,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(18),
             topRight: const Radius.circular(18),
@@ -260,15 +302,13 @@ class _SurvivalAssistantScreenState extends State<SurvivalAssistantScreen> {
             bottomRight: Radius.circular(msg.isUser ? 4 : 18),
           ),
           border: Border.all(
-            color: msg.isUser
-                ? AppTheme.primaryGreen
-                : Colors.white.withValues(alpha: 0.08),
+            color: msg.isUser ? AppTheme.primary : AppTheme.border,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
+              color: Colors.black.withValues(alpha: msg.isUser ? 0.08 : 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
@@ -278,24 +318,22 @@ class _SurvivalAssistantScreenState extends State<SurvivalAssistantScreen> {
           children: [
             _buildFormattedMessage(msg.text, msg.isUser),
             if (!msg.isUser) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     msg.isFromCloud ? Icons.auto_awesome : Icons.offline_bolt_outlined,
-                    size: 11,
-                    color: msg.isFromCloud ? AppTheme.primaryGreen : Colors.orangeAccent,
+                    size: 12,
+                    color: msg.isFromCloud ? AppTheme.primary : AppTheme.warning,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     msg.isFromCloud ? 'Gemini Cloud AI' : 'Offline Engine',
                     style: TextStyle(
                       fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                      color: msg.isFromCloud
-                          ? AppTheme.primaryGreen.withValues(alpha: 0.8)
-                          : Colors.orangeAccent.withValues(alpha: 0.8),
+                      fontWeight: FontWeight.w600,
+                      color: msg.isFromCloud ? AppTheme.primary : AppTheme.warning,
                     ),
                   ),
                 ],
@@ -317,6 +355,8 @@ class _SurvivalAssistantScreenState extends State<SurvivalAssistantScreen> {
 
     final lines = rawText.split('\n');
     final List<Widget> widgets = [];
+    final headerColor = isUser ? Colors.white : AppTheme.textPrimary;
+    final defaultTextColor = isUser ? Colors.white.withValues(alpha: 0.95) : AppTheme.textPrimary;
 
     for (int i = 0; i < lines.length; i++) {
       String line = lines[i];
@@ -335,10 +375,10 @@ class _SurvivalAssistantScreenState extends State<SurvivalAssistantScreen> {
           padding: const EdgeInsets.only(top: 6, bottom: 2),
           child: SelectableText(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: headerColor,
               height: 1.3,
             ),
           ),
@@ -350,10 +390,10 @@ class _SurvivalAssistantScreenState extends State<SurvivalAssistantScreen> {
           padding: const EdgeInsets.only(top: 8, bottom: 3),
           child: SelectableText(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: headerColor,
               height: 1.3,
             ),
           ),
@@ -381,7 +421,7 @@ class _SurvivalAssistantScreenState extends State<SurvivalAssistantScreen> {
           style: TextStyle(
             fontSize: 14,
             height: 1.45,
-            color: Colors.white.withValues(alpha: 0.95),
+            color: defaultTextColor,
           ),
         ),
       ));
@@ -399,11 +439,15 @@ class _SurvivalAssistantScreenState extends State<SurvivalAssistantScreen> {
     final pattern = RegExp(r'(\*\*[^*]+?\*\*|\*[^*]+?\*|`[^`]+?`)');
     int lastEnd = 0;
 
+    final normalColor = isUser ? Colors.white70 : AppTheme.textPrimary;
+    final boldColor = isUser ? Colors.white : AppTheme.textPrimary;
+    final italicColor = isUser ? Colors.white70 : AppTheme.textSecondary;
+
     for (final match in pattern.allMatches(line)) {
       if (match.start > lastEnd) {
         spans.add(TextSpan(
           text: line.substring(lastEnd, match.start),
-          style: const TextStyle(color: Colors.white70),
+          style: TextStyle(color: normalColor),
         ));
       }
 
@@ -413,9 +457,9 @@ class _SurvivalAssistantScreenState extends State<SurvivalAssistantScreen> {
         final inner = text.substring(2, text.length - 2);
         spans.add(TextSpan(
           text: inner,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: boldColor,
           ),
         ));
       }
@@ -424,9 +468,9 @@ class _SurvivalAssistantScreenState extends State<SurvivalAssistantScreen> {
         final inner = text.substring(1, text.length - 1);
         spans.add(TextSpan(
           text: inner,
-          style: const TextStyle(
+          style: TextStyle(
             fontStyle: FontStyle.italic,
-            color: Colors.white70,
+            color: italicColor,
           ),
         ));
       }
@@ -437,17 +481,25 @@ class _SurvivalAssistantScreenState extends State<SurvivalAssistantScreen> {
           alignment: PlaceholderAlignment.middle,
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 2),
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.12),
+              color: isUser
+                  ? Colors.white.withValues(alpha: 0.15)
+                  : AppTheme.surfaceSubtle,
               borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                color: isUser
+                    ? Colors.white.withValues(alpha: 0.3)
+                    : AppTheme.border,
+              ),
             ),
             child: Text(
               inner,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'monospace',
                 fontSize: 12.5,
-                color: Colors.amberAccent,
+                fontWeight: FontWeight.w600,
+                color: isUser ? Colors.amberAccent : AppTheme.primary,
               ),
             ),
           ),
@@ -460,7 +512,7 @@ class _SurvivalAssistantScreenState extends State<SurvivalAssistantScreen> {
     if (lastEnd < line.length) {
       spans.add(TextSpan(
         text: line.substring(lastEnd),
-        style: const TextStyle(color: Colors.white70),
+        style: TextStyle(color: normalColor),
       ));
     }
 

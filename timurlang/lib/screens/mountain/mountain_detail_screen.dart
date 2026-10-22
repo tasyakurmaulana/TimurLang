@@ -3,12 +3,14 @@
 // ============================================
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../config/theme.dart';
 import '../../config/routes.dart';
 import '../../models/mountain.dart';
 import '../../models/basecamp_post.dart';
 import '../../services/database_service.dart';
 import '../../services/weather_service.dart';
+import '../../utils/image_helper.dart';
 
 class MountainDetailScreen extends StatefulWidget {
   const MountainDetailScreen({super.key});
@@ -23,12 +25,37 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
   WeatherData? _weather;
   bool _loadingWeather = true;
 
+  bool _isLoadingMountain = false;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _mountain = ModalRoute.of(context)?.settings.arguments as Mountain?;
-    if (_mountain != null) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Mountain) {
+      _mountain = args;
       _loadData();
+    } else if (args is String) {
+      _loadMountainById(args);
+    } else if (args != null) {
+      _loadMountainById(args.toString());
+    }
+  }
+
+  Future<void> _loadMountainById(String id) async {
+    setState(() => _isLoadingMountain = true);
+    try {
+      final mountain = await DatabaseService.instance.getMountainById(id);
+      if (mounted) {
+        setState(() {
+          _mountain = mountain;
+          _isLoadingMountain = false;
+        });
+        if (_mountain != null) {
+          _loadData();
+        }
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingMountain = false);
     }
   }
 
@@ -54,6 +81,11 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
   @override
   Widget build(BuildContext context) {
     if (_mountain == null) {
+      if (_isLoadingMountain) {
+        return const Scaffold(
+          body: Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen)),
+        );
+      }
       return Scaffold(
         appBar: AppBar(title: const Text('Error')),
         body: const Center(child: Text('Data gunung tidak ditemukan')),
@@ -61,39 +93,102 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
     }
 
     final m = _mountain!;
+    final imageProvider = ImageHelper.getImageProvider(m.fotoUrl) ??
+        const AssetImage('assets/images/background_mount.png') as ImageProvider;
 
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          // Hero header
+          // Hero header with real mountain photo
           SliverAppBar(
-            expandedHeight: 220,
+            expandedHeight: 250,
             pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              title: Text(
-                m.namaGunung,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-              background: Container(
-                decoration: const BoxDecoration(gradient: AppTheme.mountainGradient),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const SizedBox(height: 40),
-                      const Icon(Icons.terrain, size: 60, color: Colors.white54),
-                      const SizedBox(height: 8),
-                      Text(
-                        '${m.elevasiMdpl} mdpl',
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
+            backgroundColor: AppTheme.surface,
+            surfaceTintColor: Colors.transparent,
+            elevation: 1,
+            leading: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: CircleAvatar(
+                backgroundColor: Colors.black.withValues(alpha: 0.45),
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                  padding: EdgeInsets.zero,
+                  onPressed: () => Navigator.pop(context),
                 ),
+              ),
+            ),
+            flexibleSpace: FlexibleSpaceBar(
+              collapseMode: CollapseMode.parallax,
+              background: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image(
+                    image: imageProvider,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      decoration: const BoxDecoration(gradient: AppTheme.mountainGradient),
+                      child: const Center(
+                        child: Icon(Icons.terrain, size: 64, color: Colors.white54),
+                      ),
+                    ),
+                  ),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.45),
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.8),
+                        ],
+                        stops: const [0.0, 0.45, 1.0],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 18,
+                    left: 20,
+                    right: 20,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '${m.elevasiMdpl} MDPL',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          m.namaGunung,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black.withValues(alpha: 0.7),
+                                blurRadius: 10,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -111,7 +206,7 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
                       _badge(m.tingkatBahaya, AppTheme.accentOrange),
                       const SizedBox(width: 8),
                       _badge(
-                        m.sumberAirTersedia ? '💧 Air Tersedia' : '❌ Tanpa Air',
+                        m.sumberAirTersedia ? 'Air Tersedia' : 'Tanpa Air',
                         m.sumberAirTersedia ? AppTheme.skyBlue : AppTheme.mistGrey,
                       ),
                     ],
@@ -120,13 +215,13 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
 
                   // Description
                   if (m.deskripsi != null) ...[
-                    const Text('Deskripsi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    const Text('Deskripsi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
                     const SizedBox(height: 8),
                     Text(
                       m.deskripsi!,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 14,
-                        color: Colors.white.withValues(alpha: 0.7),
+                        color: AppTheme.textSecondary,
                         height: 1.5,
                       ),
                     ),
@@ -137,20 +232,21 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: AppTheme.cardDark,
+                      color: AppTheme.surface,
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.border),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.location_on, color: AppTheme.accentOrange, size: 20),
+                        const Icon(Icons.location_on, color: AppTheme.secondary, size: 20),
                         const SizedBox(width: 10),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Koordinat', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.5))),
+                            const Text('Koordinat', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                             Text(
                               '${m.koordinatLat}°, ${m.koordinatLong}°',
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
                             ),
                           ],
                         ),
@@ -159,10 +255,10 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Text('Kuota Harian', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.5))),
+                              const Text('Kuota Harian', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                               Text(
                                 '${m.kuotaHarian} orang',
-                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
                               ),
                             ],
                           ),
@@ -172,26 +268,26 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
                   const SizedBox(height: 20),
 
                   // Weather
-                  const Text('Cuaca Terkini', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  const Text('Cuaca Terkini', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
                   const SizedBox(height: 8),
                   _loadingWeather
-                      ? const Center(child: CircularProgressIndicator())
+                      ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
                       : _weather != null
                           ? _buildWeatherCard()
-                          : Text('Data cuaca tidak tersedia', style: TextStyle(color: Colors.white.withValues(alpha: 0.5))),
+                          : const Text('Data cuaca tidak tersedia', style: TextStyle(color: AppTheme.textSecondary)),
                   const SizedBox(height: 20),
 
                   // Basecamps
-                  const Text('Pos Pendakian & Basecamp Jalur', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  const Text('Pos Pendakian & Basecamp Jalur', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
                   const SizedBox(height: 8),
                   ..._basecamps.map((bc) => Container(
                     margin: const EdgeInsets.only(bottom: 10),
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: AppTheme.cardDark,
+                      color: AppTheme.surface,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: bc.isBuka ? Colors.white12 : AppTheme.dangerRed.withValues(alpha: 0.3),
+                        color: bc.isBuka ? AppTheme.border : AppTheme.error.withValues(alpha: 0.3),
                       ),
                     ),
                     child: Column(
@@ -201,24 +297,24 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
                           children: [
                             Icon(
                               bc.isBuka ? Icons.house : Icons.cancel_outlined,
-                              color: bc.isBuka ? AppTheme.primaryGreen : AppTheme.dangerRed,
+                              color: bc.isBuka ? AppTheme.primary : AppTheme.error,
                               size: 20,
                             ),
                             const SizedBox(width: 10),
                             Expanded(
-                              child: Text(bc.namaPos, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                              child: Text(bc.namaPos, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary)),
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color: (bc.isBuka ? AppTheme.safeGreen : AppTheme.dangerRed).withValues(alpha: 0.2),
+                                color: (bc.isBuka ? AppTheme.success : AppTheme.error).withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
                                 bc.isBuka ? 'Jalur Buka' : 'Jalur Tutup',
                                 style: TextStyle(
                                   fontSize: 10,
-                                  color: bc.isBuka ? AppTheme.safeGreen : AppTheme.dangerRed,
+                                  color: bc.isBuka ? AppTheme.success : AppTheme.error,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -228,23 +324,23 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
                         const SizedBox(height: 6),
                         Text(
                           bc.lokasiDeskripsi,
-                          style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.6)),
+                          style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                         ),
                         const SizedBox(height: 8),
                         Row(
                           children: [
-                            const Icon(Icons.people_outline, size: 14, color: AppTheme.accentOrange),
+                            const Icon(Icons.people_outline, size: 14, color: AppTheme.secondary),
                             const SizedBox(width: 4),
                             Text(
                               'Sisa Kuota: ${bc.sisaKuotaHariIni} / ${bc.kuotaHarian} orang',
-                              style: const TextStyle(fontSize: 11, color: AppTheme.accentOrange, fontWeight: FontWeight.w500),
+                              style: const TextStyle(fontSize: 11, color: AppTheme.secondary, fontWeight: FontWeight.w600),
                             ),
                             const Spacer(),
-                            const Icon(Icons.payments_outlined, size: 14, color: AppTheme.primaryGreen),
+                            const Icon(Icons.payments_outlined, size: 14, color: AppTheme.primary),
                             const SizedBox(width: 4),
                             Text(
                               'Rp ${bc.hargaSimaksi.toInt()}/hr',
-                              style: const TextStyle(fontSize: 11, color: AppTheme.primaryGreen, fontWeight: FontWeight.bold),
+                              style: const TextStyle(fontSize: 11, color: AppTheme.primary, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
@@ -265,11 +361,17 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
                                 AppRoutes.simaksiForm,
                                 arguments: m,
                               ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
                       icon: const Icon(Icons.confirmation_num),
                       label: Text(
                         m.statusJalur == 'Tutup'
                             ? 'Jalur Ditutup'
                             : 'Booking Simaksi',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                     ),
                   ),
@@ -288,9 +390,9 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: w.isStormWarning ? AppTheme.dangerGradient : AppTheme.darkCardGradient,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: w.isStormWarning ? null : Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        border: Border.all(color: w.isStormWarning ? AppTheme.error : AppTheme.border),
       ),
       child: Column(
         children: [
@@ -300,13 +402,13 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
               padding: const EdgeInsets.all(8),
               margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
+                color: AppTheme.error.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Text(
-                '⚠️ PERINGATAN BADAI - Tunda pendakian!',
+                'PERINGATAN BADAI - Tunda pendakian!',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppTheme.error),
               ),
             ),
           Row(
@@ -316,16 +418,16 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('${w.temperature}°C', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
-                  Text(w.condition, style: TextStyle(color: Colors.white.withValues(alpha: 0.7))),
+                  Text('${w.temperature}°C', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                  Text(w.condition, style: const TextStyle(color: AppTheme.textSecondary)),
                 ],
               ),
               const Spacer(),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('💨 ${w.windSpeed.toStringAsFixed(1)} km/h', style: const TextStyle(fontSize: 12)),
-                  Text('💧 ${w.humidity.toStringAsFixed(0)}%', style: const TextStyle(fontSize: 12)),
+                  Text('Angin: ${w.windSpeed.toStringAsFixed(1)} km/h', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  Text('Lembap: ${w.humidity.toStringAsFixed(0)}%', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                 ],
               ),
             ],

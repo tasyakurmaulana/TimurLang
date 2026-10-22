@@ -3,6 +3,7 @@
 // ============================================
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../config/theme.dart';
 import '../../services/weather_service.dart';
@@ -20,6 +21,7 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
   bool _isLoading = true;
   String? _errorMessage;
   String? _selectedCity;
+  final TextEditingController _searchCtrl = TextEditingController();
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
 
@@ -36,6 +38,7 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
 
   @override
   void dispose() {
+    _searchCtrl.dispose();
     _animController.dispose();
     super.dispose();
   }
@@ -46,6 +49,7 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
       _errorMessage = null;
       if (cityName != null) {
         _selectedCity = cityName;
+        _searchCtrl.text = cityName;
       }
     });
 
@@ -80,82 +84,6 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
     }
   }
 
-  void _showCitySearchDialog() {
-    final textController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Cari Kota / Daerah'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Masukkan nama kota, kabupaten, atau kecamatan:',
-              style: TextStyle(fontSize: 13, color: Colors.white70),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: textController,
-              autofocus: true,
-              decoration: const InputDecoration(
-                hintText: 'Contoh: Sleman, Yogyakarta, Depok...',
-                prefixIcon: Icon(Icons.search),
-              ),
-              onSubmitted: (val) {
-                if (val.trim().isNotEmpty) {
-                  Navigator.pop(ctx);
-                  _loadWeather(cityName: val.trim());
-                }
-              },
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              children: [
-                _quickCityChip('Yogyakarta', () {
-                  Navigator.pop(ctx);
-                  _loadWeather(cityName: 'Yogyakarta,ID');
-                }),
-                _quickCityChip('Sleman', () {
-                  Navigator.pop(ctx);
-                  _loadWeather(cityName: 'Sleman,ID');
-                }),
-                _quickCityChip('Bantul', () {
-                  Navigator.pop(ctx);
-                  _loadWeather(cityName: 'Bantul,ID');
-                }),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final val = textController.text.trim();
-              if (val.isNotEmpty) {
-                Navigator.pop(ctx);
-                _loadWeather(cityName: val);
-              }
-            },
-            child: const Text('Cari'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _quickCityChip(String label, VoidCallback onTap) {
-    return ActionChip(
-      label: Text(label, style: const TextStyle(fontSize: 12)),
-      onPressed: onTap,
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -163,16 +91,12 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
       appBar: AppBar(
         title: const Text('Informasi Cuaca'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            tooltip: 'Cari wilayah/kota',
-            onPressed: _isLoading ? null : _showCitySearchDialog,
-          ),
           if (_selectedCity != null)
             IconButton(
               icon: const Icon(Icons.my_location),
               tooltip: 'Gunakan GPS saya',
               onPressed: () {
+                _searchCtrl.clear();
                 setState(() => _selectedCity = null);
                 _loadWeather();
               },
@@ -190,20 +114,27 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
+            const CircularProgressIndicator(color: AppTheme.primary),
+            const SizedBox(height: 16),
             Text(
               'Mengambil data cuaca...',
-              style: TextStyle(color: Colors.white70),
+              style: GoogleFonts.plusJakartaSans(
+                color: AppTheme.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
-              'Mendeteksi lokasi Anda',
-              style: TextStyle(color: Colors.white38, fontSize: 12),
+              'Mendeteksi lokasi satelit Anda...',
+              style: GoogleFonts.plusJakartaSans(
+                color: AppTheme.textSecondary,
+                fontSize: 12,
+              ),
             ),
           ],
         ),
@@ -217,17 +148,27 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.cloud_off, size: 64, color: Colors.white38),
+              const Icon(Icons.cloud_off_rounded, size: 64, color: AppTheme.textSecondary),
               const SizedBox(height: 16),
               Text(
                 _errorMessage!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white70, fontSize: 16),
+                style: GoogleFonts.plusJakartaSans(
+                  color: AppTheme.textPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: _loadWeather,
-                icon: const Icon(Icons.refresh),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  foregroundColor: Colors.white,
+                  shape: const StadiumBorder(),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                ),
+                icon: const Icon(Icons.refresh_rounded),
                 label: const Text('Coba Lagi'),
               ),
             ],
@@ -237,7 +178,12 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
     }
 
     if (_currentWeather == null) {
-      return const Center(child: Text('Gagal memuat data cuaca.'));
+      return Center(
+        child: Text(
+          'Gagal memuat data cuaca.',
+          style: GoogleFonts.plusJakartaSans(color: AppTheme.textSecondary),
+        ),
+      );
     }
 
     return FadeTransition(
@@ -254,6 +200,9 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
               // Storm Warning Banner
               if (_currentWeather!.isStormWarning)
                 _buildStormWarning(),
+
+              // Search Bar Diatas Card Lokasi
+              _buildSearchBar(),
 
               // Location Header
               _buildLocationHeader(),
@@ -274,16 +223,24 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
               // Forecast Header
               Row(
                 children: [
-                  const Icon(Icons.calendar_today, size: 18, color: Colors.white70),
+                  const Icon(Icons.calendar_today_rounded, size: 18, color: AppTheme.primary),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'Prakiraan Cuaca',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textPrimary,
+                    ),
                   ),
                   const Spacer(),
                   Text(
                     '${_forecast.length} hari',
-                    style: const TextStyle(color: Colors.white38, fontSize: 13),
+                    style: GoogleFonts.plusJakartaSans(
+                      color: AppTheme.textSecondary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
@@ -298,7 +255,7 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
               Center(
                 child: Text(
                   'Stasiun OpenWeatherMap (${DateFormat('HH:mm').format(_currentWeather!.stationTime)} WIB) • Sync: ${DateFormat('HH:mm').format(_currentWeather!.lastUpdated)} WIB',
-                  style: const TextStyle(color: Colors.white30, fontSize: 11),
+                  style: GoogleFonts.plusJakartaSans(color: AppTheme.textSecondary, fontSize: 11),
                 ),
               ),
               const SizedBox(height: 8),
@@ -334,7 +291,7 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '⚠️ PERINGATAN CUACA BURUK',
+                  'PERINGATAN CUACA BURUK',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
@@ -365,6 +322,73 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
     return weather.locationName;
   }
 
+  Widget _buildSearchBar() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.border, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.textPrimary.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _searchCtrl,
+        textInputAction: TextInputAction.search,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 13.5,
+          color: AppTheme.textPrimary,
+          fontWeight: FontWeight.w500,
+        ),
+        decoration: InputDecoration(
+          hintText: 'Cari wilayah/kabupaten (mis. Sleman, Malang)...',
+          hintStyle: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            color: AppTheme.textSecondary.withValues(alpha: 0.8),
+          ),
+          prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.primary, size: 21),
+          suffixIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_searchCtrl.text.isNotEmpty || _selectedCity != null)
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 18, color: AppTheme.textSecondary),
+                  tooltip: 'Kembali ke GPS Live',
+                  onPressed: () {
+                    _searchCtrl.clear();
+                    setState(() => _selectedCity = null);
+                    _loadWeather();
+                  },
+                ),
+              IconButton(
+                icon: const Icon(Icons.arrow_forward_rounded, size: 18, color: AppTheme.primary),
+                tooltip: 'Cari Wilayah',
+                onPressed: () {
+                  final val = _searchCtrl.text.trim();
+                  if (val.isNotEmpty) {
+                    _loadWeather(cityName: val);
+                  }
+                },
+              ),
+            ],
+          ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        ),
+        onSubmitted: (val) {
+          if (val.trim().isNotEmpty) {
+            _loadWeather(cityName: val.trim());
+          }
+        },
+      ),
+    );
+  }
+
   Widget _buildLocationHeader() {
     final weather = _currentWeather!;
     final locationTitle = _formatLocationTitle(weather);
@@ -372,9 +396,16 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppTheme.cardDark,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: AppTheme.border, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.textPrimary.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -386,10 +417,10 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
               children: [
                 Text(
                   locationTitle,
-                  style: const TextStyle(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -397,9 +428,9 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
                   _selectedCity != null
                       ? 'Pencarian manual • Tap icon GPS di atas untuk kembali'
                       : 'GPS: ${weather.latitude.toStringAsFixed(4)}°, ${weather.longitude.toStringAsFixed(4)}°',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Colors.white54,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11.5,
+                    color: AppTheme.textSecondary,
                   ),
                 ),
               ],
@@ -409,13 +440,13 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: _selectedCity != null
-                  ? Colors.blueGrey.withValues(alpha: 0.2)
-                  : AppTheme.primaryGreen.withValues(alpha: 0.2),
+                  ? Colors.blueGrey.withValues(alpha: 0.15)
+                  : AppTheme.primarySubtle,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: _selectedCity != null
                     ? Colors.blueGrey.withValues(alpha: 0.4)
-                    : AppTheme.primaryGreen.withValues(alpha: 0.4),
+                    : AppTheme.primary.withValues(alpha: 0.4),
               ),
             ),
             child: Row(
@@ -585,11 +616,18 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
 
   Widget _buildDetailTile(IconData icon, String value, String label, Color iconColor) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppTheme.cardDark,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.border, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.textPrimary.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -598,20 +636,28 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
           Row(
             children: [
               Icon(icon, color: iconColor, size: 18),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: const TextStyle(color: Colors.white38, fontSize: 11),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  label,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: AppTheme.textSecondary,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
             value,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
               fontSize: 16,
-              color: Colors.white,
+              color: AppTheme.textPrimary,
             ),
           ),
         ],
@@ -626,9 +672,16 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppTheme.cardDark,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: safety.color.withValues(alpha: 0.3)),
+        border: Border.all(color: safety.color.withValues(alpha: 0.4), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.textPrimary.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -637,9 +690,13 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
             children: [
               Icon(Icons.hiking, color: safety.color, size: 22),
               const SizedBox(width: 10),
-              const Text(
+              Text(
                 'Status Keamanan Pendakian',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  color: AppTheme.textPrimary,
+                ),
               ),
             ],
           ),
@@ -655,9 +712,9 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
                 ),
                 child: Text(
                   safety.label,
-                  style: TextStyle(
+                  style: GoogleFonts.plusJakartaSans(
                     color: safety.color,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w800,
                     fontSize: 13,
                   ),
                 ),
@@ -668,7 +725,7 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
                 child: Icon(
                   Icons.circle,
                   size: 10,
-                  color: i < safety.level ? safety.color : Colors.white12,
+                  color: i < safety.level ? safety.color : AppTheme.border,
                 ),
               )),
             ],
@@ -676,7 +733,12 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
           const SizedBox(height: 12),
           Text(
             safety.advice,
-            style: const TextStyle(color: Colors.white60, fontSize: 13, height: 1.4),
+            style: GoogleFonts.plusJakartaSans(
+              color: AppTheme.textSecondary,
+              fontSize: 13,
+              height: 1.45,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
@@ -698,9 +760,16 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: AppTheme.cardDark,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.border, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.textPrimary.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -712,11 +781,19 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
               children: [
                 Text(
                   dayName,
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: AppTheme.textPrimary,
+                  ),
                 ),
                 Text(
                   dateStr,
-                  style: const TextStyle(color: Colors.white38, fontSize: 11),
+                  style: GoogleFonts.plusJakartaSans(
+                    color: AppTheme.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -733,14 +810,19 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
                     children: [
                       Text(
                         forecast.condition,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary,
+                        ),
                       ),
                       if (forecast.pop > 0)
                         Text(
-                          '💧 ${(forecast.pop * 100).toStringAsFixed(0)}%',
-                          style: const TextStyle(
-                            color: Colors.lightBlueAccent,
+                          'Hujan ${(forecast.pop * 100).toStringAsFixed(0)}%',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: const Color(0xFF0284C7),
                             fontSize: 11,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                     ],
@@ -755,11 +837,19 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
             children: [
               Text(
                 '${forecast.tempMax.toStringAsFixed(0)}°',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  color: AppTheme.textPrimary,
+                ),
               ),
               Text(
                 '${forecast.tempMin.toStringAsFixed(0)}°',
-                style: const TextStyle(color: Colors.white38, fontSize: 13),
+                style: GoogleFonts.plusJakartaSans(
+                  color: AppTheme.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
