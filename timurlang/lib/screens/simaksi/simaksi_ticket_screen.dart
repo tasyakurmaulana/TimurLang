@@ -2,6 +2,7 @@
 // TimurLang - Simaksi Tickets Screen
 // ============================================
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../models/simaksi_permit.dart';
 import '../../services/auth_service.dart';
@@ -19,14 +20,28 @@ class SimaksiTicketScreen extends StatefulWidget {
 class _SimaksiTicketScreenState extends State<SimaksiTicketScreen> {
   List<SimaksiPermit> _permits = [];
   bool _isLoading = true;
+  Timer? _autoRefreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadTickets();
+    // Auto refresh setiap 3 detik agar saat Basecamp memindai QR,
+    // status tiket otomatis terupdate dan QR code langsung hilang di layar pendaki!
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (mounted) {
+        _loadTickets(silent: true);
+      }
+    });
   }
 
-  Future<void> _loadTickets() async {
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadTickets({bool silent = false}) async {
     final user = AuthService.instance.currentUser;
     if (user != null) {
       // Tarik permit terbaru dari Supabase jika online
@@ -43,11 +58,11 @@ class _SimaksiTicketScreenState extends State<SimaksiTicketScreen> {
       if (mounted) {
         setState(() {
           _permits = permits;
-          _isLoading = false;
+          if (!silent) _isLoading = false;
         });
       }
     } else {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted && !silent) setState(() => _isLoading = false);
     }
   }
 

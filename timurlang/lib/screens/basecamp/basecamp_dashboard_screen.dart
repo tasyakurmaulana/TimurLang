@@ -28,6 +28,7 @@ class BasecampDashboardScreen extends StatefulWidget {
 class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
   int _activeSOS = 0;
   int _activeHikers = 0;
+  int _activePermitsCount = 0;
   List<SosIncident> _activeSosList = [];
   BasecampPost? _basecampPost;
   Mountain? _mountain;
@@ -61,13 +62,22 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
     final user = AuthService.instance.currentUser;
     if (user == null) return;
 
-    BasecampPost? post = _basecampPost;
-    post ??= await DatabaseService.instance.getBasecampByUserId(user.id);
+    // Selalu ambil data pos basecamp terbaru dari database lokal / remote
+    BasecampPost? post = await DatabaseService.instance.getBasecampByUserId(user.id);
     if (post == null && SupabaseService.instance.isInitialized) {
       post = await SupabaseService.instance.getBasecampByUserId(user.id);
       if (post != null) {
         await DatabaseService.instance.insertBasecampPost(post);
       }
+    } else if (post != null && SupabaseService.instance.isInitialized) {
+      // Sinkronisasi data basecamp dari Supabase secara realtime
+      try {
+        final remotePost = await SupabaseService.instance.getBasecampByUserId(user.id);
+        if (remotePost != null) {
+          post = remotePost;
+          await DatabaseService.instance.insertBasecampPost(remotePost);
+        }
+      } catch (_) {}
     }
     
     final gunungId = user.gunungId ?? post?.gunungId ?? 'mtn-001';
@@ -111,6 +121,9 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
       basecampId: post?.id,
     );
 
+    // Hitung total orang (pendaki) di jalur: per orang bukan per rombongan
+    final int totalHikersCount = permits.fold<int>(0, (sum, p) => sum + p.jumlahAnggota);
+
     // Deteksi SOS baru untuk memicu alarm / notifikasi lokal di perangkat petugas
     for (final inc in sosList) {
       if (!_knownSosIds.contains(inc.id)) {
@@ -131,7 +144,8 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
         _mountain = mtn;
         _activeSosList = sosList;
         _activeSOS = sosList.length;
-        _activeHikers = permits.length;
+        _activeHikers = totalHikersCount;
+        _activePermitsCount = permits.length;
       });
     }
   }
@@ -405,26 +419,62 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                 const SizedBox(height: 20),
               ],
 
-              // Stat Cards
+              // Stat Cards (Real-time per basecamp)
               Row(
                 children: [
                   Expanded(
-                    child: _statCard('Pendaki di Jalur', _activeHikers.toString(), Icons.hiking, AppTheme.skyBlue),
+                    child: _statCard(
+                      'Pendaki di Jalur',
+                      '$_activeHikers Orang',
+                      Icons.hiking,
+                      AppTheme.skyBlue,
+                      subtitle: '$_activePermitsCount Rombongan',
+                    ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 14),
                   Expanded(
-                    child: _statCard('Sinyal SOS', _activeSOS.toString(), Icons.sos, AppTheme.dangerRed),
+                    child: _statCard(
+                      'Sisa Kuota Hari Ini',
+                      '${_basecampPost?.sisaKuotaHariIni ?? 0} Orang',
+                      Icons.people_alt,
+                      AppTheme.accentOrange,
+                      subtitle: 'Kapasitas: ${_basecampPost?.kuotaHarian ?? 100}',
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: _statCard(
+                      'Status Jalur',
+                      _basecampPost?.statusJalur ?? 'Buka',
+                      _basecampPost?.isBuka == true ? Icons.check_circle_outline : Icons.cancel_outlined,
+                      _basecampPost?.isBuka == true ? AppTheme.safeGreen : AppTheme.dangerRed,
+                      subtitle: _basecampPost?.isBuka == true ? 'Jalur Dibuka' : 'Jalur Ditutup',
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: _statCard(
+                      'Tarif SIMAKSI',
+                      'Rp ${(_basecampPost?.hargaSimaksi ?? 15000).toInt()}',
+                      Icons.payments_outlined,
+                      AppTheme.primaryGreen,
+                      subtitle: 'per orang',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 28),
 
               // Actions
               const Text('Operasional Basecamp', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
               _actionCard(
                 'Verifikasi Tiket Simaksi',
-                'Pindai atau masukkan hash tiket pendaki saat check-in',
+                'Pindai QR check-in pendaki & kurangi kuota otomatis secara realtime',
                 Icons.qr_code_scanner,
                 AppTheme.primaryGreen,
                 () => Navigator.pushNamed(context, AppRoutes.ticketVerify).then((_) => _loadData()),
@@ -432,22 +482,18 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
               const SizedBox(height: 12),
               _actionCard(
                 'Monitor Pendaki di Jalur',
-                'Pantau rombongan yang sedang beraktivitas di gunung Anda',
+                'Pantau seluruh pendaki ($_activeHikers orang) yang sedang aktif di jalur',
                 Icons.radar,
-                AppTheme.accentOrange,
+                AppTheme.skyBlue,
                 () => Navigator.pushNamed(context, AppRoutes.hikerMonitor).then((_) => _loadData()),
               ),
               const SizedBox(height: 12),
               _actionCard(
-                'Update Status Jalur',
-                'Ubah status Buka/Tutup/Waspada untuk ${_mountain?.namaGunung ?? 'Gunung'}',
-                Icons.edit_road,
-                AppTheme.mistGrey,
-                () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Jalur ${_mountain?.namaGunung ?? ''} saat ini: ${_mountain?.statusJalur ?? 'Buka'}')),
-                  );
-                },
+                'Pengaturan Jalur & SIMAKSI',
+                'Atur status Buka/Tutup, kuota harian, sisa kuota, dan tarif SIMAKSI basecamp',
+                Icons.tune,
+                AppTheme.accentOrange,
+                _showBasecampSettingsModal,
               ),
             ],
           ),
@@ -456,9 +502,9 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
     );
   }
 
-  Widget _statCard(String title, String value, IconData icon, Color color) {
+  Widget _statCard(String title, String value, IconData icon, Color color, {String? subtitle}) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppTheme.cardDark,
         borderRadius: BorderRadius.circular(16),
@@ -467,12 +513,345 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color),
-          const SizedBox(height: 12),
-          Text(value, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-          Text(title, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Icon(icon, color: color, size: 22),
+              if (subtitle != null)
+                Text(
+                  subtitle,
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 10, fontWeight: FontWeight.w500),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            title,
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11),
+          ),
         ],
       ),
+    );
+  }
+
+  void _showBasecampSettingsModal() {
+    if (_basecampPost == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Data basecamp belum siap')),
+      );
+      return;
+    }
+
+    final post = _basecampPost!;
+    final messenger = ScaffoldMessenger.of(context);
+    String selectedStatus = post.statusJalur;
+    final kuotaCtrl = TextEditingController(text: post.kuotaHarian.toString());
+    final sisaKuotaCtrl = TextEditingController(text: post.sisaKuotaHariIni.toString());
+    final hargaCtrl = TextEditingController(text: post.hargaSimaksi.toInt().toString());
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.cardDark,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.accentOrange.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.tune, color: AppTheme.accentOrange, size: 24),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Pengaturan Jalur & SIMAKSI',
+                                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white),
+                              ),
+                              Text(
+                                post.namaPos,
+                                style: const TextStyle(fontSize: 12, color: Colors.white54),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white54),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 20, color: Colors.white12),
+
+                    // Status Jalur (Buka / Tutup)
+                    const Text(
+                      'Status Jalur Basecamp',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => setModalState(() => selectedStatus = 'Buka'),
+                            borderRadius: BorderRadius.circular(10),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: selectedStatus.toLowerCase() == 'buka'
+                                    ? AppTheme.safeGreen.withValues(alpha: 0.2)
+                                    : Colors.white.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: selectedStatus.toLowerCase() == 'buka' ? AppTheme.safeGreen : Colors.white12,
+                                  width: selectedStatus.toLowerCase() == 'buka' ? 2 : 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.check_circle,
+                                      size: 18,
+                                      color: selectedStatus.toLowerCase() == 'buka' ? AppTheme.safeGreen : Colors.white38),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'JALUR BUKA',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                      color: selectedStatus.toLowerCase() == 'buka' ? AppTheme.safeGreen : Colors.white60,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => setModalState(() => selectedStatus = 'Tutup'),
+                            borderRadius: BorderRadius.circular(10),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: selectedStatus.toLowerCase() == 'tutup'
+                                    ? AppTheme.dangerRed.withValues(alpha: 0.2)
+                                    : Colors.white.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: selectedStatus.toLowerCase() == 'tutup' ? AppTheme.dangerRed : Colors.white12,
+                                  width: selectedStatus.toLowerCase() == 'tutup' ? 2 : 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.cancel,
+                                      size: 18,
+                                      color: selectedStatus.toLowerCase() == 'tutup' ? AppTheme.dangerRed : Colors.white38),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'JALUR TUTUP',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                      color: selectedStatus.toLowerCase() == 'tutup' ? AppTheme.dangerRed : Colors.white60,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Harga Tiket SIMAKSI
+                    const Text(
+                      'Harga Tiket SIMAKSI (per Orang)',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: hargaCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        prefixText: 'Rp ',
+                        prefixStyle: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold),
+                        hintText: 'Contoh: 15000',
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.05),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Kuota Harian & Sisa Kuota
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Kuota Harian (Total)',
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70),
+                              ),
+                              const SizedBox(height: 8),
+                              TextField(
+                                controller: kuotaCtrl,
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  suffixText: 'Orang',
+                                  filled: true,
+                                  fillColor: Colors.white.withValues(alpha: 0.05),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Sisa Kuota Hari Ini',
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70),
+                              ),
+                              const SizedBox(height: 8),
+                              TextField(
+                                controller: sisaKuotaCtrl,
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  suffixText: 'Orang',
+                                  filled: true,
+                                  fillColor: Colors.white.withValues(alpha: 0.05),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: () {
+                          setModalState(() {
+                            sisaKuotaCtrl.text = kuotaCtrl.text;
+                          });
+                        },
+                        icon: const Icon(Icons.refresh, size: 16, color: AppTheme.skyBlue),
+                        label: const Text('Reset Sisa Kuota ke Penuh', style: TextStyle(fontSize: 12, color: AppTheme.skyBlue)),
+                        style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Simpan Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        onPressed: isSaving
+                            ? null
+                            : () async {
+                                final kuota = int.tryParse(kuotaCtrl.text.trim()) ?? 100;
+                                final sisa = int.tryParse(sisaKuotaCtrl.text.trim()) ?? kuota;
+                                final harga = double.tryParse(hargaCtrl.text.trim()) ?? 15000.0;
+
+                                setModalState(() => isSaving = true);
+
+                                await DatabaseService.instance.updateBasecampSettings(
+                                  basecampId: post.id,
+                                  statusJalur: selectedStatus,
+                                  kuotaHarian: kuota,
+                                  sisaKuotaHariIni: sisa,
+                                  hargaSimaksi: harga,
+                                );
+
+                                if (SupabaseService.instance.isInitialized) {
+                                  await SupabaseService.instance.updateBasecampSettings(
+                                    basecampId: post.id,
+                                    statusJalur: selectedStatus,
+                                    kuotaHarian: kuota,
+                                    sisaKuotaHariIni: sisa,
+                                    hargaSimaksi: harga,
+                                  );
+                                }
+
+                                if (ctx.mounted) {
+                                  Navigator.pop(ctx);
+                                }
+                                if (mounted) {
+                                  await _loadData();
+                                  messenger.showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Pengaturan operasional basecamp berhasil disimpan! ✓'),
+                                      backgroundColor: AppTheme.safeGreen,
+                                    ),
+                                  );
+                                }
+                              },
+                        icon: isSaving
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                              )
+                            : const Icon(Icons.save),
+                        label: Text(isSaving ? 'Menyimpan...' : 'Simpan Pengaturan Basecamp'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryGreen,
+                          foregroundColor: Colors.black,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

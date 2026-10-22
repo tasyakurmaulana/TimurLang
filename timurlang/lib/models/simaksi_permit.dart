@@ -1,7 +1,41 @@
 // ============================================
 // TimurLang - Simaksi Permit Model
-// Blockchain-enabled hiking permit
+// Blockchain-enabled hiking permit with group members support
 // ============================================
+
+import 'dart:convert';
+
+class MemberInfo {
+  final String nama;
+  final String alamat;
+  final String kontakDarurat;
+  final bool isKetua;
+
+  MemberInfo({
+    required this.nama,
+    required this.alamat,
+    required this.kontakDarurat,
+    this.isKetua = false,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'nama': nama,
+      'alamat': alamat,
+      'kontak_darurat': kontakDarurat,
+      'is_ketua': isKetua,
+    };
+  }
+
+  factory MemberInfo.fromMap(Map<String, dynamic> map) {
+    return MemberInfo(
+      nama: (map['nama'] as String?) ?? '',
+      alamat: (map['alamat'] as String?) ?? '',
+      kontakDarurat: (map['kontak_darurat'] as String?) ?? '',
+      isKetua: map['is_ketua'] == true,
+    );
+  }
+}
 
 class SimaksiPermit {
   final String id;
@@ -18,6 +52,7 @@ class SimaksiPermit {
   final String? namaGunung; // join field
   final double? totalBiaya;
   final String? matauang;
+  final String? dataAnggota; // JSON serialized list of MemberInfo
   final DateTime createdAt;
 
   SimaksiPermit({
@@ -35,8 +70,23 @@ class SimaksiPermit {
     this.namaGunung,
     this.totalBiaya,
     this.matauang,
+    this.dataAnggota,
     required this.createdAt,
   });
+
+  /// Mengambil daftar anggota rombongan yang telah diparsing
+  List<MemberInfo> get members {
+    if (dataAnggota == null || dataAnggota!.isEmpty) return [];
+    try {
+      final decoded = jsonDecode(dataAnggota!);
+      if (decoded is List) {
+        return decoded
+            .map((m) => MemberInfo.fromMap(Map<String, dynamic>.from(m)))
+            .toList();
+      }
+    } catch (_) {}
+    return [];
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -54,6 +104,7 @@ class SimaksiPermit {
       'nama_gunung': namaGunung,
       'total_biaya': totalBiaya,
       'matauang': matauang,
+      'data_anggota': dataAnggota,
       'created_at': createdAt.toIso8601String(),
     };
   }
@@ -78,13 +129,18 @@ class SimaksiPermit {
       namaGunung: map['nama_gunung'] as String?,
       totalBiaya: map['total_biaya'] != null ? (map['total_biaya'] as num).toDouble() : null,
       matauang: map['matauang'] as String?,
+      dataAnggota: map['data_anggota'] as String?,
       createdAt: map['created_at'] != null
           ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
           : DateTime.now(),
     );
   }
 
-  SimaksiPermit copyWith({String? statusIzin, String? basecampId}) {
+  SimaksiPermit copyWith({
+    String? statusIzin,
+    String? basecampId,
+    String? dataAnggota,
+  }) {
     return SimaksiPermit(
       id: id,
       userId: userId,
@@ -100,6 +156,7 @@ class SimaksiPermit {
       namaGunung: namaGunung,
       totalBiaya: totalBiaya,
       matauang: matauang,
+      dataAnggota: dataAnggota ?? this.dataAnggota,
       createdAt: createdAt,
     );
   }

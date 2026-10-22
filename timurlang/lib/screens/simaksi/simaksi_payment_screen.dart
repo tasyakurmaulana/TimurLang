@@ -45,6 +45,8 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
       final convertedCost = CurrencyUtils.convertFromIDR(totalBiayaIDR, _selectedCurrency);
       final basecampId = _args['basecampId'] as String?;
 
+      final dataAnggota = _args['dataAnggota'] as String?;
+
       final permit = await BlockchainService.instance.createPermit(
         userId: user.id,
         gunungId: mountain.id,
@@ -55,6 +57,7 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
         namaGunung: mountain.namaGunung,
         totalBiaya: convertedCost,
         matauang: _selectedCurrency,
+        dataAnggota: dataAnggota,
       );
 
       if (mounted) {
@@ -77,13 +80,15 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
 
     final mountain = _args['mountain'] as Mountain;
     final namaBasecamp = _args['namaBasecamp'] as String?;
+    final double hargaSimaksi = (_args['hargaSimaksi'] as num?)?.toDouble() ?? 15000.0;
     final totalBiayaIDR = _args['totalBiayaIDR'] as double;
     final convertedCost = CurrencyUtils.convertFromIDR(totalBiayaIDR, _selectedCurrency);
     final displayPrice = CurrencyUtils.formatCurrency(convertedCost, _selectedCurrency);
+    final membersList = _args['membersList'] as List<dynamic>?;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Pembayaran')),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -109,15 +114,57 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
                   const Divider(height: 24),
                   _summaryRow('Rombongan', '${_args['jumlahAnggota']} Orang'),
                   const SizedBox(height: 8),
+                  _summaryRow('Tarif SIMAKSI', 'Rp ${hargaSimaksi.toInt()} / orang'),
+                  const SizedBox(height: 8),
                   _summaryRow('Durasi', '${(_args['tanggalTurun'] as DateTime).difference(_args['tanggalNaik'] as DateTime).inDays + 1} Hari'),
                   if (namaBasecamp != null) ...[
                     const SizedBox(height: 8),
                     _summaryRow('Basecamp', namaBasecamp),
                   ],
+
+                  // Rincian Anggota
+                  if (membersList != null && membersList.isNotEmpty) ...[
+                    const Divider(height: 24),
+                    const Row(
+                      children: [
+                        Icon(Icons.groups, size: 16, color: AppTheme.accentOrange),
+                        SizedBox(width: 6),
+                        Text(
+                          'Daftar Pendaki:',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    for (int i = 0; i < membersList.length; i++) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              membersList[i]['is_ketua'] == true ? '👑 ' : '👤 ',
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                            Expanded(
+                              child: Text(
+                                '${membersList[i]['nama'] ?? '-'}${membersList[i]['is_ketua'] == true ? ' (Ketua)' : ''}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: membersList[i]['is_ketua'] == true ? FontWeight.bold : FontWeight.normal,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
                 ],
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             
             // Currency Converter
             const Text('Pilih Mata Uang', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -140,7 +187,7 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
               ),
             ),
             
-            const Spacer(),
+            const SizedBox(height: 36),
             
             // Total Price
             Center(
@@ -151,6 +198,11 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
                   Text(
                     displayPrice,
                     style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '(${_args['jumlahAnggota']} Orang x Rp ${hargaSimaksi.toInt()})',
+                    style: const TextStyle(fontSize: 12, color: Colors.white60),
                   ),
                 ],
               ),
@@ -269,9 +321,53 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Tunjukkan QR ini ke pos Basecamp untuk verifikasi izin pendakian.',
+                  'Tunjukkan QR ini ke pos Basecamp untuk verifikasi check-in.\n(QR Code ini bersifat sekali pakai dan otomatis hangus setelah di-scan)',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.5)),
+                  style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.6)),
+                ),
+                const SizedBox(height: 14),
+
+                // Persyaratan Hardfile di Basecamp
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.warningYellow.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.warningYellow.withValues(alpha: 0.5)),
+                  ),
+                  child: const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.assignment_late_outlined, color: AppTheme.warningYellow, size: 20),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'PERSYARATAN DI BASECAMP:',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.warningYellow,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            SizedBox(height: 3),
+                            Text(
+                              'Tiap pendaki (ketua & seluruh anggota) WAJIB membawa hardfile Surat Keterangan Sehat dan Kartu Identitas Asli (KTP/identitas diri) untuk verifikasi di pos basecamp.',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                color: Colors.white,
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 18),
                 SizedBox(

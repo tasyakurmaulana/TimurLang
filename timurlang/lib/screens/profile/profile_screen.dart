@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../config/theme.dart';
 import '../../config/routes.dart';
 import '../../services/auth_service.dart';
+import '../../services/database_service.dart';
 import '../../utils/image_helper.dart';
 import '../../widgets/custom_text_field.dart';
 
@@ -25,6 +26,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   
   bool _isEditing = false;
   bool _isLoading = false;
+  bool _isPersonalDataComplete = false;
   
   // Holds current photo (base64 Data URI or network URL)
   String? _currentPhotoUrl;
@@ -34,6 +36,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadUserData();
+    _checkPersonalDataStatus();
+  }
+
+  Future<void> _checkPersonalDataStatus() async {
+    final user = AuthService.instance.currentUser;
+    if (user != null) {
+      final pData = await DatabaseService.instance.getPersonalData(user.id);
+      if (mounted) {
+        setState(() {
+          _isPersonalDataComplete = pData != null && pData.isComplete;
+        });
+      }
+    }
   }
 
   void _loadUserData() {
@@ -424,6 +439,71 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     );
                     setState(() {});
                   }
+                },
+              ),
+            ),
+            // ── Data Diri Pendaki (Wajib SIMAKSI) ──
+            Container(
+              decoration: BoxDecoration(
+                color: AppTheme.cardDark,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: _isPersonalDataComplete
+                      ? AppTheme.safeGreen.withValues(alpha: 0.35)
+                      : AppTheme.accentOrange.withValues(alpha: 0.4),
+                ),
+              ),
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: (_isPersonalDataComplete ? AppTheme.safeGreen : AppTheme.accentOrange)
+                        .withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.badge_outlined,
+                    color: _isPersonalDataComplete ? AppTheme.safeGreen : AppTheme.accentOrange,
+                  ),
+                ),
+                title: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Data Diri Lengkap',
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: (_isPersonalDataComplete ? AppTheme.safeGreen : AppTheme.accentOrange)
+                            .withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        _isPersonalDataComplete ? 'Lengkap ✓' : 'Wajib SIMAKSI',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: _isPersonalDataComplete ? AppTheme.safeGreen : AppTheme.accentOrange,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                subtitle: Text(
+                  _isPersonalDataComplete
+                      ? 'KTP, identitas & alamat domisili terverifikasi'
+                      : 'Wajib diisi untuk pengajuan izin pendakian SIMAKSI',
+                  style: const TextStyle(fontSize: 12, color: Colors.white54),
+                ),
+                trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+                onTap: () async {
+                  await Navigator.pushNamed(context, AppRoutes.personalData);
+                  _checkPersonalDataStatus();
                 },
               ),
             ),
