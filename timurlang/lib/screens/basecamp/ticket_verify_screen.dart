@@ -5,6 +5,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../config/constants.dart';
 import '../../config/theme.dart';
 import '../../services/blockchain_service.dart';
 import '../../models/simaksi_permit.dart';
@@ -31,7 +32,7 @@ class _TicketVerifyScreenState extends State<TicketVerifyScreen> {
     super.dispose();
   }
 
-  Future<void> _verifyHash([String? inputHash]) async {
+  Future<void> _verifyHash([String? inputHash, bool autoCheckInOnScan = false]) async {
     final hash = (inputHash ?? _hashCtrl.text).replaceAll(RegExp(r'[\u200B-\u200D\uFEFF\r\n]'), '').trim();
     if (hash.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -49,7 +50,7 @@ class _TicketVerifyScreenState extends State<TicketVerifyScreen> {
     });
 
     // Short delay for verification effect
-    await Future.delayed(const Duration(milliseconds: 400));
+    await Future.delayed(const Duration(milliseconds: 300));
 
     final result = await BlockchainService.instance.verifyTicket(hash);
 
@@ -60,6 +61,16 @@ class _TicketVerifyScreenState extends State<TicketVerifyScreen> {
         _message = result.message;
         _permit = result.permit;
       });
+
+      // Jika di-scan lewat kamera scanner dan tiket valid (baru/belum pernah dipakai),
+      // langsung proses check-in agar QR code sekali pakai ini langsung hangus seketika!
+      if (autoCheckInOnScan &&
+          result.valid &&
+          result.permit != null &&
+          (result.permit!.statusIzin == AppConstants.statusTerdaftar ||
+              result.permit!.statusIzin == AppConstants.statusDiajukan)) {
+        await _processCheckIn();
+      }
     }
   }
 
@@ -67,7 +78,7 @@ class _TicketVerifyScreenState extends State<TicketVerifyScreen> {
     final scannedCode = await QRScannerModal.scan(context);
     if (scannedCode != null && scannedCode.isNotEmpty && mounted) {
       HapticFeedback.mediumImpact();
-      _verifyHash(scannedCode);
+      await _verifyHash(scannedCode, true);
     }
   }
 
@@ -81,13 +92,14 @@ class _TicketVerifyScreenState extends State<TicketVerifyScreen> {
         SnackBar(
           content: Text(result.message),
           backgroundColor: result.success ? AppTheme.safeGreen : AppTheme.dangerRed,
+          duration: const Duration(seconds: 4),
         ),
       );
       if (result.success) {
         setState(() {
-          _permit = null;
-          _hashCtrl.clear();
-          _message = null;
+          _permit = _permit!.copyWith(statusIzin: AppConstants.statusDiJalur);
+          _isValid = true;
+          _message = result.message;
         });
       }
     }
@@ -286,27 +298,140 @@ class _TicketVerifyScreenState extends State<TicketVerifyScreen> {
                       'Block Hash',
                       '${_permit!.blockHash.substring(0, 16)}... (Valid SHA-256)',
                     ),
+                    if (_permit!.members.isNotEmpty) ...[
+                      const Divider(height: 20),
+                      const Row(
+                        children: [
+                          Icon(Icons.groups, size: 16, color: AppTheme.accentOrange),
+                          SizedBox(width: 6),
+                          Text(
+                            'Identitas Anggota Rombongan:',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      for (int i = 0; i < _permit!.members.length; i++) ...[
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.04),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: _permit!.members[i].isKetua
+                                  ? AppTheme.primaryGreen.withValues(alpha: 0.4)
+                                  : Colors.white.withValues(alpha: 0.08),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(_permit!.members[i].isKetua ? '👑 ' : '👤 '),
+                                  Expanded(
+                                    child: Text(
+                                      _permit!.members[i].nama,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                                    ),
+                                  ),
+                                  if (_permit!.members[i].isKetua)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.primaryGreen.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text('Ketua', style: TextStyle(fontSize: 10, color: AppTheme.primaryGreen, fontWeight: FontWeight.bold)),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Alamat: ${_permit!.members[i].alamat}',
+                                style: const TextStyle(fontSize: 11, color: Colors.white70),
+                              ),
+                              Text(
+                                'Kontak Darurat: ${_permit!.members[i].kontakDarurat}',
+                                style: const TextStyle(fontSize: 11, color: AppTheme.skyBlue),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
                   ],
                 ),
               ),
               const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton.icon(
-                  onPressed: _processCheckIn,
-                  icon: const Icon(Icons.check_circle_outline),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.safeGreen,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              if (_permit!.statusIzin == AppConstants.statusTerdaftar ||
+                  _permit!.statusIzin == AppConstants.statusDiajukan) ...[
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.skyBlue.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppTheme.skyBlue.withValues(alpha: 0.4)),
                   ),
-                  label: const Text(
-                    'Konfirmasi Pendaki Naik (Check-in)',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.checklist_rtl_rounded, color: AppTheme.skyBlue, size: 22),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Pemeriksaan Pos: Pastikan telah menerima hardfile fisik Surat Sehat dan memeriksa Kartu Identitas asli tiap pendaki.',
+                          style: TextStyle(fontSize: 11, color: Colors.white, height: 1.35),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    onPressed: _processCheckIn,
+                    icon: const Icon(Icons.check_circle_outline),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.safeGreen,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    label: const Text(
+                      'Konfirmasi Pendaki Naik (Check-in)',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ] else if (_permit!.statusIzin == AppConstants.statusDiJalur) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.safeGreen.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.safeGreen.withValues(alpha: 0.4)),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.verified, color: AppTheme.safeGreen, size: 22),
+                      SizedBox(width: 8),
+                      Text(
+                        'Pendaki Sudah Check-in (Sedang Di Jalur)',
+                        style: TextStyle(
+                          color: AppTheme.safeGreen,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ],
         ),

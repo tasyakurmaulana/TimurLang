@@ -12,7 +12,9 @@ import '../models/mountain.dart';
 import '../models/basecamp_post.dart';
 import '../models/simaksi_permit.dart';
 import '../models/sos_incident.dart';
+import '../models/user_personal_data.dart';
 import '../models/course_feedback.dart';
+import 'database_service.dart';
 
 class SupabaseService {
   static final SupabaseService instance = SupabaseService._internal();
@@ -208,6 +210,67 @@ class SupabaseService {
   }
 
   // ══════════════════════════════════════════
+  // USER PERSONAL DATA OPERATIONS (Syarat SIMAKSI)
+  // ══════════════════════════════════════════
+
+  Future<bool> syncPersonalData(UserPersonalData data) async {
+    if (!_initialized || _client == null) return false;
+    try {
+      // 1. Pastikan user lokal sudah tersinkronisasi ke tabel users di Supabase terlebih dahulu
+      final localUser = await DatabaseService.instance.getUserById(data.userId);
+      if (localUser != null) {
+        await syncUser(localUser);
+      }
+
+      final payload = {
+        'user_id': data.userId,
+        'kewarganegaraan': data.kewarganegaraan,
+        'jenis_identitas': data.jenisIdentitas,
+        'nomor_ktp': data.nomorKtp,
+        'file_ktp_url': data.fileKtpUrl,
+        'nama_lengkap': data.namaLengkap,
+        'nama_belakang': data.namaBelakang,
+        'tanggal_lahir': data.tanggalLahir.toIso8601String().split('T')[0],
+        'jenis_kelamin': data.jenisKelamin,
+        'no_telepon': data.noTelepon,
+        'no_telepon_darurat': data.noTeleponDarurat,
+        'surel': data.surel,
+        'berat_badan': data.beratBadan,
+        'tinggi_badan': data.tinggiBadan,
+        'provinsi': data.provinsi,
+        'kota_kabupaten': data.kotaKabupaten,
+        'kecamatan': data.kecamatan,
+        'kelurahan': data.kelurahan,
+        'alamat': data.alamat,
+        'updated_at': data.updatedAt.toIso8601String(),
+      };
+
+      await _client!.from('user_personal_data').upsert(payload, onConflict: 'user_id');
+      debugPrint('✅ Berhasil sync data diri (${data.userId}) ke Supabase');
+      return true;
+    } catch (e) {
+      debugPrint('⚠️ Gagal sync data diri ke Supabase: $e');
+      return false;
+    }
+  }
+
+  Future<UserPersonalData?> getPersonalData(String userId) async {
+    if (!_initialized || _client == null) return null;
+    try {
+      final response = await _client!
+          .from('user_personal_data')
+          .select()
+          .eq('user_id', userId)
+          .maybeSingle();
+      if (response == null) return null;
+      return UserPersonalData.fromMap(response);
+    } catch (e) {
+      debugPrint('⚠️ Gagal get data diri dari Supabase: $e');
+      return null;
+    }
+  }
+
+  // ══════════════════════════════════════════
   // MOUNTAIN OPERATIONS
   // ══════════════════════════════════════════
 
@@ -260,12 +323,84 @@ class SupabaseService {
         'nama_pos': post.namaPos,
         'lokasi_deskripsi': post.lokasiDeskripsi,
         'kontak_pos': post.kontakPos,
+        'status_jalur': post.statusJalur,
+        'kuota_harian': post.kuotaHarian,
+        'sisa_kuota_hari_ini': post.sisaKuotaHariIni,
+        'harga_simaksi': post.hargaSimaksi,
         'created_at': post.createdAt.toIso8601String(),
+        'updated_at': (post.updatedAt ?? post.createdAt).toIso8601String(),
       });
       debugPrint('✅ Berhasil sync basecamp post (${post.namaPos}) ke Supabase');
       return true;
     } catch (e) {
-      debugPrint('❌ Gagal sync basecamp post: $e');
+      debugPrint('⚠️ Gagal sync basecamp post dengan kolom lengkap ($e), mencoba fallback dasar...');
+      try {
+        await _client!.from('basecamp_posts').upsert({
+          'id': post.id,
+          'gunung_id': post.gunungId,
+          'user_id_petugas': post.userIdPetugas,
+          'nama_pos': post.namaPos,
+          'lokasi_deskripsi': post.lokasiDeskripsi,
+          'kontak_pos': post.kontakPos,
+          'created_at': post.createdAt.toIso8601String(),
+        });
+        debugPrint('✅ Berhasil sync basecamp post (${post.namaPos}) via fallback dasar');
+        return true;
+      } catch (e2) {
+        debugPrint('❌ Gagal sync basecamp post fallback: $e2');
+        return false;
+      }
+    }
+  }
+
+  /// Update pengaturan operasional basecamp ke Supabase
+  Future<bool> updateBasecampSettings({
+    required String basecampId,
+    required String statusJalur,
+    required int kuotaHarian,
+    required int sisaKuotaHariIni,
+    required double hargaSimaksi,
+  }) async {
+    if (!_initialized || _client == null) return false;
+    try {
+      await _client!.from('basecamp_posts').update({
+        'status_jalur': statusJalur,
+        'kuota_harian': kuotaHarian,
+        'sisa_kuota_hari_ini': sisaKuotaHariIni,
+        'harga_simaksi': hargaSimaksi,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', basecampId);
+      debugPrint('✅ Berhasil update pengaturan basecamp $basecampId di Supabase');
+      return true;
+    } catch (e) {
+      debugPrint('⚠️ Gagal update basecamp settings di Supabase: $e');
+      return false;
+    }
+  }
+
+  /// Kurangi sisa kuota basecamp secara realtime di Supabase
+  Future<bool> reduceBasecampQuota(String basecampId, int amount) async {
+    if (!_initialized || _client == null) return false;
+    try {
+      final res = await _client!
+          .from('basecamp_posts')
+          .select('kuota_harian, sisa_kuota_hari_ini')
+          .eq('id', basecampId)
+          .maybeSingle();
+      if (res != null) {
+        final kuota = (res['kuota_harian'] as num?)?.toInt() ?? 100;
+        final currentSisa = (res['sisa_kuota_hari_ini'] as num?)?.toInt() ?? kuota;
+        final newSisa = (currentSisa - amount).clamp(0, kuota);
+        await _client!.from('basecamp_posts').update({
+          'sisa_kuota_hari_ini': newSisa,
+          'updated_at': DateTime.now().toIso8601String(),
+        }).eq('id', basecampId);
+        debugPrint('✅ Berhasil kurangi kuota basecamp $basecampId sebesar $amount di Supabase (sisa: $newSisa)');
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('⚠️ Gagal reduce kuota basecamp di Supabase: $e');
       return false;
     }
   }
@@ -340,6 +475,7 @@ class SupabaseService {
         'nama_gunung': permit.namaGunung,
         'total_biaya': permit.totalBiaya,
         'matauang': permit.matauang,
+        if (permit.dataAnggota != null) 'data_anggota': permit.dataAnggota,
         'created_at': permit.createdAt.toIso8601String(),
       });
       debugPrint('✅ Berhasil sync permit (${permit.id}) ke Supabase');
@@ -556,6 +692,27 @@ class SupabaseService {
       return true;
     } catch (e) {
       debugPrint('❌ Gagal sync feedback: $e');
+      // Jika gagal karena foreign key user_id belum ada di tabel users Supabase, sinkronkan user dulu lalu coba lagi
+      try {
+        final localUser = await DatabaseService.instance.getUserById(feedback.userId);
+        if (localUser != null) {
+          final userSynced = await syncUser(localUser);
+          if (userSynced) {
+            await _client!.from('course_feedbacks').upsert({
+              'id': feedback.id,
+              'user_id': feedback.userId,
+              'nama_pengguna': feedback.namaPengguna,
+              'kesan_pesan': feedback.kesanPesan,
+              'rating': feedback.rating,
+              'submitted_at': feedback.submittedAt.toIso8601String(),
+            });
+            debugPrint('✅ Berhasil sync feedback setelah sinkronisasi user');
+            return true;
+          }
+        }
+      } catch (retryError) {
+        debugPrint('❌ Gagal retry sync feedback: $retryError');
+      }
       return false;
     }
   }
@@ -572,6 +729,23 @@ class SupabaseService {
           .toList();
     } catch (e) {
       debugPrint('❌ Gagal get feedbacks: $e');
+      return [];
+    }
+  }
+
+  Future<List<CourseFeedback>> getLatestFeedbacks({int limit = 5}) async {
+    if (!_initialized || _client == null) return [];
+    try {
+      final response = await _client!
+          .from('course_feedbacks')
+          .select()
+          .order('submitted_at', ascending: false)
+          .limit(limit);
+      return (response as List)
+          .map((m) => CourseFeedback.fromMap(m))
+          .toList();
+    } catch (e) {
+      debugPrint('❌ Gagal get latest feedbacks: $e');
       return [];
     }
   }

@@ -80,24 +80,60 @@ class _HikerMonitorScreenState extends State<HikerMonitorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final int totalPeople = _activeHikers.fold<int>(0, (sum, p) => sum + p.jumlahAnggota);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Monitor Pendaki')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _activeHikers.isEmpty
               ? const Center(child: Text('Tidak ada rombongan di jalur saat ini.'))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _activeHikers.length,
-                  itemBuilder: (context, i) {
-                    final p = _activeHikers[i];
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(16),
+              : Column(
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                      padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: AppTheme.cardDark,
+                        color: AppTheme.skyBlue.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppTheme.accentOrange.withValues(alpha: 0.3)),
+                        border: Border.all(color: AppTheme.skyBlue.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.groups_outlined, color: AppTheme.skyBlue, size: 28),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Total: $totalPeople Orang di Jalur',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
+                                ),
+                                Text(
+                                  'Dari ${_activeHikers.length} rombongan pendaki aktif',
+                                  style: const TextStyle(fontSize: 11, color: Colors.white70),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _activeHikers.length,
+                        itemBuilder: (context, i) {
+                          final p = _activeHikers[i];
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.cardDark,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppTheme.accentOrange.withValues(alpha: 0.3)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -140,6 +176,9 @@ class _HikerMonitorScreenState extends State<HikerMonitorScreen> {
                     );
                   },
                 ),
+              ),
+            ],
+          ),
     );
   }
 }

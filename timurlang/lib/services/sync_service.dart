@@ -140,7 +140,29 @@ class SyncService {
         }
       }
 
-      // 5. Proses antrian sync queues
+      // 5. Sync semua Course Feedbacks lokal
+      final allFeedbacks = await _db.getAllFeedbacks();
+      for (final fb in allFeedbacks) {
+        final ok = await _supabase.syncFeedback(fb);
+        if (ok) {
+          synced++;
+        } else {
+          failed++;
+        }
+      }
+
+      // 6. Sync semua User Personal Data (Data Diri SIMAKSI)
+      final allPersonal = await _db.getAllPersonalData();
+      for (final p in allPersonal) {
+        final ok = await _supabase.syncPersonalData(p);
+        if (ok) {
+          synced++;
+        } else {
+          failed++;
+        }
+      }
+
+      // 7. Proses antrian sync queues
       final pending = await _db.getPendingSyncItems();
       for (final item in pending) {
         final success = await _syncSingleItem(item);
@@ -151,7 +173,7 @@ class SyncService {
         }
       }
 
-      // 6. Tarik data terbaru dari Supabase ke lokal SQLite (Basecamp, Simaksi, SOS)
+      // 7. Tarik data terbaru dari Supabase ke lokal SQLite (Basecamp, Simaksi, SOS, Feedback)
       final pullResult = await pullFromSupabase();
 
       final message = 'Sinkronisasi online selesai! $synced data diunggah, ${pullResult.pulled} data terbaru disinkronkan dari server.';
@@ -190,6 +212,13 @@ class SyncService {
       final incidents = await _supabase.getAllSosIncidents();
       for (final inc in incidents) {
         await _db.insertSosIncident(inc);
+        count++;
+      }
+
+      // 4. Tarik Course Feedbacks
+      final feedbacks = await _supabase.getAllFeedbacks();
+      for (final fb in feedbacks) {
+        await _db.insertFeedback(fb);
         count++;
       }
 

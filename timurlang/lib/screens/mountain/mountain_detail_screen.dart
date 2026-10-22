@@ -182,33 +182,72 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
                   const SizedBox(height: 20),
 
                   // Basecamps
-                  const Text('Pos Pendakian', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  const Text('Pos Pendakian & Basecamp Jalur', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
                   ..._basecamps.map((bc) => Container(
-                    margin: const EdgeInsets.only(bottom: 8),
+                    margin: const EdgeInsets.only(bottom: 10),
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: AppTheme.cardDark,
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: bc.isBuka ? Colors.white12 : AppTheme.dangerRed.withValues(alpha: 0.3),
+                      ),
                     ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.house, color: AppTheme.primaryGreen, size: 20),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(bc.namaPos, style: const TextStyle(fontWeight: FontWeight.w600)),
-                              Text(
-                                bc.lokasiDeskripsi,
-                                style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.5)),
+                        Row(
+                          children: [
+                            Icon(
+                              bc.isBuka ? Icons.house : Icons.cancel_outlined,
+                              color: bc.isBuka ? AppTheme.primaryGreen : AppTheme.dangerRed,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(bc.namaPos, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: (bc.isBuka ? AppTheme.safeGreen : AppTheme.dangerRed).withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(6),
                               ),
-                            ],
-                          ),
+                              child: Text(
+                                bc.isBuka ? 'Jalur Buka' : 'Jalur Tutup',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: bc.isBuka ? AppTheme.safeGreen : AppTheme.dangerRed,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        if (bc.kontakPos != null)
-                          Text(bc.kontakPos!, style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.4))),
+                        const SizedBox(height: 6),
+                        Text(
+                          bc.lokasiDeskripsi,
+                          style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.6)),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.people_outline, size: 14, color: AppTheme.accentOrange),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Sisa Kuota: ${bc.sisaKuotaHariIni} / ${bc.kuotaHarian} orang',
+                              style: const TextStyle(fontSize: 11, color: AppTheme.accentOrange, fontWeight: FontWeight.w500),
+                            ),
+                            const Spacer(),
+                            const Icon(Icons.payments_outlined, size: 14, color: AppTheme.primaryGreen),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Rp ${bc.hargaSimaksi.toInt()}/hr',
+                              style: const TextStyle(fontSize: 11, color: AppTheme.primaryGreen, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   )),

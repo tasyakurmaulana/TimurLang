@@ -23,6 +23,7 @@ import 'screens/safety/sos_beacon_screen.dart';
 import 'screens/ai/survival_assistant_screen.dart';
 import 'screens/game/mountain_climber_screen.dart';
 import 'screens/profile/profile_screen.dart';
+import 'screens/profile/personal_data_screen.dart';
 import 'screens/profile/medical_profile_screen.dart';
 import 'screens/feedback/course_feedback_screen.dart';
 
@@ -38,7 +39,7 @@ class MainApp extends StatelessWidget {
       title: 'TimurLang',
       theme: AppTheme.darkTheme,
       debugShowCheckedModeBanner: false,
-      initialRoute: AppRoutes.mountainClimber,
+      initialRoute: AppRoutes.splash,
       routes: {
         AppRoutes.splash: (context) => const SplashScreen(),
         AppRoutes.login: (context) => const LoginScreen(),
@@ -60,6 +61,7 @@ class MainApp extends StatelessWidget {
         AppRoutes.survivalAssistant: (context) => const SurvivalAssistantScreen(),
         AppRoutes.mountainClimber: (context) => const MountainClimberScreen(),
         AppRoutes.profile: (context) => const ProfileScreen(),
+        AppRoutes.personalData: (context) => const PersonalDataScreen(),
         AppRoutes.medicalProfile: (context) => const MedicalProfileScreen(),
         AppRoutes.courseFeedback: (context) => const CourseFeedbackScreen(),
       },

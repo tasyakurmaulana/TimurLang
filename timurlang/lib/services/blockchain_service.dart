@@ -28,6 +28,7 @@ class BlockchainService {
     String? namaGunung,
     double? totalBiaya,
     String? matauang,
+    String? dataAnggota,
   }) async {
     final permitId = const Uuid().v4();
     final now = DateTime.now();
@@ -66,11 +67,20 @@ class BlockchainService {
       namaGunung: namaGunung,
       totalBiaya: totalBiaya,
       matauang: matauang,
+      dataAnggota: dataAnggota,
       createdAt: now,
     );
 
     // Simpan lokal
     await _db.insertPermit(permit);
+
+    // Kurangi sisa kuota basecamp secara realtime saat pendaftaran SIMAKSI berhasil
+    if (permit.basecampId != null && permit.basecampId!.isNotEmpty) {
+      await _db.reduceBasecampQuota(permit.basecampId!, permit.jumlahAnggota);
+      if (SupabaseService.instance.isInitialized) {
+        await SupabaseService.instance.reduceBasecampQuota(permit.basecampId!, permit.jumlahAnggota);
+      }
+    }
 
     // Sinkronkan ke Supabase (online)
     if (SupabaseService.instance.isInitialized) {
@@ -98,11 +108,12 @@ class BlockchainService {
 
       SimaksiPermit? permit = await _db.getPermitByHash(cleanHash);
 
-      // Jika belum ada di database lokal perangkat ini, cari di Supabase
-      if (permit == null && SupabaseService.instance.isInitialized) {
-        permit = await SupabaseService.instance.getPermitByHash(cleanHash);
-        if (permit != null) {
-          await _db.insertPermit(permit);
+      // Cek ke Supabase jika online agar selalu mendapatkan status izin terbaru
+      if (SupabaseService.instance.isInitialized) {
+        final remotePermit = await SupabaseService.instance.getPermitByHash(cleanHash);
+        if (remotePermit != null) {
+          permit = remotePermit;
+          await _db.insertPermit(remotePermit);
         }
       }
 
@@ -124,8 +135,17 @@ class BlockchainService {
         return (valid: false, message: 'Integritas data tidak valid - hash tidak cocok', permit: permit);
       }
 
+      // QR Code adalah tiket sekali pakai (single-use)
+      if (permit.statusIzin == AppConstants.statusDiJalur) {
+        return (
+          valid: false,
+          message: 'QR Code sekali pakai sudah pernah digunakan! Tiket ini sudah tervalidasi dan pendaki sedang di jalur.',
+          permit: permit,
+        );
+      }
+
       if (permit.statusIzin == AppConstants.statusSelesai) {
-        return (valid: false, message: 'Tiket sudah digunakan (status: Selesai)', permit: permit);
+        return (valid: false, message: 'QR Code sudah tidak berlaku (status: Selesai)', permit: permit);
       }
 
       if (permit.statusIzin == AppConstants.statusDitolak) {
@@ -147,14 +167,18 @@ class BlockchainService {
 
     final permit = verification.permit!;
     if (permit.statusIzin == AppConstants.statusDiJalur) {
-      return (success: false, message: 'Pendaki sudah di jalur');
+      return (success: false, message: 'Pendaki sudah di jalur (QR sudah pernah digunakan)');
     }
 
     await _db.updatePermitStatus(permit.id, AppConstants.statusDiJalur);
     if (SupabaseService.instance.isInitialized) {
       await SupabaseService.instance.updatePermitStatus(permit.id, AppConstants.statusDiJalur);
     }
-    return (success: true, message: 'Check-in berhasil. Status: Di Jalur');
+
+    return (
+      success: true,
+      message: 'Check-in berhasil! ${permit.jumlahAnggota} orang telah masuk ke jalur pendakian.',
+    );
   }
 
   /// Check-out a permit (Basecamp)
