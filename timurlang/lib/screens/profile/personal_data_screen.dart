@@ -208,7 +208,7 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
   void _showKtpSourceSheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppTheme.cardDark,
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -220,12 +220,12 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
             children: [
               const Text(
                 'Unggah Foto Dokumen Identitas (KTP / Paspor)',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
               ),
               const SizedBox(height: 16),
               ListTile(
                 leading: const Icon(Icons.camera_alt, color: AppTheme.primaryGreen),
-                title: const Text('Ambil Foto Kamera', style: TextStyle(color: Colors.white)),
+                title: const Text('Ambil Foto Kamera', style: TextStyle(color: AppTheme.textPrimary)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _pickKtpImage(ImageSource.camera);
@@ -233,7 +233,7 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
               ),
               ListTile(
                 leading: const Icon(Icons.photo_library, color: AppTheme.skyBlue),
-                title: const Text('Pilih dari Galeri', style: TextStyle(color: Colors.white)),
+                title: const Text('Pilih dari Galeri', style: TextStyle(color: AppTheme.textPrimary)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _pickKtpImage(ImageSource.gallery);
@@ -407,12 +407,12 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                               children: [
                                 Text(
                                   'Syarat Wajib SIMAKSI Digital',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary),
                                 ),
                                 SizedBox(height: 4),
                                 Text(
                                   'Data diri resmi sesuai kartu identitas diperlukan demi verifikasi keselamatan & asuransi pendakian.',
-                                  style: TextStyle(fontSize: 11, color: Colors.white70),
+                                  style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                                 ),
                               ],
                             ),
@@ -457,7 +457,7 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                     // Upload File Foto KTP
                     const Text(
                       'Unggah Foto / File KTP (Opsional)',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70),
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
                     ),
                     const SizedBox(height: 8),
                     GestureDetector(
@@ -466,9 +466,9 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                         width: double.infinity,
                         height: 150,
                         decoration: BoxDecoration(
-                          color: AppTheme.cardDark,
+                          color: AppTheme.surface,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: _fileKtpUrl != null ? AppTheme.safeGreen : Colors.white24),
+                          border: Border.all(color: _fileKtpUrl != null ? AppTheme.safeGreen : AppTheme.border),
                         ),
                         child: _fileKtpUrl != null
                             ? Stack(
@@ -506,11 +506,11 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                             : Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.cloud_upload_outlined, size: 36, color: Colors.white.withValues(alpha: 0.4)),
+                                  const Icon(Icons.cloud_upload_outlined, size: 36, color: AppTheme.textSecondary),
                                   const SizedBox(height: 8),
-                                  const Text('Ketuk untuk unggah foto KTP', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                                  const Text('Ketuk untuk unggah foto KTP', style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
                                   const SizedBox(height: 4),
-                                  Text('Kamera atau Galeri Foto', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11)),
+                                  const Text('Kamera atau Galeri Foto', style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
                                 ],
                               ),
                       ),
@@ -542,9 +542,9 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                         decoration: BoxDecoration(
-                          color: AppTheme.cardDark,
+                          color: AppTheme.surface,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: _tanggalLahir != null ? AppTheme.primaryGreen : Colors.white24),
+                          border: Border.all(color: _tanggalLahir != null ? AppTheme.primaryGreen : AppTheme.border),
                         ),
                         child: Row(
                           children: [
@@ -554,7 +554,7 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('Tanggal Lahir *', style: TextStyle(fontSize: 11, color: Colors.white54)),
+                                  const Text('Tanggal Lahir *', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
                                   const SizedBox(height: 2),
                                   Text(
                                     _tanggalLahir != null
@@ -563,13 +563,13 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold,
-                                      color: _tanggalLahir != null ? Colors.white : Colors.white38,
+                                      color: _tanggalLahir != null ? AppTheme.textPrimary : AppTheme.textSecondary,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            const Icon(Icons.calendar_today, size: 16, color: Colors.white54),
+                            const Icon(Icons.calendar_today, size: 16, color: AppTheme.textSecondary),
                           ],
                         ),
                       ),
@@ -725,7 +725,7 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
         const SizedBox(width: 8),
         Text(
           title,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
         ),
       ],
     );
@@ -740,24 +740,24 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70)),
+        Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
         const SizedBox(height: 6),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
           decoration: BoxDecoration(
-            color: AppTheme.cardDark,
+            color: AppTheme.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white24),
+            border: Border.all(color: AppTheme.border, width: 1),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<T>(
               value: value,
               isExpanded: true,
-              dropdownColor: AppTheme.cardDarkElevated,
+              dropdownColor: AppTheme.surface,
               items: items.map((item) {
                 return DropdownMenuItem<T>(
                   value: item,
-                  child: Text(item.toString(), style: const TextStyle(color: Colors.white)),
+                  child: Text(item.toString(), style: const TextStyle(color: AppTheme.textPrimary)),
                 );
               }).toList(),
               onChanged: onChanged,

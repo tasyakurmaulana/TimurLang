@@ -3,6 +3,7 @@
 // ============================================
 
 import 'package:flutter/material.dart';
+import '../config/theme.dart';
 
 class CustomTextField extends StatefulWidget {
   final TextEditingController? controller;
@@ -49,7 +50,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
         maxLines: widget.isPassword ? 1 : widget.maxLines,
         enabled: widget.enabled,
         onChanged: widget.onChanged,
-        style: const TextStyle(fontSize: 15),
+        style: const TextStyle(fontSize: 15, color: AppTheme.textPrimary),
         decoration: InputDecoration(
           labelText: widget.label,
           hintText: widget.hint,

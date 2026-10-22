@@ -166,9 +166,9 @@ class _MedicalProfileScreenState extends State<MedicalProfileScreen> {
         child: Column(
           children: [
             const SizedBox(height: 40),
-            const Icon(Icons.medical_information, size: 64, color: Colors.white54),
+            const Icon(Icons.medical_information, size: 64, color: AppTheme.textSecondary),
             const SizedBox(height: 16),
-            const Text('Belum ada data rekam medis.'),
+            const Text('Belum ada data rekam medis.', style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: () => setState(() => _isEditing = true),
@@ -186,7 +186,7 @@ class _MedicalProfileScreenState extends State<MedicalProfileScreen> {
         _infoCard('Riwayat Penyakit', _profile!.riwayatPenyakit, Icons.sick, AppTheme.warningYellow),
         _infoCard('Alergi', _profile!.alergi, Icons.coronavirus, AppTheme.accentAmber),
         const SizedBox(height: 16),
-        const Text('Kontak Darurat', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text('Kontak Darurat', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
         const SizedBox(height: 8),
         _infoCard('Nama Kontak', _profile!.kontakDaruratNama, Icons.person, AppTheme.skyBlue),
         _infoCard('No. Telepon', _profile!.kontakDaruratTelepon, Icons.phone, AppTheme.skyBlue),
@@ -199,8 +199,9 @@ class _MedicalProfileScreenState extends State<MedicalProfileScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardDark,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.border, width: 1),
       ),
       child: Row(
         children: [
@@ -210,9 +211,9 @@ class _MedicalProfileScreenState extends State<MedicalProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                Text(title, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
                 const SizedBox(height: 4),
-                Text(value.isEmpty ? '-' : value, style: const TextStyle(fontSize: 16)),
+                Text(value.isEmpty ? '-' : value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
               ],
             ),
           ),

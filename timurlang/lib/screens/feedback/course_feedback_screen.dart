@@ -142,12 +142,12 @@ class _CourseFeedbackScreenState extends State<CourseFeedbackScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardDark,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: AppTheme.border, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
+            color: AppTheme.textPrimary.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -160,7 +160,7 @@ class _CourseFeedbackScreenState extends State<CourseFeedbackScreen> {
             children: [
               CircleAvatar(
                 radius: 18,
-                backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
+                backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.15),
                 child: Text(
                   initial,
                   style: const TextStyle(
@@ -183,21 +183,21 @@ class _CourseFeedbackScreenState extends State<CourseFeedbackScreen> {
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
-                              color: Colors.white,
+                              color: AppTheme.textPrimary,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.08),
+                            color: AppTheme.primarySubtle,
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
                             'Mahasiswa',
-                            style: TextStyle(fontSize: 9, color: Colors.white60),
+                            style: TextStyle(fontSize: 9.5, color: AppTheme.primary, fontWeight: FontWeight.w600),
                           ),
                         ),
                       ],
@@ -205,7 +205,7 @@ class _CourseFeedbackScreenState extends State<CourseFeedbackScreen> {
                     const SizedBox(height: 2),
                     Text(
                       _formatDate(fb.submittedAt),
-                      style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.45)),
+                      style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                     ),
                   ],
                 ),
@@ -218,15 +218,15 @@ class _CourseFeedbackScreenState extends State<CourseFeedbackScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.03),
+              color: AppTheme.surfaceSubtle,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
+              border: Border.all(color: AppTheme.border, width: 1),
             ),
             child: Text(
               fb.kesanPesan,
               style: const TextStyle(
                 fontSize: 13,
-                color: Colors.white,
+                color: AppTheme.textPrimary,
                 height: 1.45,
               ),
             ),
@@ -357,12 +357,12 @@ class _CourseFeedbackScreenState extends State<CourseFeedbackScreen> {
             if (widget.embedded) const SizedBox(height: 16),
             const Text(
               'Saran & Kesan Mata Kuliah',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
             ),
             const SizedBox(height: 6),
             const Text(
               'Evaluasi dan masukan untuk mata kuliah Pemrograman Aplikasi Mobile.',
-              style: TextStyle(color: Colors.white54, fontSize: 13),
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 24),
 
@@ -370,9 +370,9 @@ class _CourseFeedbackScreenState extends State<CourseFeedbackScreen> {
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: AppTheme.cardDark,
+                color: AppTheme.surface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                border: Border.all(color: AppTheme.border, width: 1),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -471,17 +471,17 @@ class _CourseFeedbackScreenState extends State<CourseFeedbackScreen> {
                     children: [
                       Text(
                         'Saran & Kesan Terbaru',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                       ),
                       Text(
                         '5 ulasan evaluasi terbaru dari pengguna lain',
-                        style: TextStyle(fontSize: 11, color: Colors.white54),
+                        style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                       ),
                     ],
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.refresh, size: 20, color: Colors.white54),
+                  icon: const Icon(Icons.refresh, size: 20, color: AppTheme.textSecondary),
                   tooltip: 'Segarkan data',
                   onPressed: () => _loadRecentFeedbacks(),
                 ),
@@ -502,22 +502,22 @@ class _CourseFeedbackScreenState extends State<CourseFeedbackScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
                 decoration: BoxDecoration(
-                  color: AppTheme.cardDark,
+                  color: AppTheme.surface,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                  border: Border.all(color: AppTheme.border, width: 1),
                 ),
-                child: Column(
+                child: const Column(
                   children: [
-                    Icon(Icons.rate_review_outlined, size: 44, color: Colors.white.withValues(alpha: 0.25)),
-                    const SizedBox(height: 12),
-                    const Text(
+                    Icon(Icons.rate_review_outlined, size: 44, color: AppTheme.textSecondary),
+                    SizedBox(height: 12),
+                    Text(
                       'Belum ada saran & kesan dari pengguna lain.',
-                      style: TextStyle(color: Colors.white60, fontSize: 13, fontWeight: FontWeight.w500),
+                      style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       'Jadilah yang pertama mengirimkan evaluasi mata kuliah!',
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.38), fontSize: 11),
+                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
                     ),
                   ],
                 ),

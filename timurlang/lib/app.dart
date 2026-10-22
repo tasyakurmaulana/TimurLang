@@ -37,7 +37,7 @@ class MainApp extends StatelessWidget {
     return MaterialApp(
       navigatorKey: navigatorKey,
       title: 'TimurLang',
-      theme: AppTheme.darkTheme,
+      theme: AppTheme.auraTheme,
       debugShowCheckedModeBanner: false,
       initialRoute: AppRoutes.splash,
       routes: {

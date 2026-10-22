@@ -184,8 +184,6 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
       final basecampId = _args['basecampId'] as String?;
       final dataAnggota = _args['dataAnggota'] as String?;
 
-      final dataAnggota = _args['dataAnggota'] as String?;
-
       final permit = await BlockchainService.instance.createPermit(
         userId: user.id,
         gunungId: mountain.id,

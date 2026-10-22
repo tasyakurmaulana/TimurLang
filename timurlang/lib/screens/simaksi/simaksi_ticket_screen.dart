@@ -4,6 +4,7 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../config/theme.dart';
 import '../../models/simaksi_permit.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
@@ -82,9 +83,29 @@ class _SimaksiTicketScreenState extends State<SimaksiTicketScreen> {
                           Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.receipt_long, size: 80, color: Colors.white.withValues(alpha: 0.2)),
+                              Container(
+                                width: 72,
+                                height: 72,
+                                decoration: const BoxDecoration(
+                                  color: AppTheme.primarySubtle,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.receipt_long, size: 36, color: AppTheme.primary),
+                              ),
                               const SizedBox(height: 16),
-                              Text('Belum ada tiket.', style: TextStyle(color: Colors.white.withValues(alpha: 0.5))),
+                              const Text(
+                                'Belum Ada Tiket Simaksi',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                'Tiket izin pendakian yang diajukan akan muncul di sini.',
+                                style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                              ),
                             ],
                           ),
                         ],

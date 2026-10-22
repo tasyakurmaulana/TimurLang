@@ -5,7 +5,7 @@
 // - Background Mountain: assets/images/background_mount.png
 // - Background Trees: assets/images/background_tree.png
 // - Land: assets/images/land.png
-// - Hiker: assets/images/hiker.png (9-frame sprite sheet)
+// - Hiker: assets/images/hiker 1.png (6-frame sprite sheet)
 // - Obstacle 1 (Ground): assets/images/fox.png (4-frame sprite sheet)
 // - Obstacle 2 (Air): assets/images/elang.png / eagle.png (4-frame sprite sheet)
 // ============================================
@@ -57,7 +57,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   bool isAssetsLoaded = false;
 
   // ── Animasi Karakter & Rintangan ──
-  int currentRunFrame = 0; // Frame 0..6 untuk lari (7-frame stride cycle)
+  int currentRunFrame = 0; // Frame 0..3 untuk lari (4-frame stride cycle hiker 1.png)
   double animTimer = 0;
 
   int currentFoxFrame = 0; // Frame 0, 1, 2, 3 untuk rubah lari
@@ -124,7 +124,11 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
 
   Future<void> _loadAllAssets() async {
     // Muat semua asset pada resolusi native untuk pemotongan koordinat yang presisi
-    hikerSpriteSheet = await _loadUiImage('assets/images/hiker.png') ??
+    hikerSpriteSheet = await _loadUiImage('assets/images/hiker 1.png') ??
+        await _loadUiImage('assets/images/hiker_1.png') ??
+        await _loadUiImage('lib/assets/images/hiker 1.png') ??
+        await _loadUiImage('lib/assets/images/hiker_1.png') ??
+        await _loadUiImage('assets/images/hiker.png') ??
         await _loadUiImage('lib/assets/images/hiker.png') ??
         await _loadUiImage('assets/images/hiker.jpeg');
 
@@ -281,13 +285,13 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
         _jumpCount = 0;
       }
 
-      // 2. Update Animasi Lari Hiker (Siklus 6-frame simetris alami: Frame 0..5)
+      // 2. Update Animasi Lari Hiker (Siklus 4-frame dinamis: Frame 0..3)
       if (playerY == 0 && !isDucking) {
         animTimer += dt;
-        final double frameDuration = (0.075 * (300.0 / effectiveGameSpeed)).clamp(0.045, 0.08);
+        final double frameDuration = (0.09 * (300.0 / effectiveGameSpeed)).clamp(0.055, 0.10);
         if (animTimer >= frameDuration) {
           animTimer = 0;
-          currentRunFrame = (currentRunFrame + 1) % 6;
+          currentRunFrame = (currentRunFrame + 1) % 4;
         }
       }
 
@@ -344,13 +348,13 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       // 9. Deteksi Tabrakan Presisi Menggunakan Model Ketinggian (Altitude Model)
       // Altitude dihitung dari permukaan tanah ke atas (Ground = 0.0)
       const double playerLeft = 65.0;
-      final double standingHikerWidth = baseHikerHeight * 0.74; // ~68.0
-      final double playerXStart = playerLeft + 16.0;
-      final double playerXEnd = playerLeft + standingHikerWidth - 16.0;
+      final double standingHikerWidth = baseHikerHeight * 0.70; // ~64.4 (proporsional hiker 1.png)
+      final double playerXStart = playerLeft + 12.0;
+      final double playerXEnd = playerLeft + standingHikerWidth - 12.0;
 
       final double jumpAltitude = -playerY; // >= 0
       final double currentHeight = isDucking
-          ? baseHikerHeight * 0.68 // ~62.5 saat nunduk (aman lewat di bawah elang)
+          ? baseHikerHeight * 0.654 // ~60.2 saat nunduk (aman lewat di bawah elang)
           : baseHikerHeight; // 92.0 saat berdiri
 
       final double playerAltBottom = jumpAltitude;
@@ -416,17 +420,19 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     final double groundLevel = screenSize.height * 0.72;
 
     // Dimensi Hiker sesuai status (Run, Jump, Duck)
-    final double standingHikerWidth = baseHikerHeight * 0.74; // ~68.0
-    final double currentHikerWidth = standingHikerWidth;
+    final double standingHikerWidth = baseHikerHeight * 0.70; // ~64.4 (proporsional hiker 1.png)
+    final double currentHikerWidth = isDucking
+        ? baseHikerHeight * 0.65 // ~59.8 saat merunduk
+        : standingHikerWidth;
     final double currentHikerHeight = isDucking
-        ? baseHikerHeight * 0.68 // ~62.5 (merunduk lewat di bawah elang)
+        ? baseHikerHeight * 0.654 // ~60.2 (merunduk lewat di bawah elang)
         : (playerY < 0
-            ? baseHikerHeight * 1.08 // ~99.4 (melompat tekuk kaki)
+            ? baseHikerHeight * 1.108 // ~101.9 (melompat tekuk kaki)
             : baseHikerHeight); // 92.0 (berlari)
 
     final int activeHikerFrame = isDucking
-        ? 8
-        : (playerY < 0 ? 7 : (isPlaying ? currentRunFrame : 6));
+        ? 5
+        : (playerY < 0 ? 4 : (isPlaying ? currentRunFrame : 0));
 
     return Focus(
       focusNode: _focusNode,
@@ -1028,10 +1034,10 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
 }
 
 // ============================================================================
-// 1. SPRITE PAINTER HIKER (hiker.png 9-FRAME SPRITESHEET)
-// Frame 0..6 : Siklus Berlari 7-Frame (Stride dinamis & halus)
-// Frame 7    : Pose Melompat (Kaki ditekuk ke atas di udara)
-// Frame 8    : Pose Menunduk / Merunduk (Badan rendah lewat di bawah elang)
+// 1. SPRITE PAINTER HIKER (hiker 1.png 6-FRAME SPRITESHEET)
+// Frame 0..3 : Siklus Berlari 4-Frame (Stride dinamis & halus)
+// Frame 4    : Pose Melompat (Kaki ditekuk melayang di udara, tongkat terangkat)
+// Frame 5    : Pose Menunduk / Merunduk (Badan rendah lewat di bawah elang)
 // Koordinat persentase presisi: Kaki 100% menempel di dasar (napak tanah)
 // ============================================================================
 class HikerSpritePainter extends CustomPainter {
@@ -1043,53 +1049,83 @@ class HikerSpritePainter extends CustomPainter {
     required this.frameIndex,
   });
 
-  // Mapping koordinat rasio 9-frame presisi [xRel, yRel, wRel, hRel]
-  // dihitung langsung dari batas alpha pixel aktual (alpha >= 20)
-  static const List<List<double>> _frameSpecs = [
-    [0.2675, 0.4305, 0.5539, 0.3542], // Frame 0: Stride Kanan (Kaki kanan melangkah ke depan)
-    [0.1286, 0.4305, 0.6928, 0.3550], // Frame 1: Push-off Kanan (Tolakan kaki kiri, kaki kanan mendarat)
-    [0.3241, 0.4305, 0.4973, 0.3542], // Frame 2: Passing Kanan (Kaki kiri berayun ke depan lewat tengah)
-    [0.2812, 0.4305, 0.5402, 0.3542], // Frame 3: Stride Kiri (Kaki kiri melangkah ke depan)
-    [0.1286, 0.4305, 0.6928, 0.3550], // Frame 4: Push-off Kiri (Tolakan kaki kanan, kaki kiri mendarat)
-    [0.3241, 0.4305, 0.4973, 0.3542], // Frame 5: Passing Kiri (Kaki kanan berayun ke depan lewat tengah)
-    [0.3241, 0.4305, 0.4973, 0.3542], // Frame 6: Idle / Ready Stand (Berdiri siaga dengan tongkat menancap)
-    [0.3979, 0.1930, 0.5231, 0.3908], // Frame 7: Lompat (Jump - tekuk kaki melayang)
-    [0.3824, 0.5012, 0.4990, 0.2851], // Frame 8: Menunduk (Duck / Slide rendah)
+  // Mapping koordinat rasio 6-frame presisi untuk 'hiker 1.png' (1355 x 670)
+  // [xRel, yRel, wRel, hRel]
+  static const List<List<double>> _frameSpecsHiker1 = [
+    [33.0 / 1355.0, 230.0 / 670.0, 171.0 / 1355.0, 240.0 / 670.0],   // Frame 0: Stride 1
+    [261.0 / 1355.0, 230.0 / 670.0, 167.0 / 1355.0, 240.0 / 670.0],  // Frame 1: Stride 2
+    [483.0 / 1355.0, 230.0 / 670.0, 166.0 / 1355.0, 240.0 / 670.0],  // Frame 2: Stride 3
+    [705.0 / 1355.0, 230.0 / 670.0, 168.0 / 1355.0, 240.0 / 670.0],  // Frame 3: Stride 4
+    [936.0 / 1355.0, 189.0 / 670.0, 168.0 / 1355.0, 266.0 / 670.0],  // Frame 4: Melompat (Jump)
+    [1161.0 / 1355.0, 319.0 / 670.0, 154.0 / 1355.0, 157.0 / 670.0], // Frame 5: Menunduk (Duck)
+  ];
+
+  // Mapping cadangan jika memuat hiker.png lama (9-frame)
+  static const List<List<double>> _frameSpecsOld = [
+    [0.2675, 0.4305, 0.5539, 0.3542], // Frame 0
+    [0.1286, 0.4305, 0.6928, 0.3550], // Frame 1
+    [0.3241, 0.4305, 0.4973, 0.3542], // Frame 2
+    [0.2812, 0.4305, 0.5402, 0.3542], // Frame 3
+    [0.1286, 0.4305, 0.6928, 0.3550], // Frame 4
+    [0.3241, 0.4305, 0.4973, 0.3542], // Frame 5
+    [0.3241, 0.4305, 0.4973, 0.3542], // Frame 6
+    [0.3979, 0.1930, 0.5231, 0.3908], // Frame 7
+    [0.3824, 0.5012, 0.4990, 0.2851], // Frame 8
   ];
 
   @override
   void paint(Canvas canvas, Size size) {
-    final double fw = spriteSheet.width / 9.0;
+    final double sw = spriteSheet.width.toDouble();
     final double sh = spriteSheet.height.toDouble();
-
-    final int f = frameIndex.clamp(0, 8);
-    final spec = _frameSpecs[f];
-
-    final double srcX = f * fw + (fw * spec[0]);
-    final double srcY = sh * spec[1];
-    final double srcW = fw * spec[2];
-    final double srcH = sh * spec[3];
-
-    final Rect srcRect = Rect.fromLTWH(srcX, srcY, srcW, srcH);
-
-    // Kaki karakter dijamin 100% menempel di dasar tanah (dstY + dstHeight = size.height)
-    final double srcAspect = srcW / srcH;
-    final double dstHeight = size.height;
-    final double dstWidth = dstHeight * srcAspect;
-
-    // Anchor horizontal: Posisi kepala karakter terkunci stabil di tengah widget (size.width / 2)
-    // saat berlari/siaga (Frame 0..6), sehingga karakter tidak goyang/oleng horizontal
-    final double dstX = f <= 6
-        ? (size.width / 2.0) - (((0.5 - spec[0]) / spec[2]) * dstWidth)
-        : (size.width - dstWidth) / 2.0;
-    const double dstY = 0.0;
-    final Rect dstRect = Rect.fromLTWH(dstX, dstY, dstWidth, dstHeight);
+    final bool isHiker1 = (sw / sh) < 3.0; // hiker 1.png rasio ~2.02 vs old hiker ~4.16
 
     final Paint paint = Paint()
       ..isAntiAlias = true
       ..filterQuality = FilterQuality.high;
 
-    canvas.drawImageRect(spriteSheet, srcRect, dstRect, paint);
+    if (isHiker1) {
+      final int f = frameIndex.clamp(0, _frameSpecsHiker1.length - 1);
+      final spec = _frameSpecsHiker1[f];
+
+      final double srcX = spec[0] * sw;
+      final double srcY = spec[1] * sh;
+      final double srcW = spec[2] * sw;
+      final double srcH = spec[3] * sh;
+      final Rect srcRect = Rect.fromLTWH(srcX, srcY, srcW, srcH);
+
+      final double srcAspect = srcW / srcH;
+      final double dstHeight = size.height;
+      final double dstWidth = dstHeight * srcAspect;
+
+      // Anchor horizontal: Posisi di tengah widget
+      final double dstX = (size.width - dstWidth) / 2.0;
+      final double dstY = size.height - dstHeight; // Napak tanah
+      final Rect dstRect = Rect.fromLTWH(dstX, dstY, dstWidth, dstHeight);
+
+      canvas.drawImageRect(spriteSheet, srcRect, dstRect, paint);
+    } else {
+      final double fw = sw / 9.0;
+      final int f = frameIndex.clamp(0, 8);
+      final spec = _frameSpecsOld[f];
+
+      final double srcX = f * fw + (fw * spec[0]);
+      final double srcY = sh * spec[1];
+      final double srcW = fw * spec[2];
+      final double srcH = sh * spec[3];
+      final Rect srcRect = Rect.fromLTWH(srcX, srcY, srcW, srcH);
+
+      final double srcAspect = srcW / srcH;
+      final double dstHeight = size.height;
+      final double dstWidth = dstHeight * srcAspect;
+
+      final double dstX = f <= 6
+          ? (size.width / 2.0) - (((0.5 - spec[0]) / spec[2]) * dstWidth)
+          : (size.width - dstWidth) / 2.0;
+      const double dstY = 0.0;
+      final Rect dstRect = Rect.fromLTWH(dstX, dstY, dstWidth, dstHeight);
+
+      canvas.drawImageRect(spriteSheet, srcRect, dstRect, paint);
+    }
   }
 
   @override

@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../config/constants.dart';
 import '../config/theme.dart';
@@ -45,68 +46,113 @@ class TicketCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
+        margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          gradient: AppTheme.darkCardGradient,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppTheme.border, width: 1),
         ),
+        clipBehavior: Clip.antiAlias,
         child: Column(
           children: [
-            // Header
+            // Upper Dark Green Status Zone
             Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: AppTheme.mountainGradient,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                ),
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              color: AppTheme.primary,
               child: Row(
                 children: [
-                  const Icon(Icons.confirmation_num, color: Colors.white, size: 20),
+                  const Icon(Icons.confirmation_num_outlined, color: Colors.white, size: 18),
                   const SizedBox(width: 8),
-                  const Text(
-                    'SIMAKSI DIGITAL',
-                    style: TextStyle(
-                      fontSize: 12,
+                  Text(
+                    'BOARDING PASS / SIMAKSI',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      letterSpacing: 1.5,
+                      letterSpacing: 1.2,
                       color: Colors.white,
                     ),
                   ),
                   const Spacer(),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                     decoration: BoxDecoration(
-                      color: _getStatusColor().withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(6),
+                      color: _getStatusColor().withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(9999),
                     ),
                     child: Text(
                       permit.statusIzin,
-                      style: TextStyle(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: _getStatusColor(),
+                        color: Colors.white,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
+            // Inward Notch Edge Separator with Dotted Line
+            Row(
+              children: [
+                Container(
+                  width: 14,
+                  height: 22,
+                  decoration: const BoxDecoration(
+                    color: AppTheme.background,
+                    borderRadius: BorderRadius.only(
+                      topRight: Radius.circular(14),
+                      bottomRight: Radius.circular(14),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final boxWidth = constraints.constrainWidth();
+                      const dashWidth = 4.0;
+                      const dashSpace = 4.0;
+                      final dashCount = (boxWidth / (dashWidth + dashSpace)).floor();
+                      return Flex(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        direction: Axis.horizontal,
+                        children: List.generate(dashCount, (idx) {
+                          return const SizedBox(
+                            width: dashWidth,
+                            height: 1,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(color: AppTheme.border),
+                            ),
+                          );
+                        }),
+                      );
+                    },
+                  ),
+                ),
+                Container(
+                  width: 14,
+                  height: 22,
+                  decoration: const BoxDecoration(
+                    color: AppTheme.background,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(14),
+                      bottomLeft: Radius.circular(14),
+                    ),
+                  ),
+                ),
+              ],
+            ),
             // Body
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(18, 4, 18, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     permit.namaGunung ?? 'Gunung',
-                    style: const TextStyle(
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -337,9 +383,22 @@ class TicketCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: Colors.white38)),
+        Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 11,
+            color: AppTheme.textSecondary,
+          ),
+        ),
         const SizedBox(height: 2),
-        Text(value, style: const TextStyle(fontSize: 13, color: Colors.white70)),
+        Text(
+          value,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textPrimary,
+          ),
+        ),
       ],
     );
   }

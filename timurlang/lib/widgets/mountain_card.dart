@@ -3,6 +3,7 @@
 // ============================================
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../config/theme.dart';
 import '../models/mountain.dart';
 
@@ -42,9 +43,9 @@ class MountainCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          gradient: AppTheme.darkCardGradient,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppTheme.border, width: 1),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -57,10 +58,11 @@ class MountainCard extends StatelessWidget {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      gradient: AppTheme.mountainGradient,
-                      borderRadius: BorderRadius.circular(12),
+                      color: AppTheme.primarySubtle,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFD4E0D2), width: 1),
                     ),
-                    child: const Icon(Icons.terrain, color: Colors.white, size: 26),
+                    child: const Icon(Icons.terrain_rounded, color: AppTheme.primary, size: 26),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -69,18 +71,19 @@ class MountainCard extends StatelessWidget {
                       children: [
                         Text(
                           mountain.namaGunung,
-                          style: const TextStyle(
+                          style: GoogleFonts.plusJakartaSans(
                             fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${mountain.elevasiMdpl} mdpl',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.white.withValues(alpha: 0.6),
+                          '${mountain.elevasiMdpl} MDPL',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w500,
+                            color: AppTheme.textSecondary,
                           ),
                         ),
                       ],
@@ -89,15 +92,15 @@ class MountainCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: _getStatusColor().withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
+                      color: _getStatusColor().withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(9999),
                       border: Border.all(color: _getStatusColor().withValues(alpha: 0.3)),
                     ),
                     child: Text(
                       mountain.statusJalur,
-                      style: TextStyle(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                         color: _getStatusColor(),
                       ),
                     ),
@@ -128,19 +131,24 @@ class MountainCard extends StatelessWidget {
 
   Widget _infoChip(IconData icon, String label, IconData? altIcon) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(6),
+        color: AppTheme.surfaceSubtle,
+        borderRadius: BorderRadius.circular(9999),
+        border: Border.all(color: AppTheme.border, width: 0.8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(altIcon ?? icon, size: 14, color: Colors.white54),
+          Icon(altIcon ?? icon, size: 13, color: AppTheme.textSecondary),
           const SizedBox(width: 4),
           Text(
             label,
-            style: const TextStyle(fontSize: 11, color: Colors.white54),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: AppTheme.textSecondary,
+            ),
           ),
         ],
       ),

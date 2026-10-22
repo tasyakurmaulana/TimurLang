@@ -31,9 +31,9 @@ class AppConstants {
       midtransServerKey.startsWith('Mid-') &&
       !midtransServerKey.startsWith('SB-');
   // Masukkan Server Key Midtrans Anda (Contoh: SB-Mid-server-XXXXX)
-  static const String midtransServerKey = '';
+  static const String midtransServerKey = 'SB-Mid-server-ggpA~I8KRa3j6U9d4~Urilpf';
   // Masukkan Client Key Midtrans Anda (Contoh: SB-Mid-client-XXXXX)
-  static const String midtransClientKey = '';
+  static const String midtransClientKey = 'SB-Mid-client-DSuywWCiN0pxVMZKepEY2_UW';
   static String get midtransSnapUrl => midtransIsProduction
       ? 'https://app.midtrans.com/snap/v1/transactions'
       : 'https://app.sandbox.midtrans.com/snap/v1/transactions';

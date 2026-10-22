@@ -64,7 +64,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _showPhotoSourceSheet() async {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppTheme.cardDark,
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -80,7 +80,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(
-                    color: Colors.white24,
+                    color: AppTheme.border,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -89,7 +89,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: AppTheme.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -102,8 +102,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     child: const Icon(Icons.camera_alt, color: AppTheme.primaryGreen),
                   ),
-                  title: const Text('Ambil dari Kamera', style: TextStyle(color: Colors.white)),
-                  subtitle: const Text('Ambil foto langsung dengan kamera', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                  title: const Text('Ambil dari Kamera', style: TextStyle(color: AppTheme.textPrimary)),
+                  subtitle: const Text('Ambil foto langsung dengan kamera', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
                   onTap: () {
                     Navigator.pop(ctx);
                     _pickImage(ImageSource.camera);
@@ -118,8 +118,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     child: const Icon(Icons.photo_library, color: AppTheme.accentOrange),
                   ),
-                  title: const Text('Pilih dari Galeri', style: TextStyle(color: Colors.white)),
-                  subtitle: const Text('Unggah foto dari memori perangkat', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                  title: const Text('Pilih dari Galeri', style: TextStyle(color: AppTheme.textPrimary)),
+                  subtitle: const Text('Unggah foto dari memori perangkat', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
                   onTap: () {
                     Navigator.pop(ctx);
                     _pickImage(ImageSource.gallery);
@@ -136,7 +136,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: const Icon(Icons.delete_outline, color: AppTheme.dangerRed),
                     ),
                     title: const Text('Hapus Foto Profil', style: TextStyle(color: AppTheme.dangerRed)),
-                    subtitle: const Text('Kembalikan ke avatar default', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                    subtitle: const Text('Kembalikan ke avatar default', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
                     onTap: () {
                       Navigator.pop(ctx);
                       _removePhoto();
@@ -308,7 +308,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         : null,
                   ),
                   child: imageProvider == null
-                      ? const Icon(Icons.person, size: 70, color: Colors.white54)
+                      ? const Icon(Icons.person, size: 70, color: AppTheme.textSecondary)
                       : null,
                 ),
                 // Camera Badge Button
@@ -358,10 +358,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           if (!_isEditing) ...[
             Text(
               user.namaLengkap,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
             ),
             const SizedBox(height: 4),
-            Text(user.email, style: const TextStyle(color: Colors.white54)),
+            Text(user.email, style: const TextStyle(color: AppTheme.textSecondary)),
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
@@ -394,9 +394,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // ── Keamanan & Biometrik ──
             Container(
               decoration: BoxDecoration(
-                color: AppTheme.cardDark,
+                color: AppTheme.surface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white12),
+                border: Border.all(color: AppTheme.border, width: 1),
               ),
               child: SwitchListTile(
                 value: user.isBiometricEnabled,
@@ -409,12 +409,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   child: const Icon(Icons.fingerprint, color: AppTheme.primaryGreen),
                 ),
-                title: const Text('Login Sidik Jari', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                title: const Text('Login Sidik Jari', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: AppTheme.textPrimary)),
                 subtitle: Text(
                   user.isBiometricEnabled
                       ? 'Sidik jari aktif untuk login cepat'
                       : 'Aktifkan untuk masuk tanpa kata sandi',
-                  style: const TextStyle(fontSize: 12, color: Colors.white54),
+                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                 ),
                 onChanged: (bool value) async {
                   final messenger = ScaffoldMessenger.of(context);
@@ -442,15 +442,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 },
               ),
             ),
+            const SizedBox(height: 12),
             // ── Data Diri Pendaki (Wajib SIMAKSI) ──
             Container(
               decoration: BoxDecoration(
-                color: AppTheme.cardDark,
+                color: AppTheme.surface,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: _isPersonalDataComplete
                       ? AppTheme.safeGreen.withValues(alpha: 0.35)
                       : AppTheme.accentOrange.withValues(alpha: 0.4),
+                  width: 1,
                 ),
               ),
               child: ListTile(
@@ -471,7 +473,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const Expanded(
                       child: Text(
                         'Data Diri Lengkap',
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: AppTheme.textPrimary),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -498,9 +500,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _isPersonalDataComplete
                       ? 'KTP, identitas & alamat domisili terverifikasi'
                       : 'Wajib diisi untuk pengajuan izin pendakian SIMAKSI',
-                  style: const TextStyle(fontSize: 12, color: Colors.white54),
+                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                 ),
-                trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+                trailing: const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
                 onTap: () async {
                   await Navigator.pushNamed(context, AppRoutes.personalData);
                   _checkPersonalDataStatus();
@@ -512,9 +514,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // ── Rekam Medis Darurat ──
             Container(
               decoration: BoxDecoration(
-                color: AppTheme.cardDark,
+                color: AppTheme.surface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white12),
+                border: Border.all(color: AppTheme.border, width: 1),
+              ),
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.dangerRed.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.medical_services_outlined, color: AppTheme.dangerRed),
+                ),
+                title: const Text('Data Rekam Medis', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                subtitle: Text(
+                  'Data medis & kontak darurat (Dilindungi Sidik Jari)',
+                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                ),
+                trailing: const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
+                onTap: () {
+                  Navigator.pushNamed(context, AppRoutes.medicalProfile);
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // ── SOS Darurat & Deteksi Jatuh (Pindah ke Profil) ──
+            Container(
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.dangerRed.withValues(alpha: 0.35), width: 1.2),
               ),
               child: ListTile(
                 leading: Container(
@@ -523,16 +554,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     color: AppTheme.dangerRed.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.medical_services_outlined, color: AppTheme.dangerRed),
+                  child: const Icon(Icons.sos_rounded, color: AppTheme.dangerRed, size: 24),
                 ),
-                title: const Text('Data Rekam Medis', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                subtitle: const Text(
-                  'Data medis & kontak darurat (Dilindungi Sidik Jari)',
-                  style: TextStyle(fontSize: 12, color: Colors.white54),
+                title: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'SOS & Deteksi Jatuh',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppTheme.dangerRed.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'Darurat 🚨',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.dangerRed,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+                subtitle: Text(
+                  'Sirine darurat, deteksi jatuh otomatis & koordinat SAR',
+                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                ),
+                trailing: const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
                 onTap: () {
-                  Navigator.pushNamed(context, AppRoutes.medicalProfile);
+                  Navigator.pushNamed(context, AppRoutes.fallDetection);
                 },
               ),
             ),
@@ -548,9 +605,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppTheme.cardDark,
+                color: AppTheme.surface,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.white12),
+                border: Border.all(color: AppTheme.border, width: 1),
               ),
               child: Row(
                 children: [
@@ -561,7 +618,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _photoChanged
                           ? 'Foto baru siap disimpan ke database.'
                           : 'Ketuk foto di atas untuk mengambil foto atau memilih dari galeri.',
-                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
                     ),
                   ),
                 ],

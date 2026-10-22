@@ -122,14 +122,14 @@ class _MountainListScreenState extends State<MountainListScreen> {
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
                         color: _showFilters
-                            ? AppTheme.primaryGreen.withValues(alpha: 0.2)
-                            : Colors.white.withValues(alpha: 0.05),
+                            ? AppTheme.primaryGreen.withValues(alpha: 0.15)
+                            : AppTheme.surfaceSubtle,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
                         Icons.tune,
                         size: 18,
-                        color: _showFilters ? AppTheme.primaryGreen : Colors.white54,
+                        color: _showFilters ? AppTheme.primaryGreen : AppTheme.textSecondary,
                       ),
                     ),
                   ),
@@ -151,7 +151,7 @@ class _MountainListScreenState extends State<MountainListScreen> {
             children: [
               Text(
                 '${_filtered.length} gunung ditemukan',
-                style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.5)),
+                style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary, fontWeight: FontWeight.w500),
               ),
               const Spacer(),
               if (_selectedGrade != null || _sumberAir != null)
@@ -175,11 +175,11 @@ class _MountainListScreenState extends State<MountainListScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.terrain, size: 60, color: Colors.white.withValues(alpha: 0.15)),
+                          Icon(Icons.terrain, size: 60, color: AppTheme.textSecondary.withValues(alpha: 0.4)),
                           const SizedBox(height: 12),
-                          Text(
+                          const Text(
                             'Gunung tidak ditemukan',
-                            style: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
+                            style: TextStyle(color: AppTheme.textSecondary),
                           ),
                         ],
                       ),
@@ -213,14 +213,15 @@ class _MountainListScreenState extends State<MountainListScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardDark,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.border, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Elevation slider
-          Text('Elevasi (mdpl)', style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.6))),
+          const Text('Elevasi (mdpl)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
           RangeSlider(
             values: _elevasiRange,
             min: 0,
@@ -238,7 +239,7 @@ class _MountainListScreenState extends State<MountainListScreen> {
           ),
           const SizedBox(height: 8),
           // Grade filter
-          Text('Tingkat Bahaya', style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.6))),
+          const Text('Tingkat Bahaya', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
           const SizedBox(height: 8),
           Wrap(
             spacing: 6,
@@ -257,7 +258,7 @@ class _MountainListScreenState extends State<MountainListScreen> {
           ),
           const SizedBox(height: 12),
           // Water source
-          Text('Sumber Air', style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.6))),
+          const Text('Sumber Air', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
           const SizedBox(height: 8),
           Row(
             children: [
