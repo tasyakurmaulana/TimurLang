@@ -117,7 +117,7 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    return await login(email: email, password: password);
+    return await login(email: email, password: password, rememberMe: true);
   }
 
   /// Cek apakah perangkat mendukung biometrik
@@ -257,6 +257,7 @@ class AuthService {
   Future<({bool success, String message})> login({
     required String email,
     required String password,
+    bool rememberMe = false,
   }) async {
     try {
       // Coba cari user di database lokal dulu
@@ -291,7 +292,7 @@ class AuthService {
 
       // Create session
       _currentUser = user;
-      await _saveSession(user);
+      await _saveSession(user, rememberMe: rememberMe);
 
       // Jika role basecamp, pastikan post basecamp tersimpan di SQLite lokal
       if (user.peran == AppConstants.roleBasecamp && _supabase.isInitialized) {
@@ -324,6 +325,7 @@ class AuthService {
   Future<({bool success, String message})> authenticateBiometric({
     String? email,
     String? userId,
+    bool rememberMe = false,
   }) async {
     try {
       User? user;
@@ -399,7 +401,7 @@ class AuthService {
 
       if (authenticated) {
         _currentUser = user;
-        await _saveSession(user);
+        await _saveSession(user, rememberMe: rememberMe);
         return (success: true, message: 'Selamat datang kembali, ${user.namaLengkap}!');
       }
 
@@ -430,17 +432,9 @@ class AuthService {
   }
 
   /// Save session to SharedPreferences
-  Future<void> _saveSession(User user) async {
+  Future<void> _saveSession(User user, {bool rememberMe = false}) async {
     final prefs = await SharedPreferences.getInstance();
-    final sessionToken = const Uuid().v4();
-    final expiresAt = DateTime.now().add(
-      const Duration(minutes: AppConstants.sessionExpiryMinutes),
-    );
 
-    await prefs.setString(AppConstants.userIdKey, user.id);
-    await prefs.setString(AppConstants.userRoleKey, user.peran);
-    await prefs.setString(AppConstants.sessionTokenKey, sessionToken);
-    await prefs.setString('session_expires_at', expiresAt.toIso8601String());
     // Simpan status biometrik dari user record
     await prefs.setBool(AppConstants.biometricEnabledKey, user.isBiometricEnabled);
     if (user.isBiometricEnabled) {
@@ -451,12 +445,40 @@ class AuthService {
         await prefs.setStringList(AppConstants.registeredBiometricUserIdsKey, registeredIds);
       }
     }
+
+    if (rememberMe) {
+      final sessionToken = const Uuid().v4();
+      final expiresAt = DateTime.now().add(
+        const Duration(minutes: AppConstants.sessionExpiryMinutes),
+      );
+
+      await prefs.setString(AppConstants.userIdKey, user.id);
+      await prefs.setString(AppConstants.userRoleKey, user.peran);
+      await prefs.setString(AppConstants.sessionTokenKey, sessionToken);
+      await prefs.setString('session_expires_at', expiresAt.toIso8601String());
+      await prefs.setBool(AppConstants.rememberMeKey, true);
+    } else {
+      // Jika tidak ingat saya: hapus session dari storage lokal agar saat keluar/tutup aplikasi harus login lagi
+      await prefs.remove(AppConstants.userIdKey);
+      await prefs.remove(AppConstants.userRoleKey);
+      await prefs.remove(AppConstants.sessionTokenKey);
+      await prefs.remove('session_expires_at');
+      await prefs.setBool(AppConstants.rememberMeKey, false);
+    }
   }
 
   /// Restore session on app start
   Future<bool> restoreSession() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+
+      // Cek apakah remember_me diaktifkan
+      final rememberMe = prefs.getBool(AppConstants.rememberMeKey);
+      if (rememberMe == false) {
+        await logout();
+        return false;
+      }
+
       final userId = prefs.getString(AppConstants.userIdKey);
       if (userId == null) return false;
 
@@ -506,6 +528,7 @@ class AuthService {
     await prefs.remove(AppConstants.userRoleKey);
     await prefs.remove(AppConstants.sessionTokenKey);
     await prefs.remove('session_expires_at');
+    await prefs.setBool(AppConstants.rememberMeKey, false);
     // Matikan pemantauan radar basecamp
     await BasecampAlertService.instance.stopMonitoring();
     // Jangan hapus biometricEnabledKey agar tetap bisa login biometrik

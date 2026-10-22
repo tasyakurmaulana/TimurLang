@@ -33,6 +33,7 @@ dependencies:
   geolocator: ^14.1.1
   qr_flutter: ^4.1.0
   mobile_scanner: ^7.4.2
+  webview_flutter: ^4.14.1
 
 dev_dependencies:
   flutter_test:

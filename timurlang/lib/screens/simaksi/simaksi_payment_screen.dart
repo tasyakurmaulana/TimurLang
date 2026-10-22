@@ -12,7 +12,9 @@ import '../../models/mountain.dart';
 import '../../models/simaksi_permit.dart';
 import '../../services/auth_service.dart';
 import '../../services/blockchain_service.dart';
+import '../../services/midtrans_service.dart';
 import '../../utils/currency_utils.dart';
+import 'midtrans_payment_screen.dart';
 
 class SimaksiPaymentScreen extends StatefulWidget {
   const SimaksiPaymentScreen({super.key});
@@ -33,9 +35,145 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
   }
 
   Future<void> _processPayment() async {
-    setState(() => _isProcessing = true);
-    await Future.delayed(const Duration(seconds: 2)); // Mock payment processing
+    final user = AuthService.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Silakan login terlebih dahulu'),
+          backgroundColor: AppTheme.dangerRed,
+        ),
+      );
+      return;
+    }
 
+    final mountain = _args['mountain'] as Mountain;
+    final totalBiayaIDR = _args['totalBiayaIDR'] as double;
+    final hargaSimaksi = (_args['hargaSimaksi'] as num?)?.toDouble() ?? 15000.0;
+    final jumlahAnggota = _args['jumlahAnggota'] as int;
+
+    // Cek apakah Server Key Midtrans sudah diatur
+    if (!MidtransService.instance.isConfigured) {
+      _showKeyNotConfiguredDialog();
+      return;
+    }
+
+    setState(() => _isProcessing = true);
+
+    final orderId = 'SIMAKSI-${DateTime.now().millisecondsSinceEpoch}';
+
+    final snapResult = await MidtransService.instance.createSnapTransaction(
+      orderId: orderId,
+      grossAmount: totalBiayaIDR.toInt(),
+      customerName: user.namaLengkap,
+      customerEmail: user.email,
+      itemName: 'SIMAKSI ${mountain.namaGunung}',
+      itemPrice: hargaSimaksi.toInt(),
+      quantity: jumlahAnggota,
+    );
+
+    setState(() => _isProcessing = false);
+
+    if (!mounted) return;
+
+    if (!snapResult.success || snapResult.redirectUrl == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal menghubungkan ke Midtrans: ${snapResult.message}'),
+          backgroundColor: AppTheme.dangerRed,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
+    // Buka WebView Midtrans Snap untuk pembayaran
+    final isPaid = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MidtransPaymentScreen(
+          orderId: orderId,
+          redirectUrl: snapResult.redirectUrl!,
+          mountainName: mountain.namaGunung,
+          totalAmount: totalBiayaIDR.toInt(),
+        ),
+      ),
+    );
+
+    if (isPaid == true) {
+      await _issuePermitAfterPayment();
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Pembayaran belum diselesaikan atau dibatalkan.'),
+            backgroundColor: AppTheme.accentOrange,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showKeyNotConfiguredDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.cardDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.vpn_key_outlined, color: AppTheme.accentOrange),
+            SizedBox(width: 8),
+            Text('Kunci Midtrans Belum Diatur', style: TextStyle(fontSize: 16)),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Server Key Midtrans belum dimasukkan pada file:',
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'lib/config/constants.dart -> midtransServerKey',
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 12,
+                color: AppTheme.primaryGreen,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 12),
+            Text(
+              'Apakah Anda ingin melakukan Simulasi Pembayaran Berhasil untuk pengujian sekarang?',
+              style: TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal', style: TextStyle(color: Colors.white60)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _issuePermitAfterPayment();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryGreen,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Simulasi Bayar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _issuePermitAfterPayment() async {
+    setState(() => _isProcessing = true);
     final user = AuthService.instance.currentUser;
     if (user == null) return;
 
@@ -44,6 +182,7 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
       final totalBiayaIDR = _args['totalBiayaIDR'] as double;
       final convertedCost = CurrencyUtils.convertFromIDR(totalBiayaIDR, _selectedCurrency);
       final basecampId = _args['basecampId'] as String?;
+      final dataAnggota = _args['dataAnggota'] as String?;
 
       final dataAnggota = _args['dataAnggota'] as String?;
 
@@ -65,8 +204,8 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
         _showSuccessDialog(permit);
       }
     } catch (e) {
-      setState(() => _isProcessing = false);
       if (mounted) {
+        setState(() => _isProcessing = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: AppTheme.dangerRed),
         );

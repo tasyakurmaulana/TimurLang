@@ -16,6 +16,7 @@ class AppConstants {
   static const String sessionTokenKey = 'session_token';
   static const String userIdKey = 'user_id';
   static const String userRoleKey = 'user_role';
+  static const String rememberMeKey = 'remember_me';
   // ⏱️ SESSION TIMEOUT: Ubah angka di bawah untuk mengatur durasi sesi (dalam menit)
   // Contoh: 1 = 1 menit, 60 = 1 jam, 1440 = 1 hari, 4320 = 3 hari
   static const int sessionExpiryMinutes = 600;
@@ -24,6 +25,21 @@ class AppConstants {
   static const String registeredBiometricUserIdsKey =
       'registered_biometric_user_ids';
 
+  // Midtrans Payment Gateway
+  // Otomatis terdeteksi Production jika Server Key bukan Sandbox (tidak berawalan SB-)
+  static bool get midtransIsProduction =>
+      midtransServerKey.startsWith('Mid-') &&
+      !midtransServerKey.startsWith('SB-');
+  // Masukkan Server Key Midtrans Anda (Contoh: SB-Mid-server-XXXXX)
+  static const String midtransServerKey = '';
+  // Masukkan Client Key Midtrans Anda (Contoh: SB-Mid-client-XXXXX)
+  static const String midtransClientKey = '';
+  static String get midtransSnapUrl => midtransIsProduction
+      ? 'https://app.midtrans.com/snap/v1/transactions'
+      : 'https://app.sandbox.midtrans.com/snap/v1/transactions';
+  static String get midtransApiBaseUrl => midtransIsProduction
+      ? 'https://api.midtrans.com/v2'
+      : 'https://api.sandbox.midtrans.com/v2';
   // Fall Detection
   static const double fallThresholdG = 2.5; // G-force threshold
   static const int fallCountdownSeconds = 15;

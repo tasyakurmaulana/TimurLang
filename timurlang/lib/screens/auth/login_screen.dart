@@ -23,6 +23,7 @@ class _LoginScreenState extends State<LoginScreen>
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _isLoading = false;
+  bool _rememberMe = false;
   late AnimationController _animCtrl;
   late Animation<Offset> _slideAnim;
 
@@ -55,6 +56,7 @@ class _LoginScreenState extends State<LoginScreen>
     final result = await AuthService.instance.login(
       email: _emailCtrl.text.trim(),
       password: _passwordCtrl.text,
+      rememberMe: _rememberMe,
     );
 
     setState(() => _isLoading = false);
@@ -121,6 +123,7 @@ class _LoginScreenState extends State<LoginScreen>
     final result = await AuthService.instance.authenticateBiometric(
       email: email,
       userId: userId,
+      rememberMe: _rememberMe,
     );
     setState(() => _isLoading = false);
 
@@ -324,7 +327,53 @@ class _LoginScreenState extends State<LoginScreen>
                             isPassword: true,
                             validator: Validators.password,
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
+                          // Remember Me checkbox
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              children: [
+                                SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: Checkbox(
+                                    value: _rememberMe,
+                                    activeColor: AppTheme.primaryGreen,
+                                    checkColor: Colors.white,
+                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    side: BorderSide(
+                                      color: Colors.white.withValues(alpha: 0.4),
+                                      width: 1.5,
+                                    ),
+                                    onChanged: (val) {
+                                      setState(() {
+                                        _rememberMe = val ?? false;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _rememberMe = !_rememberMe;
+                                    });
+                                  },
+                                  child: Text(
+                                    'Ingat Saya',
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: 0.8),
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
                           // Login button
                           SizedBox(
                             width: double.infinity,

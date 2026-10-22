@@ -1,7 +1,7 @@
 // ============================================
 // TimurLang - Interactive Real Map Screen
 // Powered by flutter_map & OpenStreetMap / OpenTopoMap / Esri Satellite
-// 100% Free - No Mapbox API Key Required
+// Menampilkan seluruh jalur resmi & basecamp untuk 46 gunung di Indonesia
 // ============================================
 
 import 'package:flutter/material.dart';
@@ -10,7 +10,9 @@ import 'package:latlong2/latlong.dart';
 import '../../config/theme.dart';
 import '../../config/routes.dart';
 import '../../models/mountain.dart';
+import '../../models/basecamp_post.dart';
 import '../../services/database_service.dart';
+import '../../services/trail_service.dart';
 
 enum MapLayerType {
   standard,
@@ -28,9 +30,11 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
-  
+
   List<Mountain> _mountains = [];
+  List<BasecampPost> _allBasecamps = [];
   Mountain? _selectedMountain;
+  HikingTrail? _highlightedTrail;
   bool _isLoading = true;
 
   MapLayerType _selectedLayer = MapLayerType.standard;
@@ -54,49 +58,21 @@ class _MapScreenState extends State<MapScreen> {
     },
   };
 
-  // Sample hiking trail polylines for visualization
-  // Semeru: Ranu Pani (-8.014, 112.951) -> Ranu Kumbolo (-8.056, 112.923) -> Kalimati (-8.082, 112.924) -> Mahameru (-8.108, 112.922)
-  final List<LatLng> _semeruTrail = const [
-    LatLng(-8.014, 112.951), // Pos Ranu Pani
-    LatLng(-8.028, 112.942), // Watu Rejeng
-    LatLng(-8.056, 112.923), // Ranu Kumbolo
-    LatLng(-8.067, 112.921), // Oro-oro Ombo
-    LatLng(-8.073, 112.922), // Cemoro Kandang
-    LatLng(-8.082, 112.924), // Pos Kalimati
-    LatLng(-8.094, 112.923), // Arcopodo
-    LatLng(-8.108, 112.922), // Puncak Mahameru
-  ];
-
-  // Bromo trail: Cemoro Lawang (-7.923, 112.964) -> Lautan Pasir -> Kawah Bromo (-7.942, 112.953)
-  final List<LatLng> _bromoTrail = const [
-    LatLng(-7.923, 112.964), // Cemoro Lawang
-    LatLng(-7.930, 112.960), // Laut Pasir
-    LatLng(-7.937, 112.957), // Pura Poten
-    LatLng(-7.942, 112.953), // Kawah Bromo
-  ];
-
-  // Merbabu trail via Selo: Basecamp Selo (-7.498, 110.457) -> Pos 1 -> Pos 2 -> Sabana 1 -> Sabana 2 -> Puncak Kenteng Songo (-7.455, 110.440)
-  final List<LatLng> _merbabuTrail = const [
-    LatLng(-7.498, 110.457), // Basecamp Selo
-    LatLng(-7.485, 110.451), // Pos 1 Dok-dok-an
-    LatLng(-7.476, 110.448), // Pos 2 Pandean
-    LatLng(-7.467, 110.445), // Sabana 1
-    LatLng(-7.460, 110.442), // Sabana 2
-    LatLng(-7.455, 110.440), // Puncak Kenteng Songo
-  ];
-
   @override
   void initState() {
     super.initState();
-    _loadMountains();
+    _loadData();
   }
 
-  Future<void> _loadMountains() async {
+  Future<void> _loadData() async {
     try {
-      final list = await DatabaseService.instance.getAllMountains();
+      final mountains = await DatabaseService.instance.getAllMountains();
+      final basecamps = await DatabaseService.instance.getAllBasecampPosts();
+
       if (mounted) {
         setState(() {
-          _mountains = list;
+          _mountains = mountains;
+          _allBasecamps = basecamps;
           _isLoading = false;
         });
 
@@ -113,11 +89,19 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _focusMountain(Mountain mountain) {
-    setState(() => _selectedMountain = mountain);
+    setState(() {
+      _selectedMountain = mountain;
+      _highlightedTrail = null;
+    });
     _mapController.move(
       LatLng(mountain.koordinatLat, mountain.koordinatLong),
-      12.0,
+      12.2,
     );
+  }
+
+  List<HikingTrail> get _activeTrails {
+    if (_selectedMountain == null) return [];
+    return TrailService.instance.getTrailsForMountain(_selectedMountain!, _allBasecamps);
   }
 
   void _showLayerSelector() {
@@ -178,6 +162,8 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _showMountainDetails(Mountain mountain) {
+    final trails = TrailService.instance.getTrailsForMountain(mountain, _allBasecamps);
+
     showModalBottomSheet(
       context: context,
       backgroundColor: AppTheme.cardDark,
@@ -228,11 +214,11 @@ class _MapScreenState extends State<MapScreen> {
                     const SizedBox(width: 8),
                     _buildInfoBadge(
                       Icons.water_drop,
-                      mountain.sumberAirTersedia ? 'Sumber Air: Ada' : 'Sumber Air: Kering',
+                      mountain.sumberAirTersedia ? 'Ada Air' : 'Kering',
                       mountain.sumberAirTersedia ? Colors.blue : Colors.grey,
                     ),
                     const SizedBox(width: 8),
-                    _buildInfoBadge(Icons.warning_amber, mountain.tingkatBahaya, AppTheme.accentOrange),
+                    _buildInfoBadge(Icons.alt_route, '${trails.length} Basecamp', AppTheme.accentOrange),
                   ],
                 ),
                 if (mountain.deskripsi != null) ...[
@@ -254,7 +240,7 @@ class _MapScreenState extends State<MapScreen> {
                           _focusMountain(mountain);
                         },
                         icon: const Icon(Icons.my_location, size: 18),
-                        label: const Text('Fokus Peta'),
+                        label: const Text('Fokus Jalur Peta'),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -269,7 +255,7 @@ class _MapScreenState extends State<MapScreen> {
                           );
                         },
                         icon: const Icon(Icons.arrow_forward, size: 18),
-                        label: const Text('Detail Jalur'),
+                        label: const Text('Detail Gunung'),
                       ),
                     ),
                   ],
@@ -279,6 +265,232 @@ class _MapScreenState extends State<MapScreen> {
           ),
         );
       },
+    );
+  }
+
+  void _showBasecampDetails(HikingTrail trail) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.cardDark,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        final isBuka = trail.statusJalur.toLowerCase() == 'buka';
+        final statusColor = isBuka ? AppTheme.safeGreen : AppTheme.dangerRed;
+
+        return DraggableScrollableSheet(
+          initialChildSize: 0.55,
+          minChildSize: 0.35,
+          maxChildSize: 0.85,
+          expand: false,
+          builder: (context, scrollController) {
+            return SingleChildScrollView(
+              controller: scrollController,
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: trail.color.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: trail.color),
+                        ),
+                        child: Icon(Icons.holiday_village_outlined, color: trail.color, size: 28),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              trail.basecampName,
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Jalur Resmi ${trail.mountainName}',
+                              style: TextStyle(fontSize: 13, color: trail.color, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: statusColor),
+                        ),
+                        child: Text(
+                          trail.statusJalur,
+                          style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Trail metrics
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _metricItem(Icons.straighten, '${trail.distanceKm} km', 'Panjang Jalur'),
+                        Container(width: 1, height: 30, color: Colors.white12),
+                        _metricItem(Icons.timer_outlined, '±${trail.estimatedHours} Jam', 'Estimasi Waktu'),
+                        Container(width: 1, height: 30, color: Colors.white12),
+                        _metricItem(
+                          Icons.confirmation_number_outlined,
+                          'Rp ${trail.basecampPost.hargaSimaksi.toInt()}',
+                          'Tarif SIMAKSI',
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    trail.basecampPost.lokasiDeskripsi,
+                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                  const SizedBox(height: 16),
+                  const Divider(color: Colors.white12),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Titik Pos & Checkpoint Pendakian:',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                  const SizedBox(height: 12),
+                  // Checkpoint sequence
+                  for (int i = 0; i < trail.checkpoints.length; i++) ...[
+                    _checkpointRow(trail.checkpoints[i], i == 0, i == trail.checkpoints.length - 1, trail.color),
+                  ],
+                  const SizedBox(height: 24),
+                  // Button Daftar SIMAKSI
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: isBuka
+                          ? () {
+                              Navigator.pop(ctx);
+                              Navigator.pushNamed(
+                                context,
+                                AppRoutes.simaksiForm,
+                                arguments: {
+                                  'mountain': _selectedMountain,
+                                  'basecampId': trail.basecampId,
+                                },
+                              );
+                            }
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryGreen,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      icon: const Icon(Icons.assignment_turned_in, size: 20),
+                      label: Text(isBuka ? 'Daftar SIMAKSI Via Jalur Ini' : 'Jalur Sedang Ditutup'),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _metricItem(IconData icon, String value, String label) {
+    return Column(
+      children: [
+        Icon(icon, size: 18, color: AppTheme.primaryGreen),
+        const SizedBox(height: 4),
+        Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white)),
+        Text(label, style: const TextStyle(fontSize: 10, color: Colors.white54)),
+      ],
+    );
+  }
+
+  Widget _checkpointRow(TrailCheckpoint cp, bool isFirst, bool isLast, Color trailColor) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isLast ? Colors.redAccent : isFirst ? trailColor : AppTheme.cardDark,
+                  border: Border.all(color: trailColor, width: 2),
+                ),
+              ),
+              if (!isLast)
+                Container(
+                  width: 2,
+                  height: 28,
+                  color: trailColor.withValues(alpha: 0.3),
+                ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      cp.name,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: isLast ? Colors.redAccent : Colors.white,
+                      ),
+                    ),
+                    Text(
+                      '${cp.elevationMdpl} MDPL',
+                      style: const TextStyle(fontSize: 11, color: Colors.white60, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+                Text(
+                  cp.description,
+                  style: const TextStyle(fontSize: 11, color: Colors.white54),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -303,6 +515,7 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     final activeTileUrl = _layerConfigs[_selectedLayer]!['url']!;
+    final activeTrails = _activeTrails;
 
     return Scaffold(
       appBar: AppBar(
@@ -336,92 +549,145 @@ class _MapScreenState extends State<MapScreen> {
 
               // Hiking Trails (Polylines)
               PolylineLayer(
-                polylines: [
-                  Polyline(
-                    points: _semeruTrail,
-                    strokeWidth: 4.0,
-                    color: Colors.redAccent,
-                  ),
-                  Polyline(
-                    points: _bromoTrail,
-                    strokeWidth: 4.0,
-                    color: Colors.orangeAccent,
-                  ),
-                  Polyline(
-                    points: _merbabuTrail,
-                    strokeWidth: 4.0,
-                    color: AppTheme.primaryGreen,
-                  ),
-                ],
-              ),
-
-              // Mountain Markers
-              MarkerLayer(
-                markers: _mountains.map((mountain) {
-                  final isSelected = _selectedMountain?.id == mountain.id;
-                  final statusColor = mountain.statusJalur == 'Buka'
-                      ? AppTheme.safeGreen
-                      : mountain.statusJalur.contains('Waspada')
-                          ? AppTheme.warningYellow
-                          : AppTheme.dangerRed;
-
-                  return Marker(
-                    point: LatLng(mountain.koordinatLat, mountain.koordinatLong),
-                    width: isSelected ? 65 : 50,
-                    height: isSelected ? 65 : 50,
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() => _selectedMountain = mountain);
-                        _showMountainDetails(mountain);
-                      },
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: isSelected ? AppTheme.accentOrange : AppTheme.cardDark,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isSelected ? Colors.white : statusColor,
-                                width: 2.5,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.5),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              Icons.terrain,
-                              size: isSelected ? 24 : 18,
-                              color: isSelected ? Colors.white : statusColor,
-                            ),
-                          ),
-                          Container(
-                            margin: const EdgeInsets.only(top: 2),
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.75),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              mountain.namaGunung.replaceAll('Gunung ', ''),
-                              style: const TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                polylines: activeTrails.map((trail) {
+                  final isHighlighted = _highlightedTrail?.id == trail.id;
+                  return Polyline(
+                    points: trail.waypoints,
+                    strokeWidth: isHighlighted ? 6.0 : 4.0,
+                    color: trail.color,
                   );
                 }).toList(),
+              ),
+
+              // Mountain & Basecamp Markers
+              MarkerLayer(
+                markers: [
+                  // 1. Mountain Peak Markers
+                  ..._mountains.map((mountain) {
+                    final isSelected = _selectedMountain?.id == mountain.id;
+                    final statusColor = mountain.statusJalur == 'Buka'
+                        ? AppTheme.safeGreen
+                        : mountain.statusJalur.contains('Waspada')
+                            ? AppTheme.warningYellow
+                            : AppTheme.dangerRed;
+
+                    return Marker(
+                      point: LatLng(mountain.koordinatLat, mountain.koordinatLong),
+                      width: isSelected ? 70 : 54,
+                      height: isSelected ? 70 : 54,
+                      child: GestureDetector(
+                        onTap: () {
+                          _focusMountain(mountain);
+                          _showMountainDetails(mountain);
+                        },
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: isSelected ? AppTheme.accentOrange : AppTheme.cardDark,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isSelected ? Colors.white : statusColor,
+                                  width: 2.5,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.5),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                Icons.terrain,
+                                size: isSelected ? 24 : 18,
+                                color: isSelected ? Colors.white : statusColor,
+                              ),
+                            ),
+                            Container(
+                              margin: const EdgeInsets.only(top: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.75),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                mountain.namaGunung.replaceAll('Gunung ', ''),
+                                style: const TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+
+                  // 2. Basecamp Trailhead Markers for the selected mountain
+                  ...activeTrails.map((trail) {
+                    final isHighlighted = _highlightedTrail?.id == trail.id;
+                    return Marker(
+                      point: trail.basecampLocation,
+                      width: 100,
+                      height: 52,
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() => _highlightedTrail = trail);
+                          _showBasecampDetails(trail);
+                        },
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(
+                                color: trail.color,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.4),
+                                    blurRadius: 4,
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.holiday_village,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                            ),
+                            Container(
+                              margin: const EdgeInsets.only(top: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                              decoration: BoxDecoration(
+                                color: isHighlighted ? trail.color : Colors.black.withValues(alpha: 0.8),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: trail.color, width: 1),
+                              ),
+                              child: Text(
+                                trail.basecampName.replaceAll('Basecamp Resmi ', '').replaceAll('Desa ', ''),
+                                style: const TextStyle(
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
               ),
             ],
           ),
@@ -440,6 +706,8 @@ class _MapScreenState extends State<MapScreen> {
                 itemBuilder: (context, index) {
                   final m = _mountains[index];
                   final isSelected = _selectedMountain?.id == m.id;
+                  final bcCount = _allBasecamps.where((b) => b.gunungId == m.id).length;
+
                   return Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: ActionChip(
@@ -448,7 +716,9 @@ class _MapScreenState extends State<MapScreen> {
                         size: 16,
                         color: isSelected ? Colors.white : AppTheme.primaryGreen,
                       ),
-                      label: Text(m.namaGunung.replaceAll('Gunung ', '')),
+                      label: Text(
+                        '${m.namaGunung.replaceAll('Gunung ', '')}${bcCount > 0 ? ' ($bcCount Jalur)' : ''}',
+                      ),
                       backgroundColor: isSelected ? AppTheme.primaryGreen : AppTheme.cardDark.withValues(alpha: 0.9),
                       labelStyle: TextStyle(
                         color: isSelected ? Colors.white : Colors.white70,
@@ -469,59 +739,90 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ),
 
-          // Legend / Trail Info Box (Bottom Left)
-          Positioned(
-            left: 12,
-            bottom: 24,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppTheme.cardDark.withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white12),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 6),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    _layerConfigs[_selectedLayer]!['name']!,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
+          // Legend / Active Mountain Trail List (Bottom Left)
+          if (_selectedMountain != null && activeTrails.isNotEmpty)
+            Positioned(
+              left: 12,
+              bottom: 24,
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 240, maxHeight: 180),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppTheme.cardDark.withValues(alpha: 0.92),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white12),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 8),
+                  ],
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(width: 14, height: 3, color: Colors.redAccent),
-                      const SizedBox(width: 6),
-                      const Text('Jalur Semeru', style: TextStyle(fontSize: 10, color: Colors.white70)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              _selectedMountain!.namaGunung,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Text(
+                            '${activeTrails.length} Jalur',
+                            style: const TextStyle(fontSize: 10, color: AppTheme.primaryGreen, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      const Divider(color: Colors.white12, height: 1),
+                      const SizedBox(height: 6),
+                      for (final trail in activeTrails) ...[
+                        InkWell(
+                          onTap: () {
+                            setState(() => _highlightedTrail = trail);
+                            _showBasecampDetails(trail);
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 3),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 14,
+                                  height: 4,
+                                  decoration: BoxDecoration(
+                                    color: trail.color,
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    trail.basecampName,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: _highlightedTrail?.id == trail.id ? FontWeight.bold : FontWeight.normal,
+                                      color: _highlightedTrail?.id == trail.id ? trail.color : Colors.white70,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Text(
+                                  '${trail.distanceKm} km',
+                                  style: const TextStyle(fontSize: 9, color: Colors.white38),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
-                  const SizedBox(height: 2),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(width: 14, height: 3, color: Colors.orangeAccent),
-                      const SizedBox(width: 6),
-                      const Text('Jalur Bromo', style: TextStyle(fontSize: 10, color: Colors.white70)),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(width: 14, height: 3, color: AppTheme.primaryGreen),
-                      const SizedBox(width: 6),
-                      const Text('Jalur Merbabu', style: TextStyle(fontSize: 10, color: Colors.white70)),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
 
           // Zoom & Layer Controls (Bottom Right)
           Positioned(
@@ -560,7 +861,7 @@ class _MapScreenState extends State<MapScreen> {
                   child: const Icon(Icons.remove, color: Colors.white),
                 ),
                 const SizedBox(height: 8),
-                // Re-center on selected mountain or center of Java
+                // Re-center on selected mountain
                 FloatingActionButton.small(
                   heroTag: 'center_fab',
                   backgroundColor: AppTheme.primaryGreen,
