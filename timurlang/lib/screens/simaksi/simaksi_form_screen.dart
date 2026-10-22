@@ -202,12 +202,21 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_mountain == null) {
-      final argMountain = ModalRoute.of(context)?.settings.arguments as Mountain?;
-      _initMountains(argMountain);
+      final args = ModalRoute.of(context)?.settings.arguments;
+      Mountain? argMountain;
+      String? mountainId;
+
+      if (args is Mountain) {
+        argMountain = args;
+      } else if (args is String) {
+        mountainId = args;
+      }
+
+      _initMountains(argMountain, initialId: mountainId);
     }
   }
 
-  Future<void> _initMountains(Mountain? initial) async {
+  Future<void> _initMountains(Mountain? initial, {String? initialId}) async {
     final list = await DatabaseService.instance.getAllMountains();
     if (!mounted) return;
     setState(() {
@@ -217,6 +226,13 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
           (m) => m.id == initial.id,
           orElse: () => initial,
         );
+      } else if (initialId != null) {
+        final found = list.where((m) => m.id == initialId);
+        if (found.isNotEmpty) {
+          _mountain = found.first;
+        } else if (list.isNotEmpty) {
+          _mountain = list.first;
+        }
       } else if (list.isNotEmpty) {
         _mountain = list.first;
       }

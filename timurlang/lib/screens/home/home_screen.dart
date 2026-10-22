@@ -1525,8 +1525,8 @@ class _DashboardPageState extends State<_DashboardPage> {
                           onPressed: () {
                             Navigator.pushNamed(
                               context,
-                              AppRoutes.simaksiForm,
-                              arguments: mountain.id,
+                              AppRoutes.mountainDetail,
+                              arguments: mountain,
                             );
                           },
                           style: ElevatedButton.styleFrom(
