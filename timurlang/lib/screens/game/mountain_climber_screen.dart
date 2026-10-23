@@ -19,11 +19,28 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/theme.dart';
 
-/// Representasi rintangan game (Rubah di tanah atau Elang di udara)
+/// Jenis variasi rintangan dalam game
+enum ObstacleKind {
+  rubah,
+  kayu,
+  elang,
+}
+
+/// Representasi rintangan game (Rubah di tanah, Kayu menggelinding di tanah, atau Elang di udara)
 class GameObstacle {
-  bool isEagle;
+  ObstacleKind kind;
   double x;
-  GameObstacle({required this.isEagle, required this.x});
+  double rotation; // Rotasi sudut (radian) untuk animasi kayu menggelinding
+
+  GameObstacle({
+    required this.kind,
+    required this.x,
+    this.rotation = 0.0,
+  });
+
+  bool get isEagle => kind == ObstacleKind.elang;
+  bool get isFox => kind == ObstacleKind.rubah;
+  bool get isWood => kind == ObstacleKind.kayu;
 }
 
 /// Entry screen alias for TimurLang app routing
@@ -55,6 +72,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   ui.Image? hikerSpriteSheet;
   ui.Image? foxSpriteSheet;
   ui.Image? eagleSpriteSheet;
+  ui.Image? woodImage;
   bool isAssetsLoaded = false;
 
   // ── Animasi Karakter & Rintangan ──
@@ -82,6 +100,8 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   // ── Ukuran Rintangan ──
   final double foxWidth = 84.6;
   final double foxHeight = 44.0;
+  final double woodWidth = 46.0;
+  final double woodHeight = 46.0;
   final double eagleWidth = 68.0;
   final double eagleHeight = 48.0;
   // Ketinggian elang dari tanah: berdiri pasti kena (92 > 68), menunduk aman lewat di bawah (61.3 < 68)
@@ -140,6 +160,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     foxSpriteSheet = await _loadUiImage('assets/images/fox.png');
     eagleSpriteSheet = await _loadUiImage('assets/images/elang.png') ??
         await _loadUiImage('assets/images/eagle.png');
+    woodImage = await _loadUiImage('assets/images/kayu.png');
 
     if (mounted) {
       setState(() {
@@ -175,10 +196,11 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       _jumpCount = 0;
       _lastTapTime = null;
       _bonusSpeedTimer = 0;
-      // Inisialisasi rintangan berurutan dengan jarak aman minimal 480px (tidak mungkin sejajar!)
+      // Inisialisasi rintangan berurutan dengan jarak aman minimal 470px (tidak mungkin sejajar!)
       _obstacles = [
-        GameObstacle(isEagle: false, x: screenWidth + 180),
-        GameObstacle(isEagle: true, x: screenWidth + 180 + 480),
+        GameObstacle(kind: ObstacleKind.rubah, x: screenWidth + 180),
+        GameObstacle(kind: ObstacleKind.kayu, x: screenWidth + 180 + 470),
+        GameObstacle(kind: ObstacleKind.elang, x: screenWidth + 180 + 940),
       ];
       gameSpeed = 270;
       mdplScore = 1200;
@@ -316,12 +338,21 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       // 6. Update Pergerakan Rintangan (Sama Kecepatan: DIJAMIN tidak pernah sejajar)
       for (final obs in _obstacles) {
         obs.x -= effectiveGameSpeed * dt;
+        if (obs.isWood) {
+          // Menggelinding ke kiri secara fisik tanpa slip: dTheta = dx / R (counter-clockwise)
+          obs.rotation -= (effectiveGameSpeed * dt) / (woodWidth / 2.0);
+          if (obs.rotation < -2 * pi) {
+            obs.rotation += 2 * pi;
+          }
+        }
       }
 
       // 7. Respawn Rintangan yang Sudah Lewat Layar Kiri
       for (int i = 0; i < _obstacles.length; i++) {
         final obs = _obstacles[i];
-        final double obsWidth = obs.isEagle ? eagleWidth : foxWidth;
+        final double obsWidth = obs.isEagle
+            ? eagleWidth
+            : (obs.isWood ? woodWidth : foxWidth);
         if (obs.x < -obsWidth - 60) {
           double maxX = screenWidth;
           for (final other in _obstacles) {
@@ -331,8 +362,10 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
           }
           // Posisi baru selalu di belakang obstacle terjauh dengan jarak minimal 460px
           obs.x = maxX + 460.0 + Random().nextInt(140);
-          // Ganti jenis rintangan secara bergantian
-          obs.isEagle = !obs.isEagle || Random().nextBool();
+          obs.rotation = 0.0;
+          // Ganti variasi rintangan secara acak (Rubah, Kayu Menggelinding, Elang)
+          final otherKinds = ObstacleKind.values.where((k) => k != obs.kind).toList();
+          obs.kind = otherKinds[Random().nextInt(otherKinds.length)];
           gameSpeed = (gameSpeed + 3).clamp(270.0, 680.0);
         }
       }
@@ -372,6 +405,20 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
 
           final bool overlapX = playerXEnd > eagleXStart && playerXStart < eagleXEnd;
           final bool overlapAlt = playerAltTop > eagleAltBottom && playerAltBottom < eagleAltTop;
+
+          if (overlapX && overlapAlt) {
+            hasCollision = true;
+            break;
+          }
+        } else if (obs.isWood) {
+          // Kayu menggelinding di tanah: Altitude [0, woodHeight - 6] -> [0, 40]
+          final double woodXStart = obs.x + 8.0;
+          final double woodXEnd = obs.x + woodWidth - 8.0;
+          const double woodAltBottom = 0.0;
+          final double woodAltTop = woodHeight - 6.0;
+
+          final bool overlapX = playerXEnd > woodXStart && playerXStart < woodXEnd;
+          final bool overlapAlt = playerAltTop > woodAltBottom && playerAltBottom < woodAltTop;
 
           if (overlapX && overlapAlt) {
             hasCollision = true;
@@ -494,7 +541,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                 ),
               ),
 
-              // 2 & 3. RINTANGAN (RUBAH & ELANG - 100% NAPAK TANAH & DIJAMIN TIDAK PERNAH SEJAJAR)
+              // 2 & 3. RINTANGAN (RUBAH, KAYU MENGGELINDING, & ELANG - 100% NAPAK TANAH & DIJAMIN TIDAK PERNAH SEJAJAR)
               ..._obstacles.map((obs) {
                 if (obs.isEagle) {
                   return Positioned(
@@ -512,6 +559,25 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                             )
                           : CustomPaint(
                               painter: CartoonEagleFallbackPainter(wingFlap: eagleAnimTimer * 8),
+                            ),
+                    ),
+                  );
+                } else if (obs.isWood) {
+                  return Positioned(
+                    bottom: screenSize.height - groundLevel,
+                    left: obs.x,
+                    child: SizedBox(
+                      width: woodWidth,
+                      height: woodHeight,
+                      child: woodImage != null
+                          ? CustomPaint(
+                              painter: RollingWoodPainter(
+                                woodImage: woodImage!,
+                                rotation: obs.rotation,
+                              ),
+                            )
+                          : CustomPaint(
+                              painter: CartoonRollingWoodPainter(rotation: obs.rotation),
                             ),
                     ),
                   );
@@ -812,7 +878,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                     ? (_achievedNewRecord
                                         ? 'Luar biasa! Kamu menembus rekor pendakian tertinggi baru!'
                                         : 'Ketinggian: ${mdplScore.toInt()} MDPL • Rekor: ${highScore.toInt()} MDPL')
-                                    : 'Hindari rintangan rubah dan elang, daki gunung setinggi mungkin!',
+                                    : 'Hindari rintangan rubah, kayu menggelinding, dan elang, daki gunung setinggi mungkin!',
                                 textAlign: TextAlign.center,
                                 style: GoogleFonts.plusJakartaSans(
                                   color: AppTheme.textSecondary,
@@ -922,8 +988,8 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                     children: [
                                       _buildControlTip(
                                         icon: '🦊',
-                                        action: 'Rubah',
-                                        instruction: 'Ketuk 1x untuk Melompat',
+                                        action: 'Rubah / Kayu',
+                                        instruction: 'Ketuk 1x untuk Melompati Rintangan Tanah',
                                         accentColor: AppTheme.primary,
                                       ),
                                       const SizedBox(height: 8),
@@ -1175,6 +1241,129 @@ class FoxSpritePainter extends CustomPainter {
   bool shouldRepaint(covariant FoxSpritePainter oldDelegate) {
     return oldDelegate.frameIndex != frameIndex ||
         oldDelegate.spriteSheet != spriteSheet;
+  }
+}
+
+// ============================================================================
+// 2.5 SPRITE PAINTER KAYU MENGGELINDING (kayu.png)
+// Kayu berputar rotasi fisik tanpa slip dan 100% menapak tanah di atas rumput
+// ============================================================================
+class RollingWoodPainter extends CustomPainter {
+  final ui.Image woodImage;
+  final double rotation;
+
+  RollingWoodPainter({
+    required this.woodImage,
+    required this.rotation,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double radius = size.width / 2.0;
+    final Offset center = Offset(radius, size.height / 2.0);
+
+    // 1. Bayangan kontak halus di tanah agar benar-benar menapak tanah
+    final Paint shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.28)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(center.dx, size.height - 0.5),
+        width: size.width * 0.78,
+        height: 4.5,
+      ),
+      shadowPaint,
+    );
+
+    // 2. Gambar kayu menggelinding dengan rotasi berpusat di tengah
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(rotation);
+
+    final Rect srcRect = Rect.fromLTWH(
+      0,
+      0,
+      woodImage.width.toDouble(),
+      woodImage.height.toDouble(),
+    );
+    final Rect dstRect = Rect.fromCenter(
+      center: Offset.zero,
+      width: size.width,
+      height: size.height,
+    );
+
+    final Paint paint = Paint()
+      ..isAntiAlias = true
+      ..filterQuality = FilterQuality.high;
+
+    canvas.drawImageRect(woodImage, srcRect, dstRect, paint);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant RollingWoodPainter oldDelegate) {
+    return oldDelegate.rotation != rotation ||
+        oldDelegate.woodImage != woodImage;
+  }
+}
+
+class CartoonRollingWoodPainter extends CustomPainter {
+  final double rotation;
+
+  CartoonRollingWoodPainter({required this.rotation});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double radius = size.width / 2.0;
+    final Offset center = Offset(radius, size.height / 2.0);
+
+    // Bayangan kontak tanah
+    final Paint shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.28)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(center.dx, size.height - 0.5),
+        width: size.width * 0.78,
+        height: 4.5,
+      ),
+      shadowPaint,
+    );
+
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(rotation);
+
+    // Kulit luar kayu (bark)
+    final barkPaint = Paint()..color = const Color(0xFF5D4037);
+    canvas.drawCircle(Offset.zero, radius, barkPaint);
+
+    // Kayu dalam
+    final woodPaint = Paint()..color = const Color(0xFFD7CCC8);
+    canvas.drawCircle(Offset.zero, radius * 0.88, woodPaint);
+
+    // Cincin tahunan pohon
+    final ringPaint = Paint()
+      ..color = const Color(0xFFBCAAA4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+    canvas.drawCircle(Offset.zero, radius * 0.60, ringPaint);
+    canvas.drawCircle(Offset.zero, radius * 0.32, ringPaint);
+
+    // Retakan kayu (cracks)
+    final crackPaint = Paint()
+      ..color = const Color(0xFF5D4037)
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset.zero, Offset(radius * 0.75, 0), crackPaint);
+    canvas.drawLine(Offset.zero, Offset(-radius * 0.5, radius * 0.5), crackPaint);
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant CartoonRollingWoodPainter oldDelegate) {
+    return oldDelegate.rotation != rotation;
   }
 }
 

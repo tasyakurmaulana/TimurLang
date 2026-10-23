@@ -80,12 +80,14 @@ class GameConstants {
   // Rintangan bawah darat: Rubah (fox.png), Rintangan atas udara: Burung Elang (elang.png)
   static const double foxWidth = 84.6;
   static const double foxHeight = 44.0;
+  static const double woodSize = 46.0;
   static const double eagleWidth = 68.0;
   static const double eagleHeight = 48.0;
   static const double eagleAltitude = 68.0;
 
   static const List<Map<String, dynamic>> bottomObstacles = [
     {'name': 'rubah', 'width': 84.6, 'height': 44.0},
+    {'name': 'kayu', 'width': 46.0, 'height': 46.0},
   ];
 
   static const List<Map<String, dynamic>> topObstacles = [

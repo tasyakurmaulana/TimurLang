@@ -336,6 +336,9 @@ class GamePainter extends CustomPainter {
       case 'batu_cadas':
         _drawRock(canvas, obstacle, isDark);
         break;
+      case 'kayu':
+        _drawRollingWood(canvas, obstacle, isDark);
+        break;
       case 'pohon_tumbang':
         _drawFallenTree(canvas, obstacle, isDark);
         break;
@@ -390,6 +393,54 @@ class GamePainter extends CustomPainter {
     highlightPath.lineTo(obs.x + obs.width * 0.6, obs.y + obs.height * 0.35);
     highlightPath.close();
     canvas.drawPath(highlightPath, Paint()..color = highlightColor.withValues(alpha: 0.5));
+  }
+
+  void _drawRollingWood(Canvas canvas, Obstacle obs, bool isDark) {
+    final radius = obs.width / 2.0;
+    final center = Offset(obs.x + radius, obs.y + radius);
+
+    // Contact shadow on ground
+    final shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.25)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(center.dx, obs.y + obs.height - 0.5),
+        width: obs.width * 0.78,
+        height: 4.5,
+      ),
+      shadowPaint,
+    );
+
+    // Dynamic rotation angle from movement
+    final rotation = -obs.x / radius;
+
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(rotation);
+
+    final barkColor = isDark ? const Color(0xFF3E2723) : const Color(0xFF5D4037);
+    final woodColor = isDark ? const Color(0xFFBCAAA4) : const Color(0xFFD7CCC8);
+    final ringColor = isDark ? const Color(0xFF8D6E63) : const Color(0xFFA1887F);
+
+    canvas.drawCircle(Offset.zero, radius, Paint()..color = barkColor);
+    canvas.drawCircle(Offset.zero, radius * 0.88, Paint()..color = woodColor);
+
+    final ringPaint = Paint()
+      ..color = ringColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8;
+    canvas.drawCircle(Offset.zero, radius * 0.60, ringPaint);
+    canvas.drawCircle(Offset.zero, radius * 0.32, ringPaint);
+
+    final crackPaint = Paint()
+      ..color = barkColor
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset.zero, Offset(radius * 0.75, 0), crackPaint);
+    canvas.drawLine(Offset.zero, Offset(-radius * 0.5, radius * 0.5), crackPaint);
+
+    canvas.restore();
   }
 
   void _drawFallenTree(Canvas canvas, Obstacle obs, bool isDark) {
