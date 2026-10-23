@@ -32,7 +32,6 @@ class ManageTrailCheckpointsScreen extends StatefulWidget {
 class _ManageTrailCheckpointsScreenState extends State<ManageTrailCheckpointsScreen> {
   late BasecampPost _currentBasecamp;
   Mountain? _mountain;
-  List<BasecampPost> _mountainBasecamps = [];
   List<TrailCheckpoint> _checkpoints = [];
   bool _isCustomized = false;
   bool _isLoading = true;
@@ -52,15 +51,11 @@ class _ManageTrailCheckpointsScreenState extends State<ManageTrailCheckpointsScr
       // 1. Muat data gunung jika belum ada
       _mountain ??= await DatabaseService.instance.getMountainById(_currentBasecamp.gunungId);
 
-      // 2. Muat seluruh basecamp gunung ini agar petugas bisa memilih jika ada multiple basecamp
-      final bcs = await DatabaseService.instance.getBasecampsByMountain(_currentBasecamp.gunungId);
-
-      // 3. Muat checkpoints untuk basecamp yang dipilih
+      // 2. Muat checkpoints khusus untuk basecamp ini saja (otoritas basecamp masing-masing)
       _loadCheckpointsForBasecamp(_currentBasecamp);
 
       if (mounted) {
         setState(() {
-          _mountainBasecamps = bcs.isNotEmpty ? bcs : [_currentBasecamp];
           _isLoading = false;
         });
       }
@@ -82,13 +77,6 @@ class _ManageTrailCheckpointsScreenState extends State<ManageTrailCheckpointsScr
     final peakElevasi = _mountain?.elevasiMdpl ?? 3000;
     _checkpoints = TrailService.instance.generateDefaultCheckpoints(bc.namaPos, peakElevasi);
     _isCustomized = false;
-  }
-
-  Future<void> _switchBasecamp(BasecampPost newBc) async {
-    setState(() {
-      _currentBasecamp = newBc;
-      _loadCheckpointsForBasecamp(newBc);
-    });
   }
 
   void _resetToDefaultTemplate() {
@@ -546,60 +534,51 @@ class _ManageTrailCheckpointsScreenState extends State<ManageTrailCheckpointsScr
 
                 const SizedBox(height: 14),
 
-                // Pilihan basecamp jika gunung memiliki banyak pos jalur
-                if (_mountainBasecamps.length > 1) ...[
-                  Text(
-                    'Pilih Jalur Basecamp yang Dikelola:',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textSecondary,
-                    ),
+                // Keterangan Basecamp Terkelola (Otoritas Resmi Basecamp Masing-Masing)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.border),
                   ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.border),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: _currentBasecamp.id,
-                        isExpanded: true,
-                        items: _mountainBasecamps.map((bc) {
-                          return DropdownMenuItem(
-                            value: bc.id,
-                            child: Row(
-                              children: [
-                                const Icon(Icons.location_on_outlined, size: 16, color: AppTheme.primary),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    bc.namaPos,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (newId) {
-                          if (newId != null && newId != _currentBasecamp.id) {
-                            final target = _mountainBasecamps.firstWhere((b) => b.id == newId);
-                            _switchBasecamp(target);
-                          }
-                        },
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primarySubtle,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.shield_outlined, size: 18, color: AppTheme.primary),
                       ),
-                    ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Otoritas Jalur: ${_currentBasecamp.namaPos}',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                            Text(
+                              'Pengaturan titik pos hanya berlaku untuk pos & shelter di jalur basecamp Anda.',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 14),
-                ],
+                ),
+                const SizedBox(height: 14),
 
                 // Status Banner (Kustom vs Template Default)
                 Container(

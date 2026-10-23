@@ -10,6 +10,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../config/constants.dart';
 import '../config/theme.dart';
 import '../models/simaksi_permit.dart';
+import '../services/blockchain_service.dart';
 import '../services/database_service.dart';
 import '../utils/date_utils.dart';
 import '../utils/time_zone_helper.dart';
@@ -78,32 +79,27 @@ class _TicketCardState extends State<TicketCard> {
         }
       }
 
-      // 2. Fallback cek dari gunungId jika basecampId null atau belum cocok
+      // 2. Jika permit.namaBasecamp sudah ada dan bukan default generic, gunakan langsung
+      final candidateName = widget.permit.namaBasecamp;
+      if (candidateName != null &&
+          candidateName.isNotEmpty &&
+          candidateName != 'Pos Basecamp Resmi') {
+        if (mounted) {
+          setState(() {
+            _resolvedBasecampName = candidateName;
+          });
+        }
+        return;
+      }
+
+      // 3. Fallback HANYA jika gunung memiliki tepat 1 basecamp resmi
       if (widget.permit.gunungId.isNotEmpty) {
         final bcs = await DatabaseService.instance.getRegisteredBasecampsByMountain(widget.permit.gunungId);
-        if (bcs.isNotEmpty && mounted) {
+        if (bcs.length == 1 && mounted) {
           setState(() {
             _resolvedBasecampName = bcs.first.namaPos;
           });
           return;
-        }
-      }
-
-      // 3. Fallback cek dari pencarian namaGunung
-      if (widget.permit.namaGunung != null && widget.permit.namaGunung!.isNotEmpty) {
-        final allMountains = await DatabaseService.instance.getAllMountains();
-        final searchLower = widget.permit.namaGunung!.toLowerCase();
-        final match = allMountains.where((m) =>
-            m.namaGunung.toLowerCase().contains(searchLower) ||
-            searchLower.contains(m.namaGunung.toLowerCase()));
-        if (match.isNotEmpty) {
-          final bcs = await DatabaseService.instance.getRegisteredBasecampsByMountain(match.first.id);
-          if (bcs.isNotEmpty && mounted) {
-            setState(() {
-              _resolvedBasecampName = bcs.first.namaPos;
-            });
-            return;
-          }
         }
       }
     } catch (_) {}
@@ -557,6 +553,40 @@ class _TicketCardState extends State<TicketCard> {
                               ),
                             ),
                           ),
+                          if (widget.permit.blockHash.startsWith('0x')) ...[
+                            const SizedBox(height: 8),
+                            Center(
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(6),
+                                  onTap: () => BlockchainService.openExplorer(context, widget.permit.blockHash),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primarySubtle,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.open_in_new_rounded, size: 12, color: AppTheme.primary),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Verifikasi di Polygonscan ↗',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppTheme.primary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ] else ...[
                           _buildUsedQrSection(context),
                         ],

@@ -444,10 +444,49 @@ class _TicketVerifyScreenState extends State<TicketVerifyScreen> {
                     const Divider(height: 16, color: AppTheme.border),
                     _dataRow('Status Tiket', _permit!.statusIzin),
                     const Divider(height: 16, color: AppTheme.border),
-                    _dataRow(
-                      'Block Hash',
-                      '${_permit!.blockHash.length > 16 ? _permit!.blockHash.substring(0, 16) : _permit!.blockHash}... (SHA-256 Valid)',
-                    ),
+                    if (_permit!.blockHash.startsWith('0x')) ...[
+                      _dataRow('Blockchain', 'Polygon Amoy Testnet (On-Chain)'),
+                      const Divider(height: 16, color: AppTheme.border),
+                      _dataRow(
+                        'Tx Hash',
+                        '${_permit!.blockHash.substring(0, 18)}...',
+                      ),
+                      const SizedBox(height: 8),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () => BlockchainService.openExplorer(context, _permit!.blockHash),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primarySubtle,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.open_in_new_rounded, size: 14, color: AppTheme.primary),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Buka di Polygonscan Explorer ↗',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ] else ...[
+                      _dataRow(
+                        'Block Hash',
+                        '${_permit!.blockHash.length > 16 ? _permit!.blockHash.substring(0, 16) : _permit!.blockHash}... (SHA-256 Valid)',
+                      ),
+                    ],
                     if (_permit!.members.isNotEmpty) ...[
                       const Divider(height: 20, color: AppTheme.border),
                       Row(

@@ -10,12 +10,16 @@ class MemberInfo {
   final String alamat;
   final String kontakDarurat;
   final bool isKetua;
+  final String? noKtp;
+  final String? noTelepon;
 
   MemberInfo({
     required this.nama,
     required this.alamat,
     required this.kontakDarurat,
     this.isKetua = false,
+    this.noKtp,
+    this.noTelepon,
   });
 
   Map<String, dynamic> toMap() {
@@ -24,6 +28,8 @@ class MemberInfo {
       'alamat': alamat,
       'kontak_darurat': kontakDarurat,
       'is_ketua': isKetua,
+      if (noKtp != null) 'no_ktp': noKtp,
+      if (noTelepon != null) 'no_telepon': noTelepon,
     };
   }
 
@@ -33,6 +39,8 @@ class MemberInfo {
       alamat: (map['alamat'] as String?) ?? '',
       kontakDarurat: (map['kontak_darurat'] as String?) ?? '',
       isKetua: map['is_ketua'] == true,
+      noKtp: map['no_ktp'] as String?,
+      noTelepon: map['no_telepon'] as String?,
     );
   }
 }
@@ -130,7 +138,10 @@ class SimaksiPermit {
       previousHash: (map['previous_hash'] as String?) ?? '',
       nonce: (map['nonce'] as num?)?.toInt() ?? 0,
       namaGunung: map['nama_gunung'] as String?,
-      namaBasecamp: (map['nama_basecamp'] as String?) ?? (map['nama_pos'] as String?),
+      namaBasecamp: (map['resolved_nama_basecamp'] as String?) ??
+          (map['nama_basecamp'] as String?) ??
+          (map['b_nama_pos'] as String?) ??
+          (map['nama_pos'] as String?),
       totalBiaya: map['total_biaya'] != null ? (map['total_biaya'] as num).toDouble() : null,
       matauang: map['matauang'] as String?,
       dataAnggota: map['data_anggota'] as String?,

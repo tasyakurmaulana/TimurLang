@@ -83,6 +83,17 @@ class DatabaseService {
     try {
       await db.execute("ALTER TABLE simaksi_permits ADD COLUMN nama_basecamp TEXT");
     } catch (_) {}
+    // Backfill nama_basecamp dari basecamp_posts jika basecamp_id ada tapi nama_basecamp masih kosong
+    try {
+      await db.execute('''
+        UPDATE simaksi_permits
+        SET nama_basecamp = (
+          SELECT nama_pos FROM basecamp_posts WHERE basecamp_posts.id = simaksi_permits.basecamp_id
+        )
+        WHERE (nama_basecamp IS NULL OR nama_basecamp = '' OR nama_basecamp = 'Pos Basecamp Resmi')
+          AND basecamp_id IS NOT NULL;
+      ''');
+    } catch (_) {}
 
     // Pastikan tabel user_personal_data tersedia
     try {
@@ -121,6 +132,13 @@ class DatabaseService {
       ) ?? 0;
       if (count < 46) {
         await _seedMountains(db);
+        await _seedBasecamps(db);
+        await _seedBasecampUsers(db);
+      }
+      final bcCount = Sqflite.firstIntValue(
+        await db.rawQuery('SELECT COUNT(*) FROM basecamp_posts'),
+      ) ?? 0;
+      if (bcCount < 112) {
         await _seedBasecamps(db);
         await _seedBasecampUsers(db);
       }
@@ -216,6 +234,7 @@ class DatabaseService {
         user_id TEXT NOT NULL,
         gunung_id TEXT NOT NULL,
         basecamp_id TEXT,
+        nama_basecamp TEXT,
         tanggal_naik TEXT NOT NULL,
         tanggal_turun TEXT NOT NULL,
         jumlah_anggota INTEGER NOT NULL,
@@ -745,6 +764,34 @@ class DatabaseService {
 
   Future<void> insertPermit(SimaksiPermit permit) async {
     final db = await database;
+    final existing = await db.query(
+      'simaksi_permits',
+      where: 'id = ?',
+      whereArgs: [permit.id],
+      limit: 1,
+    );
+    if (existing.isNotEmpty) {
+      final old = existing.first;
+      // Jangan timpa nilai field lokal jika data incoming null/kosong tapi data lama ada
+      final mergedPermit = permit.copyWith(
+        basecampId: (permit.basecampId != null && permit.basecampId!.isNotEmpty)
+            ? permit.basecampId
+            : old['basecamp_id'] as String?,
+        namaBasecamp: (permit.namaBasecamp != null &&
+                permit.namaBasecamp!.isNotEmpty &&
+                permit.namaBasecamp != 'Pos Basecamp Resmi')
+            ? permit.namaBasecamp
+            : old['nama_basecamp'] as String?,
+        namaGunung: (permit.namaGunung != null && permit.namaGunung!.isNotEmpty)
+            ? permit.namaGunung
+            : old['nama_gunung'] as String?,
+        dataAnggota: (permit.dataAnggota != null && permit.dataAnggota!.isNotEmpty)
+            ? permit.dataAnggota
+            : old['data_anggota'] as String?,
+      );
+      await db.insert('simaksi_permits', mergedPermit.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+      return;
+    }
     await db.insert('simaksi_permits', permit.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
@@ -757,7 +804,9 @@ class DatabaseService {
   Future<List<SimaksiPermit>> getPermitsByUser(String userId) async {
     final db = await database;
     final maps = await db.rawQuery('''
-      SELECT p.*, COALESCE(NULLIF(p.nama_basecamp, ''), b.nama_pos) AS nama_basecamp
+      SELECT p.*,
+             b.nama_pos AS b_nama_pos,
+             COALESCE(NULLIF(p.nama_basecamp, ''), b.nama_pos) AS resolved_nama_basecamp
       FROM simaksi_permits p
       LEFT JOIN basecamp_posts b ON p.basecamp_id = b.id
       WHERE p.user_id = ?
@@ -770,7 +819,9 @@ class DatabaseService {
   Future<SimaksiPermit?> getActivePermitForHiker(String userId) async {
     final db = await database;
     final maps = await db.rawQuery('''
-      SELECT p.*, COALESCE(NULLIF(p.nama_basecamp, ''), b.nama_pos) AS nama_basecamp
+      SELECT p.*,
+             b.nama_pos AS b_nama_pos,
+             COALESCE(NULLIF(p.nama_basecamp, ''), b.nama_pos) AS resolved_nama_basecamp
       FROM simaksi_permits p
       LEFT JOIN basecamp_posts b ON p.basecamp_id = b.id
       WHERE p.user_id = ? AND p.status_izin = ?
@@ -782,7 +833,9 @@ class DatabaseService {
     }
     // Fallback cek status tervalidasi atau terdaftar jika belum check-in
     final fallback = await db.rawQuery('''
-      SELECT p.*, COALESCE(NULLIF(p.nama_basecamp, ''), b.nama_pos) AS nama_basecamp
+      SELECT p.*,
+             b.nama_pos AS b_nama_pos,
+             COALESCE(NULLIF(p.nama_basecamp, ''), b.nama_pos) AS resolved_nama_basecamp
       FROM simaksi_permits p
       LEFT JOIN basecamp_posts b ON p.basecamp_id = b.id
       WHERE p.user_id = ? AND p.status_izin IN (?, ?)

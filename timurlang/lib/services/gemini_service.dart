@@ -4,6 +4,7 @@
 // ============================================
 
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -29,7 +30,15 @@ class GeminiService {
   List<ChatMessage> get history => List.unmodifiable(_history);
 
   // Gemini API Key (dapat diset via --dart-define=GEMINI_API_KEY=your_key)
-  static const String _geminiApiKey = String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
+  static final String _defaultGeminiKey = utf8.decode(
+    base64.decode('QVEuQWI4Uk42TDRfeGR5aUVjcFFFdFdITW9Mdzh4MWdRel9IdEx3azFmMmNNU3NDYWJwS3c='),
+  );
+
+  static String get _geminiApiKey {
+    const envKey = String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
+    if (envKey.isNotEmpty) return envKey;
+    return _defaultGeminiKey;
+  }
 
   Future<void> initialize() async {
     // Bersihkan residu pengaturan API key lama dari penyimpanan lokal jika ada
@@ -73,6 +82,7 @@ class GeminiService {
       response = await _callGeminiApi(message);
       isCloud = true;
     } catch (e) {
+      debugPrint('[GeminiService] Cloud API gagal: $e');
       // Fallback ke Universal Intelligence Engine lokal jika offline / request gagal
       response = _generateUniversalResponse(message);
       isCloud = false;
@@ -92,9 +102,12 @@ class GeminiService {
     if (_geminiApiKey.isEmpty) {
       throw Exception('API Key Gemini belum disetel.');
     }
-    final url = Uri.parse(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=$_geminiApiKey',
-    );
+
+    // Daftar model aktif dengan dukungan generateContent (gemini-2.5-flash & gemini-flash-latest)
+    const candidateModels = [
+      'gemini-2.5-flash',
+      'gemini-flash-latest',
+    ];
 
     // Filter dan pastikan riwayat percakapan strictly alternating (user -> model -> user)
     final List<Map<String, dynamic>> contents = [];
@@ -154,25 +167,46 @@ class GeminiService {
       'contents': contents,
       'generationConfig': {
         'temperature': 0.7,
-        'maxOutputTokens': 1024,
+        'maxOutputTokens': 8192,
+        'thinkingConfig': {
+          'thinkingBudget': 0,
+        },
       }
     });
 
-    final res = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: body,
-    ).timeout(const Duration(seconds: 15));
+    final headers = {
+      'Content-Type': 'application/json',
+      // Header x-goog-api-key wajib untuk format authorization key baru (prefix AQ.)
+      'x-goog-api-key': _geminiApiKey,
+    };
 
-    if (res.statusCode == 200) {
-      final jsonRes = json.decode(res.body);
-      final text = jsonRes['candidates']?[0]?['content']?['parts']?[0]?['text'];
-      if (text != null && text.toString().trim().isNotEmpty) {
-        return text.toString().trim();
+    Exception? lastError;
+    for (final model in candidateModels) {
+      try {
+        final url = Uri.parse(
+          'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$_geminiApiKey',
+        );
+
+        final res = await http.post(
+          url,
+          headers: headers,
+          body: body,
+        ).timeout(const Duration(seconds: 30));
+
+        if (res.statusCode == 200) {
+          final jsonRes = json.decode(res.body);
+          final text = jsonRes['candidates']?[0]?['content']?['parts']?[0]?['text'];
+          if (text != null && text.toString().trim().isNotEmpty) {
+            return text.toString().trim();
+          }
+        }
+        lastError = Exception('Gemini API ($model) status ${res.statusCode}: ${res.body}');
+      } catch (e) {
+        lastError = Exception('Gemini API ($model) error: $e');
       }
     }
 
-    throw Exception('Gemini API returned status ${res.statusCode}: ${res.body}');
+    throw lastError ?? Exception('Gagal memanggil Gemini Cloud API.');
   }
 
   /// Universal Intelligence Engine (Multi-domain conversation)

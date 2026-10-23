@@ -5,6 +5,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../config/theme.dart';
 import '../../config/routes.dart';
@@ -483,6 +484,38 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
                     ],
                   ),
                 ),
+                if (permit.blockHash.startsWith('0x')) ...[
+                  const SizedBox(height: 8),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(6),
+                      onTap: () => BlockchainService.openExplorer(context, permit.blockHash),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1B4332).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.open_in_new_rounded, size: 12, color: AppTheme.primary),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Lihat di Polygonscan (On-Chain)',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 10),
                 const Text(
                   'Tunjukkan QR ini ke pos Basecamp untuk verifikasi check-in.\n(QR Code ini bersifat sekali pakai dan otomatis hangus setelah di-scan)',

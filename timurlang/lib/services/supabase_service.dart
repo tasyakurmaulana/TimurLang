@@ -465,6 +465,7 @@ class SupabaseService {
         'user_id': permit.userId,
         'gunung_id': permit.gunungId,
         'basecamp_id': permit.basecampId,
+        'nama_basecamp': permit.namaBasecamp,
         'tanggal_naik': permit.tanggalNaik.toIso8601String().split('T')[0],
         'tanggal_turun': permit.tanggalTurun.toIso8601String().split('T')[0],
         'jumlah_anggota': permit.jumlahAnggota,
@@ -481,12 +482,13 @@ class SupabaseService {
       debugPrint('✅ Berhasil sync permit (${permit.id}) ke Supabase');
       return true;
     } catch (e) {
-      debugPrint('⚠️ Gagal sync permit lengkap: $e, mencoba fallback tanpa basecamp_id...');
+      debugPrint('⚠️ Gagal sync permit lengkap: $e, mencoba fallback tanpa basecamp_id tapi tetap sertakan nama_basecamp...');
       try {
         await _client!.from('simaksi_permits').upsert({
           'id': permit.id,
           'user_id': permit.userId,
           'gunung_id': permit.gunungId,
+          'nama_basecamp': permit.namaBasecamp,
           'tanggal_naik': permit.tanggalNaik.toIso8601String().split('T')[0],
           'tanggal_turun': permit.tanggalTurun.toIso8601String().split('T')[0],
           'jumlah_anggota': permit.jumlahAnggota,
@@ -499,11 +501,33 @@ class SupabaseService {
           'matauang': permit.matauang,
           'created_at': permit.createdAt.toIso8601String(),
         });
-        debugPrint('✅ Berhasil sync permit via fallback');
+        debugPrint('✅ Berhasil sync permit via fallback dengan nama_basecamp');
         return true;
       } catch (e2) {
-        debugPrint('❌ Gagal sync permit fallback: $e2');
-        return false;
+        debugPrint('⚠️ Gagal sync permit fallback nama_basecamp: $e2, fallback minimal...');
+        try {
+          await _client!.from('simaksi_permits').upsert({
+            'id': permit.id,
+            'user_id': permit.userId,
+            'gunung_id': permit.gunungId,
+            'tanggal_naik': permit.tanggalNaik.toIso8601String().split('T')[0],
+            'tanggal_turun': permit.tanggalTurun.toIso8601String().split('T')[0],
+            'jumlah_anggota': permit.jumlahAnggota,
+            'status_izin': permit.statusIzin,
+            'block_hash': permit.blockHash,
+            'previous_hash': permit.previousHash,
+            'nonce': permit.nonce,
+            'nama_gunung': permit.namaGunung,
+            'total_biaya': permit.totalBiaya,
+            'matauang': permit.matauang,
+            'created_at': permit.createdAt.toIso8601String(),
+          });
+          debugPrint('✅ Berhasil sync permit via fallback minimal');
+          return true;
+        } catch (e3) {
+          debugPrint('❌ Gagal sync permit fallback: $e3');
+          return false;
+        }
       }
     }
   }

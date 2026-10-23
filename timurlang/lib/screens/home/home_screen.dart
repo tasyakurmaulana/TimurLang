@@ -13,6 +13,8 @@ import '../../config/theme.dart';
 import '../../config/routes.dart';
 import '../../models/mountain.dart';
 import '../../models/simaksi_permit.dart';
+import '../../models/medical_profile.dart';
+import '../../models/user_personal_data.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
 import '../../services/sync_service.dart';
@@ -303,6 +305,10 @@ class _DashboardPageState extends State<_DashboardPage> {
   List<Mountain> _searchResults = [];
   bool _isSearching = false;
 
+  // Smart Mountain Recommendation state
+  List<SmartMountainRecommendation> _smartRecommendations = [];
+  bool _isLoadingRecommendations = true;
+
   @override
   void initState() {
     super.initState();
@@ -310,6 +316,7 @@ class _DashboardPageState extends State<_DashboardPage> {
     _mountainsFuture = _loadMountainsWithCache();
     _checkConnection();
     _fetchWeather();
+    _loadSmartRecommendations();
 
     _searchFocus.addListener(() {
       if (mounted) setState(() {});
@@ -416,12 +423,13 @@ class _DashboardPageState extends State<_DashboardPage> {
       _checkConnection(),
     ]);
 
-    // 3. Refresh Daftar Tiket & Gunung
+    // 3. Refresh Daftar Tiket, Gunung, & Rekomendasi Pintar
     if (mounted) {
       setState(() {
         _permitsFuture = _getRecentPermits();
         _mountainsFuture = _loadMountainsWithCache();
       });
+      _loadSmartRecommendations();
 
       final isSuccess = syncResult.failed == 0;
       // Tampilkan feedback notifikasi sinkronisasi
@@ -665,6 +673,10 @@ class _DashboardPageState extends State<_DashboardPage> {
 
               // 5. Menu Utama (Sebaris 4 Saja)
               _buildCompactMenuSection(),
+              const SizedBox(height: 24),
+
+              // 5.5 Rekomendasi Pintar Pendaki (AI Auto-sliding Carousel 3 Gunung)
+              _buildSmartMountainRecommendationSection(),
               const SizedBox(height: 26),
 
               // 6. Section: Tiket Pembelian Terakhir (Preview 3 Terakhir + Lihat Semua)
@@ -2188,9 +2200,578 @@ class _DashboardPageState extends State<_DashboardPage> {
     );
   }
 
-  Future<List<SimaksiPermit>> _getRecentPermits() async {
+    Future<List<SimaksiPermit>> _getRecentPermits() async {
     final user = AuthService.instance.currentUser;
     if (user == null) return [];
     return DatabaseService.instance.getPermitsByUser(user.id);
+  }
+
+  // ── REKOMENDASI PINTAR PENDAKI (SMART MOUNTAIN RECOMMENDATIONS) ──
+
+  Widget _buildSmartMountainRecommendationSection() {
+    if (_isLoadingRecommendations) {
+      return Container(
+        height: 260,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(color: AppTheme.primary),
+        ),
+      );
+    }
+
+    if (_smartRecommendations.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header Section Rekomendasi Pintar
+        Text(
+          'Rekomendasi Pintar',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Carousel 3 Gunung yang bisa geser-geser sendiri
+        _SmartRecommendationCarousel(
+          recommendations: _smartRecommendations,
+        ),
+      ],
+    );
+  }
+
+  Future<void> _loadSmartRecommendations() async {
+    final user = AuthService.instance.currentUser;
+    if (user == null) {
+      if (mounted) setState(() => _isLoadingRecommendations = false);
+      return;
+    }
+
+    try {
+      final results = await Future.wait([
+        DatabaseService.instance.getAllMountains(),
+        DatabaseService.instance.getPermitsByUser(user.id),
+        DatabaseService.instance.getPersonalData(user.id),
+        DatabaseService.instance.getMedicalProfile(user.id),
+      ]);
+
+      final mountains = results[0] as List<Mountain>;
+      final permits = results[1] as List<SimaksiPermit>;
+      final personalData = results[2] as UserPersonalData?;
+      final medicalProfile = results[3] as MedicalProfile?;
+
+      if (mountains.isEmpty) {
+        if (mounted) setState(() => _isLoadingRecommendations = false);
+        return;
+      }
+
+      final recs = _generateSmartRecommendations(
+        mountains: mountains,
+        permits: permits,
+        personalData: personalData,
+        medicalProfile: medicalProfile,
+        weather: _weatherData,
+      );
+
+      if (mounted) {
+        setState(() {
+          _smartRecommendations = recs;
+          _isLoadingRecommendations = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('[SmartRecommendation] Error generating recommendations: $e');
+      if (mounted) setState(() => _isLoadingRecommendations = false);
+    }
+  }
+
+  List<SmartMountainRecommendation> _generateSmartRecommendations({
+    required List<Mountain> mountains,
+    required List<SimaksiPermit> permits,
+    required UserPersonalData? personalData,
+    required MedicalProfile? medicalProfile,
+    required WeatherData? weather,
+  }) {
+    if (mountains.isEmpty) return [];
+
+    // 1. Analisis Riwayat SIMAKSI
+    final climbedNames = permits.map((p) => (p.namaGunung ?? p.gunungId).toLowerCase()).toSet();
+    final int totalClimbs = permits.length;
+
+    // 2. Analisis Data Rekam Medis
+    final riwayatMedis = (medicalProfile?.riwayatPenyakit ?? '').toLowerCase();
+    final bool hasSensitiveHealth = riwayatMedis.contains('asma') ||
+        riwayatMedis.contains('paru') ||
+        riwayatMedis.contains('sesak') ||
+        riwayatMedis.contains('jantung') ||
+        riwayatMedis.contains('hipertensi');
+
+    // 3. Analisis Data Diri Lengkap
+    final int userAge = personalData != null
+        ? (DateTime.now().year - personalData.tanggalLahir.year)
+        : 23;
+
+    // 4. Analisis Cuaca Gunung
+    final weatherCondition = weather?.condition ?? 'Cerah Berawan';
+    final int temp = weather?.temperature.round() ?? 21;
+    final bool isGoodWeather = weather == null ||
+        (!weather.isStormWarning && !weather.condition.toLowerCase().contains('badai'));
+
+    // 5. Penilaian Skor Kecocokan Personal
+    final List<Map<String, dynamic>> scored = [];
+
+    for (final m in mountains) {
+      int score = 82;
+      final bool isClimbed = climbedNames.contains(m.namaGunung.toLowerCase()) ||
+          climbedNames.contains(m.id.toLowerCase());
+      final bool isClosed = m.statusJalur == 'Tutup';
+
+      if (isClosed) {
+        score -= 25;
+      }
+
+      // Kriteria 1: Riwayat Simaksi
+      String riwayatNote = '';
+      if (totalClimbs == 0) {
+        if (m.elevasiMdpl <= 2650) {
+          score += 12;
+          riwayatNote = 'Trek sangat ramah untuk pendakian perdana Anda';
+        } else if (m.elevasiMdpl <= 3150) {
+          score += 6;
+          riwayatNote = 'Pilihan mantap untuk mencatat riwayat Simaksi pertama';
+        } else {
+          score -= 10;
+          riwayatNote = 'Tantangan tinggi untuk pendaki baru';
+        }
+      } else if (totalClimbs <= 2) {
+        if (m.elevasiMdpl >= 2500 && m.elevasiMdpl <= 3300) {
+          score += 12;
+          riwayatNote = isClimbed
+              ? 'Jalur familiar berdasarkan riwayat Simaksi Anda'
+              : 'Pilihan pas untuk naik level dari riwayat Simaksi Anda';
+        } else {
+          score += 6;
+          riwayatNote = 'Alternatif segar dari riwayat pendakian Anda';
+        }
+      } else {
+        if (m.elevasiMdpl >= 3000) {
+          score += 15;
+          riwayatNote = 'Sesuai jam terbang & riwayat $totalClimbs Simaksi Anda';
+        } else {
+          score += 8;
+          riwayatNote = 'Cocok untuk tektok santai pendaki berpengalaman';
+        }
+      }
+
+      // Kriteria 2: Rekam Medis
+      String medisNote = '';
+      if (hasSensitiveHealth) {
+        if (m.elevasiMdpl <= 2600) {
+          score += 14;
+          medisNote = 'elevasi & oksigen aman untuk catatan pernapasan';
+        } else {
+          score -= 16;
+          medisNote = 'perlu kehati-hatian ekstra terhadap catatan medis';
+        }
+      } else {
+        score += 7;
+        medisNote = 'data rekam medis prima mendukung durasi trek';
+      }
+
+      // Kriteria 3: Data Diri Lengkap
+      String fisikNote = 'stamina usia $userAge thn';
+      if (userAge >= 17 && userAge <= 40) {
+        score += 4;
+      }
+
+      // Kriteria 4: Cuaca
+      String cuacaNote = '$weatherCondition ($temp°C)';
+      if (isGoodWeather) {
+        score += 6;
+      }
+
+      score = score.clamp(74, 99);
+
+      final String fullReason =
+          '$riwayatNote, didukung $medisNote, $fisikNote, serta prakiraan cuaca $cuacaNote.';
+
+      final List<String> tags = [
+        cuacaNote,
+        hasSensitiveHealth ? 'Ramah Pernapasan' : 'Rekam Medis Prima',
+        totalClimbs == 0 ? 'Ramah Pemula' : 'Riwayat $totalClimbs Simaksi',
+      ];
+
+      scored.add({
+        'mountain': m,
+        'score': score,
+        'reason': fullReason,
+        'tags': tags,
+      });
+    }
+
+    scored.sort((a, b) => (b['score'] as int).compareTo(a['score'] as int));
+
+    final topThree = scored.take(3).toList();
+    final List<SmartMountainRecommendation> recs = [];
+
+    const badges = [
+      'Pilihan Terbaik #1',
+      'Pilihan Ideal #2',
+      'Alternatif Favorit #3',
+    ];
+
+    for (int i = 0; i < topThree.length; i++) {
+      final item = topThree[i];
+      recs.add(
+        SmartMountainRecommendation(
+          mountain: item['mountain'] as Mountain,
+          matchScore: item['score'] as int,
+          badgeText: i < badges.length ? badges[i] : 'Rekomendasi Pintar',
+          matchReason: item['reason'] as String,
+          matchHighlights: List<String>.from(item['tags']),
+        ),
+      );
+    }
+
+    return recs;
+  }
+}
+
+// ── MODEL DATA REKOMENDASI PINTAR ──
+class SmartMountainRecommendation {
+  final Mountain mountain;
+  final int matchScore;
+  final String badgeText;
+  final String matchReason;
+  final List<String> matchHighlights;
+
+  SmartMountainRecommendation({
+    required this.mountain,
+    required this.matchScore,
+    required this.badgeText,
+    required this.matchReason,
+    required this.matchHighlights,
+  });
+}
+
+// ── WIDGET CAROUSEL REKOMENDASI PINTAR (GESER OTOMATIS) ──
+class _SmartRecommendationCarousel extends StatefulWidget {
+  final List<SmartMountainRecommendation> recommendations;
+  const _SmartRecommendationCarousel({required this.recommendations});
+
+  @override
+  State<_SmartRecommendationCarousel> createState() => _SmartRecommendationCarouselState();
+}
+
+class _SmartRecommendationCarouselState extends State<_SmartRecommendationCarousel> {
+  late final PageController _pageController;
+  int _currentPage = 0;
+  Timer? _autoScrollTimer;
+  bool _isInteracting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: 1.0);
+    _startAutoScroll();
+  }
+
+  void _startAutoScroll() {
+    _autoScrollTimer?.cancel();
+    if (widget.recommendations.length <= 1) return;
+    _autoScrollTimer = Timer.periodic(const Duration(milliseconds: 4500), (timer) {
+      if (!mounted || _isInteracting || !_pageController.hasClients) return;
+      final nextPage = (_currentPage + 1) % widget.recommendations.length;
+      _pageController.animateToPage(
+        nextPage,
+        duration: const Duration(milliseconds: 650),
+        curve: Curves.easeInOutCubic,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _autoScrollTimer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        SizedBox(
+          height: 270,
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              if (notification is ScrollStartNotification) {
+                _isInteracting = true;
+              } else if (notification is ScrollEndNotification) {
+                _isInteracting = false;
+              }
+              return false;
+            },
+            child: PageView.builder(
+              controller: _pageController,
+              itemCount: widget.recommendations.length,
+              onPageChanged: (idx) {
+                setState(() => _currentPage = idx);
+              },
+              itemBuilder: (context, index) {
+                final rec = widget.recommendations[index];
+                return _buildCard(rec);
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        // Indikator Titik (Dot Indicator)
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(widget.recommendations.length, (i) {
+            final active = i == _currentPage;
+            return GestureDetector(
+              onTap: () {
+                _pageController.animateToPage(
+                  i,
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeInOut,
+                );
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                height: 6,
+                width: active ? 22 : 6,
+                decoration: BoxDecoration(
+                  color: active ? AppTheme.primary : AppTheme.border,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCard(SmartMountainRecommendation rec) {
+    final imageProvider = ImageHelper.getImageProvider(rec.mountain.fotoUrl, rec.mountain.namaGunung) ??
+        const AssetImage('assets/images/background_mount.png') as ImageProvider;
+
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, AppRoutes.mountainDetail, arguments: rec.mountain),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: Stack(
+            children: [
+              // 1. Foto Gunung
+              Positioned.fill(
+                child: Image(
+                  image: imageProvider,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    color: const Color(0xFF1B2E23),
+                    child: const Center(
+                      child: Icon(Icons.terrain_rounded, size: 48, color: Colors.white24),
+                    ),
+                  ),
+                ),
+              ),
+
+              // 2. Gradient Overlay (Atas dan Bawah agar teks mudah terbaca)
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.black.withValues(alpha: 0.55),
+                        Colors.black.withValues(alpha: 0.25),
+                        Colors.black.withValues(alpha: 0.92),
+                      ],
+                      stops: const [0.0, 0.35, 1.0],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
+                ),
+              ),
+
+              // 3. Konten Kartu
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Baris Atas: Badge AI Match & Status/Elevasi
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Badge AI Smart Match (Clean & Tanpa Stroke / Emote)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1B4332).withValues(alpha: 0.92),
+                            borderRadius: BorderRadius.circular(9999),
+                          ),
+                          child: Text(
+                            '${rec.matchScore}% Cocok • ${rec.badgeText}',
+                            style: GoogleFonts.plusJakartaSans(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ),
+                        // Elevasi (Tanpa Stroke)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(9999),
+                          ),
+                          child: Text(
+                            '${rec.mountain.elevasiMdpl} MDPL',
+                            style: GoogleFonts.plusJakartaSans(
+                              color: Colors.white,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const Spacer(),
+
+                    // Nama Gunung
+                    Text(
+                      rec.mountain.namaGunung,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: -0.4,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withValues(alpha: 0.7),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+
+                    // Kotak Pertimbangan Pintar AI (Clean & Tanpa Stroke)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.45),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.psychology_outlined, size: 14, color: Color(0xFFA7C4B5)),
+                              const SizedBox(width: 5),
+                              Text(
+                                'Pertimbangan Pintar AI',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFFA7C4B5),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            rec.matchReason,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              color: Colors.white.withValues(alpha: 0.95),
+                              height: 1.35,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Tombol CTA
+                    SizedBox(
+                      width: double.infinity,
+                      height: 36,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pushNamed(
+                          context,
+                          AppRoutes.mountainDetail,
+                          arguments: rec.mountain,
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide.none,
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Jelajahi Jalur & Simaksi',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Icon(Icons.arrow_forward_rounded, size: 14),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
