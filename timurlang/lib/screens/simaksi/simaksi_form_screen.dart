@@ -713,6 +713,11 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
                 'Jumlah Anggota Rombongan',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
               ),
+              const SizedBox(height: 4),
+              const Text(
+                'Termasuk ketua rombongan (Anda)',
+                style: TextStyle(fontSize: 12.5, color: AppTheme.textSecondary),
+              ),
               const SizedBox(height: 10),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -720,7 +725,7 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
                   Expanded(
                     child: CustomTextField(
                       controller: _anggotaCtrl,
-                      label: 'Jumlah Total Orang (Termasuk Ketua)',
+                      label: 'Total Anggota',
                       keyboardType: TextInputType.number,
                       prefixIcon: Icons.people_outline,
                       validator: (v) => Validators.minValue(v, 1, 'Jumlah anggota'),

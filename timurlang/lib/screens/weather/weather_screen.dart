@@ -101,11 +101,6 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
                 _loadWeather();
               },
             ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Perbarui cuaca',
-            onPressed: _isLoading ? null : () => _loadWeather(),
-          ),
         ],
       ),
       body: _buildBody(),
@@ -201,10 +196,7 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
               if (_currentWeather!.isStormWarning)
                 _buildStormWarning(),
 
-              // Search Bar Diatas Card Lokasi
-              _buildSearchBar(),
-
-              // Location Header
+              // Location Header (Tap to change location)
               _buildLocationHeader(),
               const SizedBox(height: 16),
 
@@ -322,159 +314,369 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
     return weather.locationName;
   }
 
-  Widget _buildSearchBar() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border, width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.textPrimary.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: TextField(
-        controller: _searchCtrl,
-        textInputAction: TextInputAction.search,
-        style: GoogleFonts.plusJakartaSans(
-          fontSize: 13.5,
-          color: AppTheme.textPrimary,
-          fontWeight: FontWeight.w500,
-        ),
-        decoration: InputDecoration(
-          hintText: 'Cari wilayah/kabupaten (mis. Sleman, Malang)...',
-          hintStyle: GoogleFonts.plusJakartaSans(
-            fontSize: 13,
-            color: AppTheme.textSecondary.withValues(alpha: 0.8),
-          ),
-          prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.primary, size: 21),
-          suffixIcon: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_searchCtrl.text.isNotEmpty || _selectedCity != null)
-                IconButton(
-                  icon: const Icon(Icons.close_rounded, size: 18, color: AppTheme.textSecondary),
-                  tooltip: 'Kembali ke GPS Live',
-                  onPressed: () {
-                    _searchCtrl.clear();
-                    setState(() => _selectedCity = null);
-                    _loadWeather();
-                  },
-                ),
-              IconButton(
-                icon: const Icon(Icons.arrow_forward_rounded, size: 18, color: AppTheme.primary),
-                tooltip: 'Cari Wilayah',
-                onPressed: () {
-                  final val = _searchCtrl.text.trim();
-                  if (val.isNotEmpty) {
-                    _loadWeather(cityName: val);
-                  }
-                },
-              ),
-            ],
-          ),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        ),
-        onSubmitted: (val) {
-          if (val.trim().isNotEmpty) {
-            _loadWeather(cityName: val.trim());
-          }
-        },
-      ),
-    );
-  }
-
   Widget _buildLocationHeader() {
     final weather = _currentWeather!;
     final locationTitle = _formatLocationTitle(weather);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _showLocationPickerModal,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border, width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.textPrimary.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.location_on, color: Colors.redAccent, size: 24),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  locationTitle,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _selectedCity != null
-                      ? 'Pencarian manual • Tap icon GPS di atas untuk kembali'
-                      : 'GPS: ${weather.latitude.toStringAsFixed(4)}°, ${weather.longitude.toStringAsFixed(4)}°',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11.5,
-                    color: AppTheme.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: _selectedCity != null
-                  ? Colors.blueGrey.withValues(alpha: 0.15)
-                  : AppTheme.primarySubtle,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: _selectedCity != null
-                    ? Colors.blueGrey.withValues(alpha: 0.4)
-                    : AppTheme.primary.withValues(alpha: 0.4),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppTheme.border, width: 1.2),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.textPrimary.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: _selectedCity != null ? Colors.cyanAccent : AppTheme.safeGreen,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  _selectedCity != null ? 'MANUAL' : 'GPS LIVE',
-                  style: TextStyle(
-                    color: _selectedCity != null ? Colors.cyanAccent : AppTheme.safeGreen,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-              ],
-            ),
+            ],
           ),
-        ],
+          child: Row(
+            children: [
+              const Icon(Icons.location_on, color: Colors.redAccent, size: 24),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            locationTitle,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textPrimary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 18,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _selectedCity != null
+                          ? 'Wilayah pilihan • Ketuk untuk ganti lokasi'
+                          : 'GPS: ${weather.latitude.toStringAsFixed(4)}°, ${weather.longitude.toStringAsFixed(4)}° • Ketuk untuk ganti lokasi',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11.5,
+                        color: AppTheme.textSecondary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _selectedCity != null
+                      ? Colors.blueGrey.withValues(alpha: 0.15)
+                      : AppTheme.primarySubtle,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: _selectedCity != null
+                        ? Colors.blueGrey.withValues(alpha: 0.4)
+                        : AppTheme.primary.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: _selectedCity != null ? Colors.cyanAccent : AppTheme.safeGreen,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      _selectedCity != null ? 'MANUAL' : 'GPS LIVE',
+                      style: TextStyle(
+                        color: _selectedCity != null ? Colors.cyanAccent : AppTheme.safeGreen,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
+    );
+  }
+
+  void _showLocationPickerModal() {
+    final searchCtrl = TextEditingController(text: _selectedCity ?? '');
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            const popularLocations = [
+              'Sleman', 'Malang', 'Wonosobo', 'Magelang',
+              'Lumajang', 'Bandung', 'Bogor', 'Garut',
+              'Sukabumi', 'Karanganyar', 'Batu', 'Banyuwangi'
+            ];
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Drag indicator
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppTheme.border,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on_outlined, color: AppTheme.primary, size: 22),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Pilih / Ganti Lokasi Cuaca',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Pilih wilayah gunung/basecamp atau gunakan GPS satelit live',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12.5,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Opsi Gunakan GPS Live
+                    Material(
+                      color: _selectedCity == null
+                          ? AppTheme.primarySubtle
+                          : AppTheme.surfaceSubtle,
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          Navigator.pop(context);
+                          if (_selectedCity != null) {
+                            _searchCtrl.clear();
+                            setState(() => _selectedCity = null);
+                            _loadWeather();
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: _selectedCity == null
+                                  ? AppTheme.primary.withValues(alpha: 0.5)
+                                  : AppTheme.border,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: _selectedCity == null
+                                      ? AppTheme.primary
+                                      : AppTheme.textSecondary.withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.my_location_rounded,
+                                  size: 16,
+                                  color: _selectedCity == null ? Colors.white : AppTheme.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Gunakan Lokasi GPS Saya (Live)',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppTheme.textPrimary,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Deteksi otomatis koordinat posisi Anda saat ini',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11.5,
+                                        color: AppTheme.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (_selectedCity == null)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primary,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Text(
+                                    'Aktif',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Input pencarian manual
+                    TextField(
+                      controller: searchCtrl,
+                      textInputAction: TextInputAction.search,
+                      autofocus: false,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        color: AppTheme.textPrimary,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Ketik nama kota / kabupaten...',
+                        hintStyle: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          color: AppTheme.textSecondary,
+                        ),
+                        prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.primary, size: 20),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.arrow_forward_rounded, color: AppTheme.primary),
+                          onPressed: () {
+                            final val = searchCtrl.text.trim();
+                            if (val.isNotEmpty) {
+                              Navigator.pop(context);
+                              _loadWeather(cityName: val);
+                            }
+                          },
+                        ),
+                        filled: true,
+                        fillColor: AppTheme.surfaceSubtle,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppTheme.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppTheme.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppTheme.primary, width: 1.5),
+                        ),
+                      ),
+                      onSubmitted: (val) {
+                        if (val.trim().isNotEmpty) {
+                          Navigator.pop(context);
+                          _loadWeather(cityName: val.trim());
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    Text(
+                      'Wilayah Populer Pendakian:',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: popularLocations.map((loc) {
+                        final isSelected = _selectedCity?.toLowerCase() == loc.toLowerCase();
+                        return InkWell(
+                          onTap: () {
+                            Navigator.pop(context);
+                            _loadWeather(cityName: loc);
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isSelected ? AppTheme.primary : AppTheme.surfaceSubtle,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: isSelected ? AppTheme.primary : AppTheme.border,
+                              ),
+                            ),
+                            child: Text(
+                              loc,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                color: isSelected ? Colors.white : AppTheme.textPrimary,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

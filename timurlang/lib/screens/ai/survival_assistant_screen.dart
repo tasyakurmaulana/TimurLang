@@ -89,12 +89,25 @@ class _SurvivalAssistantScreenState extends State<SurvivalAssistantScreen> {
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(6),
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
-                color: AppTheme.primary.withValues(alpha: 0.12),
+                color: Colors.white,
                 shape: BoxShape.circle,
+                border: Border.all(color: AppTheme.border, width: 1.2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 4,
+                  ),
+                ],
               ),
-              child: const Icon(Icons.auto_awesome, color: AppTheme.primary, size: 20),
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/images/logo_timurlang.png',
+                  fit: BoxFit.cover,
+                ),
+              ),
             ),
             const SizedBox(width: 10),
             const Column(
@@ -171,19 +184,35 @@ class _SurvivalAssistantScreenState extends State<SurvivalAssistantScreen> {
           ),
 
           if (_isTyping)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Row(
                   children: [
-                    SizedBox(
+                    Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppTheme.border, width: 1),
+                      ),
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/images/logo_timurlang.png',
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const SizedBox(
                       width: 12,
                       height: 12,
                       child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary),
                     ),
-                    SizedBox(width: 8),
-                    Text(
+                    const SizedBox(width: 8),
+                    const Text(
                       'Tbot sedang mengetik...',
                       style: TextStyle(
                         color: AppTheme.textSecondary,
@@ -285,62 +314,99 @@ class _SurvivalAssistantScreenState extends State<SurvivalAssistantScreen> {
   }
 
   Widget _chatBubble(ChatMessage msg) {
-    return Align(
-      alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.84,
+    final bubbleContent = Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width * (msg.isUser ? 0.84 : 0.78),
+      ),
+      decoration: BoxDecoration(
+        color: msg.isUser ? AppTheme.primary : AppTheme.surface,
+        borderRadius: BorderRadius.only(
+          topLeft: const Radius.circular(18),
+          topRight: const Radius.circular(18),
+          bottomLeft: Radius.circular(msg.isUser ? 18 : 4),
+          bottomRight: Radius.circular(msg.isUser ? 4 : 18),
         ),
-        decoration: BoxDecoration(
-          color: msg.isUser ? AppTheme.primary : AppTheme.surface,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(18),
-            topRight: const Radius.circular(18),
-            bottomLeft: Radius.circular(msg.isUser ? 18 : 4),
-            bottomRight: Radius.circular(msg.isUser ? 4 : 18),
-          ),
-          border: Border.all(
-            color: msg.isUser ? AppTheme.primary : AppTheme.border,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: msg.isUser ? 0.08 : 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
+        border: Border.all(
+          color: msg.isUser ? AppTheme.primary : AppTheme.border,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildFormattedMessage(msg.text, msg.isUser),
-            if (!msg.isUser) ...[
-              const SizedBox(height: 10),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    msg.isFromCloud ? Icons.auto_awesome : Icons.offline_bolt_outlined,
-                    size: 12,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: msg.isUser ? 0.08 : 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildFormattedMessage(msg.text, msg.isUser),
+          if (!msg.isUser) ...[
+            const SizedBox(height: 10),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  msg.isFromCloud ? Icons.auto_awesome : Icons.offline_bolt_outlined,
+                  size: 12,
+                  color: msg.isFromCloud ? AppTheme.primary : AppTheme.warning,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  msg.isFromCloud ? 'Gemini Cloud AI' : 'Offline Engine',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
                     color: msg.isFromCloud ? AppTheme.primary : AppTheme.warning,
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    msg.isFromCloud ? 'Gemini Cloud AI' : 'Offline Engine',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: msg.isFromCloud ? AppTheme.primary : AppTheme.warning,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ],
-        ),
+        ],
+      ),
+    );
+
+    if (msg.isUser) {
+      return Align(
+        alignment: Alignment.centerRight,
+        child: bubbleContent,
+      );
+    }
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            margin: const EdgeInsets.only(top: 2, right: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppTheme.border, width: 1),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 4,
+                ),
+              ],
+            ),
+            child: ClipOval(
+              child: Image.asset(
+                'assets/images/logo_timurlang.png',
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          Flexible(child: bubbleContent),
+        ],
       ),
     );
   }
