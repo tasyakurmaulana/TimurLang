@@ -14,6 +14,7 @@ class BasecampPost {
   final int kuotaHarian;
   final int sisaKuotaHariIni;
   final double hargaSimaksi; // Tarif per orang per hari dalam IDR
+  final String? checkpointsJson; // JSON serialization of List<TrailCheckpoint>
   final DateTime createdAt;
   final DateTime? updatedAt;
 
@@ -28,6 +29,7 @@ class BasecampPost {
     this.kuotaHarian = 100,
     int? sisaKuotaHariIni,
     this.hargaSimaksi = 15000.0,
+    this.checkpointsJson,
     required this.createdAt,
     this.updatedAt,
   }) : sisaKuotaHariIni = sisaKuotaHariIni ?? kuotaHarian;
@@ -47,6 +49,7 @@ class BasecampPost {
       'kuota_harian': kuotaHarian,
       'sisa_kuota_hari_ini': sisaKuotaHariIni,
       'harga_simaksi': hargaSimaksi,
+      'checkpoints_json': checkpointsJson,
       'created_at': createdAt.toIso8601String(),
       'updated_at': (updatedAt ?? createdAt).toIso8601String(),
     };
@@ -68,6 +71,7 @@ class BasecampPost {
       kuotaHarian: kuota,
       sisaKuotaHariIni: sisa,
       hargaSimaksi: harga,
+      checkpointsJson: map['checkpoints_json'] as String?,
       createdAt: map['created_at'] != null
           ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
           : DateTime.now(),
@@ -88,6 +92,7 @@ class BasecampPost {
     int? kuotaHarian,
     int? sisaKuotaHariIni,
     double? hargaSimaksi,
+    String? checkpointsJson,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -102,6 +107,7 @@ class BasecampPost {
       kuotaHarian: kuotaHarian ?? this.kuotaHarian,
       sisaKuotaHariIni: sisaKuotaHariIni ?? this.sisaKuotaHariIni,
       hargaSimaksi: hargaSimaksi ?? this.hargaSimaksi,
+      checkpointsJson: checkpointsJson ?? this.checkpointsJson,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

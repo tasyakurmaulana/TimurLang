@@ -4,6 +4,7 @@
 // ============================================
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../config/theme.dart';
 import '../../config/routes.dart';
@@ -412,34 +413,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 12),
 
-            // ── SOS Darurat & Deteksi Jatuh (Pindah ke Profil) ──
+            // ── Tombol Keluar dari Akun ──
             Container(
               decoration: BoxDecoration(
                 color: AppTheme.surface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.dangerRed.withValues(alpha: 0.35), width: 1.2),
+                border: Border.all(color: AppTheme.error.withValues(alpha: 0.35), width: 1.2),
               ),
               child: ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppTheme.dangerRed.withValues(alpha: 0.15),
+                    color: AppTheme.error.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.sos_rounded, color: AppTheme.dangerRed, size: 24),
+                  child: const Icon(Icons.logout_rounded, color: AppTheme.error, size: 22),
                 ),
-                title: const Text(
-                  'SOS & Deteksi Jatuh',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: AppTheme.textPrimary),
+                title: Text(
+                  'Keluar dari Akun',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    color: AppTheme.error,
+                  ),
                 ),
                 subtitle: Text(
-                  'Sirine darurat, deteksi jatuh otomatis & koordinat SAR',
-                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                  'Keluar dari sesi akun pendaki di perangkat ini',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    color: AppTheme.textSecondary,
+                  ),
                 ),
-                trailing: const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
-                onTap: () {
-                  Navigator.pushNamed(context, AppRoutes.fallDetection);
-                },
+                trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.error),
+                onTap: _showLogoutDialog,
               ),
             ),
           ] else ...[
@@ -514,6 +520,71 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Profil')),
       body: content,
+    );
+  }
+
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(color: AppTheme.border, width: 1),
+        ),
+        title: Text(
+          'Keluar dari Akun',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+        content: Text(
+          'Apakah Anda yakin ingin keluar dari aplikasi TimurLang?',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 14,
+            color: AppTheme.textSecondary,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          OutlinedButton(
+            onPressed: () => Navigator.pop(context),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: AppTheme.border, width: 1),
+              shape: const StadiumBorder(),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+            ),
+            child: Text(
+              'Batal',
+              style: GoogleFonts.plusJakartaSans(
+                color: AppTheme.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await AuthService.instance.logout();
+              if (!context.mounted) return;
+              Navigator.pop(context);
+              Navigator.pushReplacementNamed(context, AppRoutes.login);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.error,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: const StadiumBorder(),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+            ),
+            child: Text(
+              'Keluar',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

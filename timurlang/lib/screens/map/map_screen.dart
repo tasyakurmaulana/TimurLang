@@ -442,7 +442,10 @@ class _MapScreenState extends State<MapScreen> {
                                 AppRoutes.simaksiForm,
                                 arguments: {
                                   'mountain': _selectedMountain,
+                                  'mountainId': _selectedMountain?.id,
                                   'basecampId': trail.basecampId,
+                                  'basecamp': trail.basecampPost,
+                                  'basecampName': trail.basecampName,
                                 },
                               );
                             }
@@ -527,13 +530,43 @@ class _MapScreenState extends State<MapScreen> {
                         color: isLast ? Colors.redAccent : AppTheme.textPrimary,
                       ),
                     ),
-                    Text(
-                      '${cp.elevationMdpl} MDPL',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        color: AppTheme.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (cp.hasWater) ...[
+                          Container(
+                            margin: const EdgeInsets.only(right: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: Colors.lightBlue.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.water_drop, size: 10, color: Colors.lightBlue),
+                                SizedBox(width: 2),
+                                Text(
+                                  'Air',
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    color: Colors.lightBlue,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        Text(
+                          '${cp.elevationMdpl} MDPL',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            color: AppTheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

@@ -205,18 +205,49 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
       final args = ModalRoute.of(context)?.settings.arguments;
       Mountain? argMountain;
       String? mountainId;
+      String? targetBasecampId;
+      String? targetBasecampName;
 
       if (args is Mountain) {
         argMountain = args;
       } else if (args is String) {
         mountainId = args;
+      } else if (args is Map) {
+        if (args['mountain'] is Mountain) {
+          argMountain = args['mountain'] as Mountain;
+        } else if (args['mountain'] is String) {
+          mountainId = args['mountain'] as String;
+        }
+        if (args['mountainId'] is String) {
+          mountainId = args['mountainId'] as String;
+        }
+        if (args['basecampId'] is String) {
+          targetBasecampId = args['basecampId'] as String;
+        }
+        if (args['basecamp'] is BasecampPost) {
+          targetBasecampId = (args['basecamp'] as BasecampPost).id;
+          targetBasecampName = (args['basecamp'] as BasecampPost).namaPos;
+        }
+        if (args['basecampName'] is String) {
+          targetBasecampName = args['basecampName'] as String;
+        }
       }
 
-      _initMountains(argMountain, initialId: mountainId);
+      _initMountains(
+        argMountain,
+        initialId: mountainId,
+        targetBasecampId: targetBasecampId,
+        targetBasecampName: targetBasecampName,
+      );
     }
   }
 
-  Future<void> _initMountains(Mountain? initial, {String? initialId}) async {
+  Future<void> _initMountains(
+    Mountain? initial, {
+    String? initialId,
+    String? targetBasecampId,
+    String? targetBasecampName,
+  }) async {
     final list = await DatabaseService.instance.getAllMountains();
     if (!mounted) return;
     setState(() {
@@ -239,11 +270,19 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
     });
 
     if (_mountain != null) {
-      _loadBasecampsForMountain(_mountain!.id);
+      _loadBasecampsForMountain(
+        _mountain!.id,
+        targetBasecampId: targetBasecampId,
+        targetBasecampName: targetBasecampName,
+      );
     }
   }
 
-  Future<void> _loadBasecampsForMountain(String gunungId) async {
+  Future<void> _loadBasecampsForMountain(
+    String gunungId, {
+    String? targetBasecampId,
+    String? targetBasecampName,
+  }) async {
     setState(() {
       _isLoadingBasecamps = true;
       _selectedBasecamp = null;
@@ -267,7 +306,23 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
     setState(() {
       _basecamps = bcs;
       if (_basecamps.isNotEmpty) {
-        _selectedBasecamp = _basecamps.first;
+        BasecampPost? matched;
+        if (targetBasecampId != null || targetBasecampName != null) {
+          for (final b in _basecamps) {
+            if (targetBasecampId != null && b.id == targetBasecampId) {
+              matched = b;
+              break;
+            }
+            if (targetBasecampName != null &&
+                (b.namaPos.toLowerCase().trim() == targetBasecampName.toLowerCase().trim() ||
+                 b.namaPos.toLowerCase().contains(targetBasecampName.toLowerCase().trim()) ||
+                 targetBasecampName.toLowerCase().contains(b.namaPos.toLowerCase().trim()))) {
+              matched = b;
+              break;
+            }
+          }
+        }
+        _selectedBasecamp = matched ?? _basecamps.first;
       }
       _isLoadingBasecamps = false;
     });

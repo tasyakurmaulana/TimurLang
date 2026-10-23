@@ -295,14 +295,17 @@ class AuthService {
       await _saveSession(user, rememberMe: rememberMe);
 
       // Jika role basecamp, pastikan post basecamp tersimpan di SQLite lokal
-      if (user.peran == AppConstants.roleBasecamp && _supabase.isInitialized) {
-        final existingPost = await _db.getBasecampByUserId(user.id);
-        if (existingPost == null) {
-          final post = await _supabase.getBasecampByUserId(user.id);
-          if (post != null) {
-            await _db.insertBasecampPost(post);
+      if (user.peran == AppConstants.roleBasecamp) {
+        if (_supabase.isInitialized) {
+          final existingPost = await _db.getBasecampByUserId(user.id);
+          if (existingPost == null) {
+            final post = await _supabase.getBasecampByUserId(user.id);
+            if (post != null) {
+              await _db.insertBasecampPost(post);
+            }
           }
         }
+        await _db.ensureBasecampPostForUser(user);
       }
 
       // Sync data dua arah di background agar perangkat baru langsung terisi data terkini
@@ -402,6 +405,10 @@ class AuthService {
       if (authenticated) {
         _currentUser = user;
         await _saveSession(user, rememberMe: rememberMe);
+        if (user.peran == AppConstants.roleBasecamp) {
+          await _db.ensureBasecampPostForUser(user);
+          BasecampAlertService.instance.startMonitoring(user: user);
+        }
         return (success: true, message: 'Selamat datang kembali, ${user.namaLengkap}!');
       }
 

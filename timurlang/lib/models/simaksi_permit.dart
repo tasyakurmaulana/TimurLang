@@ -50,6 +50,7 @@ class SimaksiPermit {
   final String previousHash;
   final int nonce;
   final String? namaGunung; // join field
+  final String? namaBasecamp; // join field
   final double? totalBiaya;
   final String? matauang;
   final String? dataAnggota; // JSON serialized list of MemberInfo
@@ -68,6 +69,7 @@ class SimaksiPermit {
     required this.previousHash,
     required this.nonce,
     this.namaGunung,
+    this.namaBasecamp,
     this.totalBiaya,
     this.matauang,
     this.dataAnggota,
@@ -102,6 +104,7 @@ class SimaksiPermit {
       'previous_hash': previousHash,
       'nonce': nonce,
       'nama_gunung': namaGunung,
+      'nama_basecamp': namaBasecamp,
       'total_biaya': totalBiaya,
       'matauang': matauang,
       'data_anggota': dataAnggota,
@@ -127,6 +130,7 @@ class SimaksiPermit {
       previousHash: (map['previous_hash'] as String?) ?? '',
       nonce: (map['nonce'] as num?)?.toInt() ?? 0,
       namaGunung: map['nama_gunung'] as String?,
+      namaBasecamp: (map['nama_basecamp'] as String?) ?? (map['nama_pos'] as String?),
       totalBiaya: map['total_biaya'] != null ? (map['total_biaya'] as num).toDouble() : null,
       matauang: map['matauang'] as String?,
       dataAnggota: map['data_anggota'] as String?,
@@ -140,6 +144,8 @@ class SimaksiPermit {
     String? statusIzin,
     String? basecampId,
     String? dataAnggota,
+    String? namaGunung,
+    String? namaBasecamp,
   }) {
     return SimaksiPermit(
       id: id,
@@ -153,7 +159,8 @@ class SimaksiPermit {
       blockHash: blockHash,
       previousHash: previousHash,
       nonce: nonce,
-      namaGunung: namaGunung,
+      namaGunung: namaGunung ?? this.namaGunung,
+      namaBasecamp: namaBasecamp ?? this.namaBasecamp,
       totalBiaya: totalBiaya,
       matauang: matauang,
       dataAnggota: dataAnggota ?? this.dataAnggota,

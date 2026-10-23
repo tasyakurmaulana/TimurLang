@@ -20,6 +20,7 @@ import '../../services/weather_service.dart';
 import '../../utils/date_utils.dart';
 import '../../utils/image_helper.dart';
 import '../mountain/mountain_list_screen.dart';
+import '../simaksi/simaksi_ticket_screen.dart';
 import '../profile/profile_screen.dart';
 import '../feedback/course_feedback_screen.dart';
 import '../../widgets/ticket_card.dart';
@@ -42,8 +43,9 @@ class _HomeScreenState extends State<HomeScreen> {
     _pages = [
       _DashboardPage(onTabChange: (index) => setState(() => _currentIndex = index)),
       const MountainListScreen(embedded: true),
-      const ProfileScreen(embedded: true),
+      const SimaksiTicketScreen(embedded: true),
       const CourseFeedbackScreen(embedded: true),
+      const ProfileScreen(embedded: true),
     ];
   }
 
@@ -131,9 +133,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             _buildNavItem(
               index: 2,
-              icon: Icons.person_outline_rounded,
-              activeIcon: Icons.person_rounded,
-              label: 'Profil',
+              icon: Icons.confirmation_num_outlined,
+              activeIcon: Icons.confirmation_num_rounded,
+              label: 'Simaksi',
             ),
             _buildNavItem(
               index: 3,
@@ -143,10 +145,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             _buildNavItem(
               index: 4,
-              icon: Icons.logout_rounded,
-              activeIcon: Icons.logout_rounded,
-              label: 'Keluar',
-              isLogout: true,
+              icon: Icons.person_outline_rounded,
+              activeIcon: Icons.person_rounded,
+              label: 'Profil',
             ),
           ],
         ),
@@ -480,7 +481,7 @@ class _DashboardPageState extends State<_DashboardPage> {
                 children: [
                   // Foto Profil Pengguna
                   GestureDetector(
-                    onTap: () => widget.onTabChange?.call(2),
+                    onTap: () => widget.onTabChange?.call(4),
                     child: Container(
                       width: 44,
                       height: 44,
@@ -679,7 +680,7 @@ class _DashboardPageState extends State<_DashboardPage> {
                     ),
                   ),
                   GestureDetector(
-                    onTap: () => Navigator.pushNamed(context, AppRoutes.simaksiTicket),
+                    onTap: () => widget.onTabChange?.call(2),
                     child: Row(
                       children: [
                         Text(
@@ -1598,9 +1599,9 @@ class _DashboardPageState extends State<_DashboardPage> {
               onTap: () => Navigator.pushNamed(context, AppRoutes.compass),
             ),
             _buildCompactMenuItem(
-              label: 'Tiket\nSimaksi',
-              icon: Icons.confirmation_num_outlined,
-              onTap: () => Navigator.pushNamed(context, AppRoutes.simaksiTicket),
+              label: 'SOS &\nJatuh',
+              icon: Icons.sos_rounded,
+              onTap: () => Navigator.pushNamed(context, AppRoutes.fallDetection),
             ),
             _buildCompactMenuItem(
               label: 'Mini\ngames',

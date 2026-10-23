@@ -13,12 +13,15 @@ import '../../config/routes.dart';
 import '../../models/basecamp_post.dart';
 import '../../models/mountain.dart';
 import '../../models/sos_incident.dart';
+import '../../models/user.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/supabase_service.dart';
 import '../../services/sync_service.dart';
 import '../../services/basecamp_alert_service.dart';
+import '../../utils/image_helper.dart';
+import 'manage_trail_checkpoints_screen.dart';
 
 class BasecampDashboardScreen extends StatefulWidget {
   const BasecampDashboardScreen({super.key});
@@ -81,10 +84,26 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
         }
       } catch (_) {}
     }
+
+    // Pastikan akun petugas basecamp selalu memiliki data BasecampPost yang valid dan siap
+    if (post == null) {
+      post = await DatabaseService.instance.ensureBasecampPostForUser(user);
+      if (SupabaseService.instance.isInitialized) {
+        try {
+          await SupabaseService.instance.syncBasecampPost(post);
+        } catch (_) {}
+      }
+    }
     
-    final gunungId = user.gunungId ?? post?.gunungId ?? 'mtn-001';
+    final gunungId = user.gunungId ?? post.gunungId;
     Mountain? mtn = _mountain;
     mtn ??= await DatabaseService.instance.getMountainById(gunungId);
+    if (mtn == null) {
+      final allMtns = await DatabaseService.instance.getAllMountains();
+      if (allMtns.isNotEmpty) {
+        mtn = allMtns.first;
+      }
+    }
 
     // Pastikan monitoring latar belakang aktif untuk pos basecamp ini
     if (!BasecampAlertService.instance.isMonitoring) {
@@ -114,13 +133,13 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
     // Ambil SOS hanya untuk gunung & basecamp ini (atau SOS darurat umum)
     final sosList = await DatabaseService.instance.getActiveSOSIncidentsForBasecamp(
       gunungId: gunungId,
-      basecampId: post?.id,
+      basecampId: post.id,
     );
 
     // Ambil izin pendaki di jalur khusus gunung & basecamp ini
     final permits = await DatabaseService.instance.getActivePermitsForBasecamp(
       gunungId: gunungId,
-      basecampId: post?.id,
+      basecampId: post.id,
     );
 
     // Hitung total orang (pendaki) di jalur: per orang bukan per rombongan
@@ -150,6 +169,49 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
         _activePermitsCount = permits.length;
       });
     }
+  }
+
+  /// Pull-to-refresh: Sinkron otomatis data dua arah (Supabase & SQLite) & muat ulang dashboard
+  Future<void> _onRefresh() async {
+    HapticFeedback.lightImpact();
+    // 1. Eksekusi Sinkronisasi Data Dua Arah
+    final syncResult = await SyncService.instance.syncAll();
+
+    // 2. Refresh data pos basecamp, permit pendaki, dan insiden SOS
+    await _loadData();
+
+    if (!mounted) return;
+
+    // 3. Feedback notifikasi sinkronisasi mengambang seperti akun pendaki
+    final isSuccess = syncResult.failed == 0;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isSuccess ? Icons.cloud_done_rounded : Icons.info_outline_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                syncResult.message,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: isSuccess ? AppTheme.primary : AppTheme.warning,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   Future<void> _resolveSOS(String sosId) async {
@@ -226,18 +288,6 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.sync_rounded),
-            tooltip: 'Sinkronisasi Data',
-            onPressed: () async {
-              final res = await SyncService.instance.syncAll();
-              await _loadData();
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(res.message, style: GoogleFonts.plusJakartaSans())),
-              );
-            },
-          ),
-          IconButton(
             icon: const Icon(Icons.logout_rounded),
             tooltip: 'Keluar',
             onPressed: _showLogoutDialog,
@@ -246,113 +296,18 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
       ),
       body: RefreshIndicator(
         color: AppTheme.primary,
-        onRefresh: () => _loadData(),
+        backgroundColor: AppTheme.surface,
+        onRefresh: _onRefresh,
         child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Info Petugas & Basecamp Card (Solid Surface, High Contrast)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.surface,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: AppTheme.border, width: 1.2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.03),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primarySubtle,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.holiday_village_outlined, color: AppTheme.primary, size: 28),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                displayBasecampName,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppTheme.textPrimary,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                displayMountainName,
-                                style: GoogleFonts.plusJakartaSans(
-                                  color: AppTheme.primary,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Divider(height: 22, color: AppTheme.border),
-                    Row(
-                      children: [
-                        const Icon(Icons.badge_outlined, size: 16, color: AppTheme.textSecondary),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Petugas: ${user?.namaLengkap ?? 'Pengelola'}',
-                          style: GoogleFonts.plusJakartaSans(fontSize: 12.5, color: AppTheme.textSecondary),
-                        ),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
-                          decoration: BoxDecoration(
-                            color: AppTheme.success.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: AppTheme.success.withValues(alpha: 0.3)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 7,
-                                height: 7,
-                                decoration: const BoxDecoration(
-                                  color: AppTheme.success,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 5),
-                              Text(
-                                'Radar Siaga Aktif',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 10.5,
-                                  color: AppTheme.success,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+              // Hero Card Gunung dengan Foto Asli, Informasi Ketinggian & Petugas
+              _buildMountainHeroCard(user, displayBasecampName, displayMountainName),
               const SizedBox(height: 20),
 
               // SOS Alert Banner & Items (HANYA MUNCUL JIKA ADA SOS DARI PENDAKI DI GUNUNG/BASECAMP INI)
@@ -564,6 +519,25 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                 AppTheme.primary,
                 _showBasecampSettingsModal,
               ),
+              const SizedBox(height: 12),
+              _actionCard(
+                'Pengaturan Titik Pos Jalur',
+                'Input & atur titik checkpoint, shelter, elevasi MDPL, dan sumber air jalur ini',
+                Icons.add_location_alt_outlined,
+                AppTheme.accentOrange,
+                () {
+                  if (_basecampPost == null) return;
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ManageTrailCheckpointsScreen(
+                        basecampPost: _basecampPost!,
+                        mountain: _mountain,
+                      ),
+                    ),
+                  ).then((_) => _loadData());
+                },
+              ),
             ],
           ),
         ),
@@ -629,17 +603,36 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
     );
   }
 
-  void _showBasecampSettingsModal() {
-    if (_basecampPost == null) {
+  Future<void> _showBasecampSettingsModal() async {
+    BasecampPost? resolvedPost = _basecampPost;
+    if (resolvedPost == null) {
+      final user = AuthService.instance.currentUser;
+      if (user != null) {
+        resolvedPost = await DatabaseService.instance.ensureBasecampPostForUser(user);
+        if (mounted) {
+          setState(() => _basecampPost = resolvedPost);
+        }
+      }
+    }
+
+    if (resolvedPost == null) {
+      await _loadData();
+      resolvedPost = _basecampPost;
+    }
+
+    if (resolvedPost == null) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Data basecamp belum siap', style: GoogleFonts.plusJakartaSans()),
+          content: Text('Menyiapkan data basecamp...', style: GoogleFonts.plusJakartaSans()),
+          backgroundColor: AppTheme.warning,
         ),
       );
       return;
     }
 
-    final post = _basecampPost!;
+    if (!mounted) return;
+    final BasecampPost post = resolvedPost;
     final messenger = ScaffoldMessenger.of(context);
     String selectedStatus = post.statusJalur;
     final kuotaCtrl = TextEditingController(text: post.kuotaHarian.toString());
@@ -1076,6 +1069,232 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
             ),
             const SizedBox(width: 8),
             const Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary, size: 22),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMountainHeroCard(User? user, String displayBasecampName, String displayMountainName) {
+    final imageProvider = ImageHelper.getImageProvider(_mountain?.fotoUrl) ??
+        const AssetImage('assets/images/background_mount.png') as ImageProvider;
+
+    return Container(
+      width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 220),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: Stack(
+          children: [
+            // Foto Gunung Asli (Cover)
+            Positioned.fill(
+              child: Image(
+                image: imageProvider,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  decoration: const BoxDecoration(
+                    gradient: AppTheme.mountainGradient,
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.terrain_rounded, size: 64, color: Colors.white38),
+                  ),
+                ),
+              ),
+            ),
+            // Multi-stop Vignette & Gradient Overlay
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.55),
+                      Colors.black.withValues(alpha: 0.25),
+                      Colors.black.withValues(alpha: 0.92),
+                    ],
+                    stops: const [0.0, 0.45, 1.0],
+                  ),
+                ),
+              ),
+            ),
+            // Content Card
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Top Tags: Elevasi & Radar Status
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.45),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.25),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.terrain_rounded, color: Colors.white, size: 14),
+                            const SizedBox(width: 5),
+                            Text(
+                              _mountain != null ? '${_mountain!.elevasiMdpl} mdpl' : 'Wilayah Konservasi',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: Colors.white,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.45),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: AppTheme.success.withValues(alpha: 0.5),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: const BoxDecoration(
+                                color: AppTheme.success,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Radar Siaga Aktif',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11,
+                                color: AppTheme.success,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 38),
+                  // Nama Gunung (Besar & Tegas)
+                  Text(
+                    displayMountainName,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: -0.4,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black.withValues(alpha: 0.6),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  // Nama Pos / Basecamp
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary.withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Icon(Icons.holiday_village_rounded, color: Colors.white, size: 14),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          displayBasecampName,
+                          style: GoogleFonts.plusJakartaSans(
+                            color: Colors.white.withValues(alpha: 0.95),
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  // Footer Strip: Petugas & Status Jalur Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.badge_outlined, size: 15, color: Colors.white70),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Petugas: ${user?.namaLengkap ?? 'Pengelola'}',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: (_basecampPost?.isBuka ?? true)
+                                ? AppTheme.success.withValues(alpha: 0.25)
+                                : AppTheme.error.withValues(alpha: 0.25),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: (_basecampPost?.isBuka ?? true) ? AppTheme.success : AppTheme.error,
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            (_basecampPost?.isBuka ?? true) ? 'JALUR BUKA' : 'JALUR TUTUP',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10.5,
+                              color: (_basecampPost?.isBuka ?? true) ? AppTheme.success : AppTheme.error,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),

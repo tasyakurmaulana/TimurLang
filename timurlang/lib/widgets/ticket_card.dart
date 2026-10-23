@@ -10,6 +10,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../config/constants.dart';
 import '../config/theme.dart';
 import '../models/simaksi_permit.dart';
+import '../services/database_service.dart';
 import '../utils/date_utils.dart';
 import '../utils/time_zone_helper.dart';
 
@@ -26,6 +27,8 @@ class TicketCard extends StatefulWidget {
 class _TicketCardState extends State<TicketCard> {
   late String _nativeZone;
   late String _selectedZone;
+  bool _isExpanded = false;
+  String? _resolvedBasecampName;
 
   @override
   void initState() {
@@ -34,6 +37,23 @@ class _TicketCardState extends State<TicketCard> {
       mountainName: widget.permit.namaGunung,
     );
     _selectedZone = _nativeZone;
+    _resolvedBasecampName = widget.permit.namaBasecamp;
+    if (_resolvedBasecampName == null &&
+        widget.permit.basecampId != null &&
+        widget.permit.basecampId!.isNotEmpty) {
+      _loadBasecampName();
+    }
+  }
+
+  Future<void> _loadBasecampName() async {
+    try {
+      final bc = await DatabaseService.instance.getBasecampById(widget.permit.basecampId!);
+      if (bc != null && mounted) {
+        setState(() {
+          _resolvedBasecampName = bc.namaPos;
+        });
+      }
+    } catch (_) {}
   }
 
   /// QR hanya aktif saat tiket baru terdaftar / diajukan.
@@ -168,6 +188,7 @@ class _TicketCardState extends State<TicketCard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // 1. Nama Gunung
                   Text(
                     widget.permit.namaGunung ?? 'Gunung',
                     style: GoogleFonts.plusJakartaSans(
@@ -176,27 +197,73 @@ class _TicketCardState extends State<TicketCard> {
                       color: AppTheme.textPrimary,
                     ),
                   ),
+                  const SizedBox(height: 10),
+
+                  // 2. Jalur Pendakian (Basecamp)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceSubtle,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppTheme.border.withValues(alpha: 0.6)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.signpost_rounded, size: 16, color: AppTheme.accentOrange),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Jalur Pendakian (Basecamp)',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                              Text(
+                                _resolvedBasecampName ?? widget.permit.namaBasecamp ?? 'Pos Basecamp Resmi',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.textPrimary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 12),
+
+                  // 3. Tanggal Naik & Tanggal Turun
                   Row(
                     children: [
-                      _info('Naik', AppDateUtils.formatDateIndonesian(widget.permit.tanggalNaik)),
-                      const SizedBox(width: 24),
-                      _info('Turun', AppDateUtils.formatDateIndonesian(widget.permit.tanggalTurun)),
+                      Expanded(child: _info('Naik', AppDateUtils.formatDateIndonesian(widget.permit.tanggalNaik))),
+                      const SizedBox(width: 16),
+                      Expanded(child: _info('Turun', AppDateUtils.formatDateIndonesian(widget.permit.tanggalTurun))),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
+
+                  // 4. Rombongan
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       _info('Rombongan', '${widget.permit.jumlahAnggota} orang'),
                       if (widget.permit.members.isNotEmpty)
                         GestureDetector(
                           onTap: () => _showMembersDialog(context),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                             decoration: BoxDecoration(
-                              color: AppTheme.skyBlue.withValues(alpha: 0.15),
+                              color: AppTheme.skyBlue.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(color: AppTheme.skyBlue.withValues(alpha: 0.3)),
                             ),
@@ -220,144 +287,154 @@ class _TicketCardState extends State<TicketCard> {
                     ],
                   ),
 
-                  // ── Jadwal Masuk Basecamp & Dynamic Timezone Switcher ──
-                  Container(
-                    margin: const EdgeInsets.only(top: 14),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceSubtle,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppTheme.border),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header Bar: Title & Subtitle
-                        Row(
-                          children: [
-                            const Icon(Icons.schedule_rounded, size: 15, color: AppTheme.primary),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Jadwal Masuk Basecamp',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.textPrimary,
-                              ),
-                            ),
-                            const Spacer(),
-                            Text(
-                              _selectedZone == _nativeZone
-                                  ? 'Zona Asli Pos'
-                                  : 'Lokal: $_nativeZone',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: AppTheme.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
+                  const SizedBox(height: 14),
 
-                        // Interactive WIB, WITA, WIT, London Switcher
-                        _buildTimeZoneChips(),
-                        const SizedBox(height: 10),
-
-                        // Time Range Display
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
-                          children: [
-                            Row(
-                              children: [
-                                Text(
-                                  TimeZoneHelper.convertTimeRange('07:00 - 16:00', _nativeZone, _selectedZone),
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppTheme.primary,
-                                    letterSpacing: -0.2,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.primary.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    _selectedZone,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 9.5,
-                                      fontWeight: FontWeight.w800,
-                                      color: AppTheme.primary,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Flexible(
-                              child: Text(
-                                _selectedZone == _nativeZone
-                                    ? 'Waktu Lokal Gunung'
-                                    : '(Lokal: 07:00 - 16:00 $_nativeZone)',
-                                textAlign: TextAlign.right,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppTheme.textSecondary,
-                                ),
-                              ),
-                            ),
-                          ],
+                  // 5. Dropdown Toggle Button
+                  InkWell(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      setState(() {
+                        _isExpanded = !_isExpanded;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: _isExpanded ? AppTheme.primary.withValues(alpha: 0.08) : AppTheme.surfaceSubtle,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _isExpanded ? AppTheme.primary.withValues(alpha: 0.3) : AppTheme.border,
                         ),
-                      ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _isExpanded ? Icons.schedule_rounded : Icons.qr_code_2_rounded,
+                            size: 16,
+                            color: _isExpanded ? AppTheme.primary : AppTheme.textSecondary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _isExpanded ? 'Sembunyikan Detail Jadwal & QR Code' : 'Buka Detail Jadwal & QR Code',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: _isExpanded ? AppTheme.primary : AppTheme.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          AnimatedRotation(
+                            turns: _isExpanded ? 0.5 : 0.0,
+                            duration: const Duration(milliseconds: 200),
+                            child: Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 20,
+                              color: _isExpanded ? AppTheme.primary : AppTheme.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
 
-                  const SizedBox(height: 16),
-                  // QR Code Section (Single-Use: hanya muncul saat belum divalidasi)
-                  if (_isQrActive) ...[
-                    Center(
-                      child: GestureDetector(
-                        onTap: () => _showQrDialog(context),
-                        child: Container(
+                  // 6. Dropdown Expandable Section (Jadwal masuk basecamp kebawah sampai QR)
+                  AnimatedCrossFade(
+                    firstChild: const SizedBox.shrink(),
+                    secondChild: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 14),
+                        // ── Jadwal Masuk Basecamp & Dynamic Timezone Switcher ──
+                        Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.15),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
+                            color: AppTheme.surfaceSubtle,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppTheme.border),
                           ),
                           child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              QrImageView(
-                                data: widget.permit.blockHash,
-                                version: QrVersions.auto,
-                                size: 150.0,
-                                backgroundColor: Colors.white,
-                                padding: const EdgeInsets.all(4),
-                              ),
-                              const SizedBox(height: 6),
-                              const Row(
-                                mainAxisSize: MainAxisSize.min,
+                              // Header Bar: Title & Subtitle
+                              Row(
                                 children: [
-                                  Icon(Icons.fullscreen, size: 14, color: Color(0xFF475569)),
-                                  SizedBox(width: 4),
+                                  const Icon(Icons.schedule_rounded, size: 15, color: AppTheme.primary),
+                                  const SizedBox(width: 6),
                                   Text(
-                                    'Ketuk untuk memperbesar QR',
-                                    style: TextStyle(
+                                    'Jadwal Masuk Basecamp',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppTheme.textPrimary,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    _selectedZone == _nativeZone
+                                        ? 'Zona Asli Pos'
+                                        : 'Lokal: $_nativeZone',
+                                    style: GoogleFonts.plusJakartaSans(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w600,
-                                      color: Color(0xFF475569),
+                                      color: AppTheme.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+
+                              // Interactive WIB, WITA, WIT Switcher
+                              _buildTimeZoneChips(),
+                              const SizedBox(height: 10),
+
+                              // Time Range Display
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                crossAxisAlignment: CrossAxisAlignment.baseline,
+                                textBaseline: TextBaseline.alphabetic,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        TimeZoneHelper.convertTimeRange('07:00 - 16:00', _nativeZone, _selectedZone),
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppTheme.primary,
+                                          letterSpacing: -0.2,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.primary.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          _selectedZone,
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppTheme.primary,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Flexible(
+                                    child: Text(
+                                      _selectedZone == _nativeZone
+                                          ? 'Waktu Lokal Gunung'
+                                          : '(Lokal: 07:00 - 16:00 $_nativeZone)',
+                                      textAlign: TextAlign.right,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppTheme.textSecondary,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -365,23 +442,76 @@ class _TicketCardState extends State<TicketCard> {
                             ],
                           ),
                         ),
-                      ),
+
+                        const SizedBox(height: 16),
+                        // QR Code Section (Single-Use: hanya muncul saat belum divalidasi)
+                        if (_isQrActive) ...[
+                          Center(
+                            child: GestureDetector(
+                              onTap: () => _showQrDialog(context),
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.15),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  children: [
+                                    QrImageView(
+                                      data: widget.permit.blockHash,
+                                      version: QrVersions.auto,
+                                      size: 150.0,
+                                      backgroundColor: Colors.white,
+                                      padding: const EdgeInsets.all(4),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.fullscreen, size: 14, color: Color(0xFF475569)),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'Ketuk untuk memperbesar QR',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF475569),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Center(
+                            child: Text(
+                              'Tunjukkan kode QR kepada petugas di pos basecamp saat check-in.',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11.5,
+                                color: AppTheme.textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ] else ...[
+                          _buildUsedQrSection(context),
+                        ],
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    Center(
-                      child: Text(
-                        'Tunjukkan kode QR kepada petugas di pos basecamp saat check-in.',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11.5,
-                          color: AppTheme.textSecondary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ] else ...[
-                    _buildUsedQrSection(context),
-                  ],
+                    crossFadeState: _isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+                    duration: const Duration(milliseconds: 260),
+                  ),
                 ],
               ),
             ),

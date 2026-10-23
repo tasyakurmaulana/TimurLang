@@ -5,6 +5,7 @@
 // Terkalibrasi secara geodetik agar tidak pernah loncat antar pulau
 // ============================================
 
+import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
@@ -25,6 +26,62 @@ class TrailCheckpoint {
     required this.description,
     this.hasWater = false,
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'latitude': location.latitude,
+      'longitude': location.longitude,
+      'elevation_mdpl': elevationMdpl,
+      'description': description,
+      'has_water': hasWater,
+    };
+  }
+
+  factory TrailCheckpoint.fromMap(Map<String, dynamic> map) {
+    return TrailCheckpoint(
+      name: (map['name'] as String?) ?? 'Pos Pendakian',
+      location: LatLng(
+        (map['latitude'] as num?)?.toDouble() ?? 0.0,
+        (map['longitude'] as num?)?.toDouble() ?? 0.0,
+      ),
+      elevationMdpl: (map['elevation_mdpl'] as num?)?.toInt() ?? 1000,
+      description: (map['description'] as String?) ?? '',
+      hasWater: map['has_water'] == true || map['has_water'] == 1,
+    );
+  }
+
+  static String listToJson(List<TrailCheckpoint> list) {
+    return jsonEncode(list.map((c) => c.toMap()).toList());
+  }
+
+  static List<TrailCheckpoint> listFromJson(String jsonStr) {
+    try {
+      final decoded = jsonDecode(jsonStr);
+      if (decoded is List) {
+        return decoded.map((m) => TrailCheckpoint.fromMap(m as Map<String, dynamic>)).toList();
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error decoding TrailCheckpoint list: $e');
+    }
+    return [];
+  }
+
+  TrailCheckpoint copyWith({
+    String? name,
+    LatLng? location,
+    int? elevationMdpl,
+    String? description,
+    bool? hasWater,
+  }) {
+    return TrailCheckpoint(
+      name: name ?? this.name,
+      location: location ?? this.location,
+      elevationMdpl: elevationMdpl ?? this.elevationMdpl,
+      description: description ?? this.description,
+      hasWater: hasWater ?? this.hasWater,
+    );
+  }
 }
 
 class HikingTrail {
@@ -103,7 +160,9 @@ class TrailService {
         basecampLocation: bcCoord,
         summitLocation: summit,
         waypoints: waypoints,
-        checkpoints: _generateCheckpointsFromWaypoints(bc.namaPos, waypoints, mountain.elevasiMdpl),
+        checkpoints: (bc.checkpointsJson != null && bc.checkpointsJson!.trim().isNotEmpty)
+            ? _parseCustomCheckpoints(bc.checkpointsJson!, waypoints, mountain.elevasiMdpl)
+            : _generateCheckpointsFromWaypoints(bc.namaPos, waypoints, mountain.elevasiMdpl),
         distanceKm: _calculateTrailDistance(waypoints),
         estimatedHours: max(3, (mountain.elevasiMdpl / 550).round()),
         statusJalur: bc.statusJalur,
@@ -327,6 +386,78 @@ class TrailService {
       }
     }
 
+    return cps;
+  }
+
+  List<TrailCheckpoint> _parseCustomCheckpoints(String jsonStr, List<LatLng> waypoints, int peakElevasi) {
+    try {
+      final list = TrailCheckpoint.listFromJson(jsonStr);
+      if (list.isEmpty) return _generateCheckpointsFromWaypoints('Basecamp', waypoints, peakElevasi);
+
+      final List<TrailCheckpoint> resolved = [];
+      final int count = list.length;
+      for (int i = 0; i < count; i++) {
+        final cp = list[i];
+        LatLng loc = cp.location;
+        // Jika koordinat belum diisi atau 0,0, tempatkan secara berurutan sepanjang waypoints rute
+        if (loc.latitude == 0.0 && loc.longitude == 0.0) {
+          final t = count > 1 ? (i / (count - 1)) : 0.0;
+          final int wpIndex = (t * (waypoints.length - 1)).round().clamp(0, waypoints.length - 1);
+          loc = waypoints[wpIndex];
+        }
+        resolved.add(cp.copyWith(location: loc));
+      }
+      return resolved;
+    } catch (e) {
+      debugPrint('⚠️ Gagal parse custom checkpoints: $e');
+      return _generateCheckpointsFromWaypoints('Basecamp', waypoints, peakElevasi);
+    }
+  }
+
+  /// Menghasilkan template pos default untuk dijadikan acuan awal saat petugas ingin mengedit pos
+  List<TrailCheckpoint> generateDefaultCheckpoints(String bcName, int peakElevasi) {
+    const int count = 6;
+    final List<TrailCheckpoint> cps = [];
+    final int baseElevasi = max(600, (peakElevasi * 0.45).round());
+
+    for (int i = 0; i < count; i++) {
+      final t = i / (count - 1);
+      final elevasi = (baseElevasi + (peakElevasi - baseElevasi) * t).round();
+
+      if (i == 0) {
+        cps.add(TrailCheckpoint(
+          name: 'Pos 0: Basecamp $bcName',
+          location: const LatLng(0, 0),
+          elevationMdpl: elevasi,
+          description: 'Pusat registrasi, verifikasi tiket simaksi & briefing keselamatan',
+          hasWater: true,
+        ));
+      } else if (i == count - 1) {
+        cps.add(TrailCheckpoint(
+          name: 'Puncak Tertinggi',
+          location: const LatLng(0, 0),
+          elevationMdpl: peakElevasi,
+          description: 'Titik puncak tertinggi dengan panorama 360 derajat',
+          hasWater: false,
+        ));
+      } else if (i == (count / 2).round()) {
+        cps.add(TrailCheckpoint(
+          name: 'Pos $i: Shelter & Camp Area',
+          location: const LatLng(0, 0),
+          elevationMdpl: elevasi,
+          description: 'Area pendirian tenda utama dan sumber mata air',
+          hasWater: true,
+        ));
+      } else {
+        cps.add(TrailCheckpoint(
+          name: 'Pos $i',
+          location: const LatLng(0, 0),
+          elevationMdpl: elevasi,
+          description: 'Pos peristirahatan dan cek batas vegetasi',
+          hasWater: i % 2 == 1,
+        ));
+      }
+    }
     return cps;
   }
 

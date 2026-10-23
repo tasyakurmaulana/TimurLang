@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../config/theme.dart';
 import '../../models/simaksi_permit.dart';
+import '../../models/basecamp_post.dart';
 import '../../services/auth_service.dart';
 import '../../services/blockchain_service.dart';
 import '../../services/database_service.dart';
@@ -42,21 +43,20 @@ class _HikerMonitorScreenState extends State<HikerMonitorScreen> {
 
     final user = AuthService.instance.currentUser;
     if (user != null) {
-      final post = await DatabaseService.instance.getBasecampByUserId(user.id);
-      final gunungId = user.gunungId ?? post?.gunungId;
-      if (gunungId != null) {
-        final permits = await DatabaseService.instance.getActivePermitsForBasecamp(
-          gunungId: gunungId,
-          basecampId: post?.id,
-        );
-        if (mounted) {
-          setState(() {
-            _activeHikers = permits;
-            _isLoading = false;
-          });
-        }
-        return;
+      BasecampPost? post = await DatabaseService.instance.getBasecampByUserId(user.id);
+      post ??= await DatabaseService.instance.ensureBasecampPostForUser(user);
+      final gunungId = user.gunungId ?? post.gunungId;
+      final permits = await DatabaseService.instance.getActivePermitsForBasecamp(
+        gunungId: gunungId,
+        basecampId: post.id,
+      );
+      if (mounted) {
+        setState(() {
+          _activeHikers = permits;
+          _isLoading = false;
+        });
       }
+      return;
     }
 
     final permits = await DatabaseService.instance.getActivePermits();
