@@ -369,8 +369,8 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
                     const SizedBox(height: 2),
                     Text(
                       _selectedCity != null
-                          ? 'Wilayah pilihan • Ketuk untuk ganti lokasi'
-                          : 'GPS: ${weather.latitude.toStringAsFixed(4)}°, ${weather.longitude.toStringAsFixed(4)}° • Ketuk untuk ganti lokasi',
+                          ? 'Pilihan manual • Ketuk untuk ubah'
+                          : 'GPS: ${weather.latitude.toStringAsFixed(4)}°, ${weather.longitude.toStringAsFixed(4)}° • Ubah',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 11.5,
                         color: AppTheme.textSecondary,
@@ -382,16 +382,17 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
               ),
               const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4.5),
                 decoration: BoxDecoration(
                   color: _selectedCity != null
-                      ? Colors.blueGrey.withValues(alpha: 0.15)
-                      : AppTheme.primarySubtle,
+                      ? const Color(0xFFF1F5F9)
+                      : const Color(0xFFE8F5E9),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color: _selectedCity != null
-                        ? Colors.blueGrey.withValues(alpha: 0.4)
-                        : AppTheme.primary.withValues(alpha: 0.4),
+                        ? const Color(0xFF94A3B8)
+                        : const Color(0xFFA5D6A7),
+                    width: 1.1,
                   ),
                 ),
                 child: Row(
@@ -401,17 +402,21 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
                       width: 6,
                       height: 6,
                       decoration: BoxDecoration(
-                        color: _selectedCity != null ? Colors.cyanAccent : AppTheme.safeGreen,
+                        color: _selectedCity != null
+                            ? const Color(0xFF475569)
+                            : const Color(0xFF2E7D32),
                         shape: BoxShape.circle,
                       ),
                     ),
                     const SizedBox(width: 5),
                     Text(
                       _selectedCity != null ? 'MANUAL' : 'GPS LIVE',
-                      style: TextStyle(
-                        color: _selectedCity != null ? Colors.cyanAccent : AppTheme.safeGreen,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: _selectedCity != null
+                            ? const Color(0xFF0F172A)
+                            : const Color(0xFF1B5E20),
                         fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: 0.8,
                       ),
                     ),
