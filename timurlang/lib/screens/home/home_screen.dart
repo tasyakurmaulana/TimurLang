@@ -1136,7 +1136,7 @@ class _DashboardPageState extends State<_DashboardPage> {
               separatorBuilder: (context, index) => const Divider(color: AppTheme.border, height: 16),
               itemBuilder: (context, index) {
                 final mountain = _searchResults[index];
-                final imageProvider = ImageHelper.getImageProvider(mountain.fotoUrl) ??
+                final imageProvider = ImageHelper.getImageProvider(mountain.fotoUrl, mountain.namaGunung) ??
                     const AssetImage('assets/images/background_mount.png') as ImageProvider;
                 final isClosed = mountain.statusJalur == 'Tutup';
 
@@ -1380,7 +1380,7 @@ class _DashboardPageState extends State<_DashboardPage> {
 
   /// Kartu Carousel Destinasi Gunung
   Widget _buildMountainCarouselCard(Mountain mountain) {
-    final imageProvider = ImageHelper.getImageProvider(mountain.fotoUrl) ??
+    final imageProvider = ImageHelper.getImageProvider(mountain.fotoUrl, mountain.namaGunung) ??
         const AssetImage('assets/images/background_mount.png') as ImageProvider;
 
     final isClosed = mountain.statusJalur == 'Tutup';

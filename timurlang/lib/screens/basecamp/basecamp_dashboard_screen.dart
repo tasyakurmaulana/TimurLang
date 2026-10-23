@@ -436,49 +436,49 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                 const SizedBox(height: 20),
               ],
 
-              // Stat Cards (Real-time per basecamp, Solid Surface)
+              // Stat Cards (Refined Artisan Design System)
               Row(
                 children: [
                   Expanded(
                     child: _statCard(
                       'Pendaki di Jalur',
                       '$_activeHikers Orang',
-                      Icons.hiking,
+                      Icons.hiking_rounded,
                       AppTheme.primary,
                       subtitle: '$_activePermitsCount Rombongan',
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: _statCard(
                       'Sisa Kuota Hari Ini',
                       '${_basecampPost?.sisaKuotaHariIni ?? 0} Orang',
-                      Icons.people_alt_outlined,
-                      AppTheme.secondary,
-                      subtitle: 'Kapasitas: ${_basecampPost?.kuotaHarian ?? 100}',
+                      Icons.people_alt_rounded,
+                      const Color(0xFF2E6B4E),
+                      subtitle: 'Kapasitas ${_basecampPost?.kuotaHarian ?? 100}',
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
                     child: _statCard(
                       'Status Jalur',
                       _basecampPost?.statusJalur ?? 'Buka',
-                      _basecampPost?.isBuka == true ? Icons.check_circle_outline : Icons.cancel_outlined,
-                      _basecampPost?.isBuka == true ? AppTheme.success : AppTheme.error,
+                      _basecampPost?.isBuka == true ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                      _basecampPost?.isBuka == true ? const Color(0xFF15803D) : AppTheme.error,
                       subtitle: _basecampPost?.isBuka == true ? 'Jalur Dibuka' : 'Jalur Ditutup',
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: _statCard(
                       'Tarif SIMAKSI',
                       'Rp ${(_basecampPost?.hargaSimaksi ?? 15000).toInt()}',
-                      Icons.payments_outlined,
-                      AppTheme.primary,
+                      Icons.payments_rounded,
+                      const Color(0xFF334155),
                       subtitle: 'per orang',
                     ),
                   ),
@@ -551,12 +551,12 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
       decoration: BoxDecoration(
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border, width: 1.2),
+        border: Border.all(color: color.withValues(alpha: 0.18), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: color.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -566,37 +566,59 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(icon, color: color, size: 22),
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 18),
+              ),
               if (subtitle != null)
-                Text(
-                  subtitle,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: AppTheme.textSecondary,
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w600,
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      subtitle,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: color,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Text(
             value,
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 17,
+              fontSize: 17.5,
               fontWeight: FontWeight.w800,
               color: AppTheme.textPrimary,
+              letterSpacing: -0.2,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 3),
           Text(
             title,
             style: GoogleFonts.plusJakartaSans(
               color: AppTheme.textSecondary,
               fontSize: 11.5,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -914,28 +936,35 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton.icon(
+                    const SizedBox(height: 14),
+
+                    // Reset Sisa Kuota ke Penuh (Secondary Button)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 44,
+                      child: OutlinedButton.icon(
                         onPressed: () {
                           setModalState(() {
                             sisaKuotaCtrl.text = kuotaCtrl.text;
                           });
                         },
-                        icon: const Icon(Icons.refresh, size: 16, color: AppTheme.primary),
+                        icon: const Icon(Icons.refresh_rounded, size: 18),
                         label: Text(
                           'Reset Sisa Kuota ke Penuh',
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            color: AppTheme.primary,
+                            fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.primary,
+                          side: const BorderSide(color: AppTheme.primary, width: 1.2),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          backgroundColor: AppTheme.primary.withValues(alpha: 0.04),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
                     // Simpan Button
                     SizedBox(
@@ -1076,7 +1105,7 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
   }
 
   Widget _buildMountainHeroCard(User? user, String displayBasecampName, String displayMountainName) {
-    final imageProvider = ImageHelper.getImageProvider(_mountain?.fotoUrl) ??
+    final imageProvider = ImageHelper.getImageProvider(_mountain?.fotoUrl, displayMountainName) ??
         const AssetImage('assets/images/background_mount.png') as ImageProvider;
 
     return Container(
@@ -1269,24 +1298,45 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
                             color: (_basecampPost?.isBuka ?? true)
-                                ? AppTheme.success.withValues(alpha: 0.25)
-                                : AppTheme.error.withValues(alpha: 0.25),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: (_basecampPost?.isBuka ?? true) ? AppTheme.success : AppTheme.error,
-                              width: 1,
-                            ),
+                                ? const Color(0xFF16A34A)
+                                : const Color(0xFFDC2626),
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: ((_basecampPost?.isBuka ?? true)
+                                        ? const Color(0xFF16A34A)
+                                        : const Color(0xFFDC2626))
+                                    .withValues(alpha: 0.4),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
-                          child: Text(
-                            (_basecampPost?.isBuka ?? true) ? 'JALUR BUKA' : 'JALUR TUTUP',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10.5,
-                              color: (_basecampPost?.isBuka ?? true) ? AppTheme.success : AppTheme.error,
-                              fontWeight: FontWeight.w800,
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                (_basecampPost?.isBuka ?? true) ? 'JALUR BUKA' : 'JALUR TUTUP',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10.5,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],

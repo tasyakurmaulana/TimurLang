@@ -22,12 +22,45 @@ class HikerMonitorScreen extends StatefulWidget {
 
 class _HikerMonitorScreenState extends State<HikerMonitorScreen> {
   List<SimaksiPermit> _activeHikers = [];
+  final Map<String, String> _leaderNames = {};
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  Future<void> _resolveLeaderNames(List<SimaksiPermit> permits) async {
+    for (final p in permits) {
+      if (_leaderNames.containsKey(p.id)) continue;
+      String? name;
+      // 1. Cek dari daftar anggota rombongan
+      if (p.members.isNotEmpty) {
+        final ketua = p.members.firstWhere(
+          (m) => m.isKetua,
+          orElse: () => p.members.first,
+        );
+        if (ketua.nama.trim().isNotEmpty) {
+          name = ketua.nama.trim();
+        }
+      }
+      // 2. Cek dari database user jika belum ada nama di dataAnggota
+      if (name == null || name.isEmpty) {
+        try {
+          final u = await DatabaseService.instance.getUserById(p.userId);
+          if (u != null && u.namaLengkap.trim().isNotEmpty) {
+            name = u.namaLengkap.trim();
+          } else if (SupabaseService.instance.isInitialized) {
+            final su = await SupabaseService.instance.getUserById(p.userId);
+            if (su != null && su.namaLengkap.trim().isNotEmpty) {
+              name = su.namaLengkap.trim();
+            }
+          }
+        } catch (_) {}
+      }
+      _leaderNames[p.id] = name ?? 'Ketua Pendaki';
+    }
   }
 
   Future<void> _loadData() async {
@@ -50,6 +83,7 @@ class _HikerMonitorScreenState extends State<HikerMonitorScreen> {
         gunungId: gunungId,
         basecampId: post.id,
       );
+      await _resolveLeaderNames(permits);
       if (mounted) {
         setState(() {
           _activeHikers = permits;
@@ -60,9 +94,11 @@ class _HikerMonitorScreenState extends State<HikerMonitorScreen> {
     }
 
     final permits = await DatabaseService.instance.getActivePermits();
+    final activeList = permits.where((p) => p.statusIzin == 'Di Jalur').toList();
+    await _resolveLeaderNames(activeList);
     if (mounted) {
       setState(() {
-        _activeHikers = permits.where((p) => p.statusIzin == 'Di Jalur').toList();
+        _activeHikers = activeList;
         _isLoading = false;
       });
     }
@@ -197,6 +233,7 @@ class _HikerMonitorScreenState extends State<HikerMonitorScreen> {
                         itemCount: _activeHikers.length,
                         itemBuilder: (context, i) {
                           final p = _activeHikers[i];
+                          final leaderName = _leaderNames[p.id] ?? 'Ketua Pendaki';
                           return Container(
                             margin: const EdgeInsets.only(bottom: 12),
                             padding: const EdgeInsets.all(16),
@@ -216,30 +253,53 @@ class _HikerMonitorScreenState extends State<HikerMonitorScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Icon(Icons.hiking, color: AppTheme.primary, size: 20),
-                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.all(7),
+                                      decoration: const BoxDecoration(
+                                        color: AppTheme.primarySubtle,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.hiking_rounded, color: AppTheme.primary, size: 20),
+                                    ),
+                                    const SizedBox(width: 10),
                                     Expanded(
-                                      child: Text(
-                                        'ID User: ${p.userId.length > 8 ? p.userId.substring(0, 8) : p.userId}...',
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 14,
-                                          color: AppTheme.textPrimary,
-                                        ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            leaderName,
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 15,
+                                              color: AppTheme.textPrimary,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'ID User: ${p.userId}',
+                                            style: GoogleFonts.jetBrainsMono(
+                                              fontSize: 11.5,
+                                              color: AppTheme.textSecondary,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
+                                    const SizedBox(width: 8),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                       decoration: BoxDecoration(
-                                        color: AppTheme.primarySubtle,
+                                        color: AppTheme.accentOrange.withValues(alpha: 0.12),
                                         borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.25)),
+                                        border: Border.all(color: AppTheme.accentOrange.withValues(alpha: 0.3)),
                                       ),
                                       child: Text(
                                         'Di Jalur',
                                         style: GoogleFonts.plusJakartaSans(
-                                          color: AppTheme.primary,
+                                          color: AppTheme.accentOrange,
                                           fontSize: 11,
                                           fontWeight: FontWeight.w700,
                                         ),
@@ -247,7 +307,9 @@ class _HikerMonitorScreenState extends State<HikerMonitorScreen> {
                                     ),
                                   ],
                                 ),
-                                const Divider(height: 20, color: AppTheme.border),
+                                const Divider(height: 18, color: AppTheme.border),
+                                _infoRow('Nama Ketua', leaderName),
+                                const SizedBox(height: 6),
                                 _infoRow('Gunung', p.namaGunung ?? p.gunungId),
                                 const SizedBox(height: 6),
                                 _infoRow('Rombongan', '${p.jumlahAnggota} orang'),

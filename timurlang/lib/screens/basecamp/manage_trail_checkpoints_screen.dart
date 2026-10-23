@@ -460,25 +460,6 @@ class _ManageTrailCheckpointsScreenState extends State<ManageTrailCheckpointsScr
           'Atur Titik Pos Jalur',
           style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 17),
         ),
-        actions: [
-          TextButton.icon(
-            onPressed: _isSaving ? null : _saveCheckpoints,
-            icon: _isSaving
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                  )
-                : const Icon(Icons.save_rounded, size: 18),
-            label: Text(
-              'Simpan',
-              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
-            ),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -667,35 +648,22 @@ class _ManageTrailCheckpointsScreenState extends State<ManageTrailCheckpointsScr
                     Text(
                       'Daftar Titik Pos (${_checkpoints.length} Titik)',
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
+                        fontSize: 14.5,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.textPrimary,
                       ),
                     ),
-                    Row(
-                      children: [
-                        TextButton.icon(
-                          onPressed: _resetToDefaultTemplate,
-                          icon: const Icon(Icons.refresh, size: 14),
-                          label: const Text('Template'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppTheme.textSecondary,
-                            visualDensity: VisualDensity.compact,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        ElevatedButton.icon(
-                          onPressed: () => _showAddOrEditDialog(),
-                          icon: const Icon(Icons.add, size: 15),
-                          label: const Text('Tambah Pos'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primary,
-                            foregroundColor: Colors.white,
-                            visualDensity: VisualDensity.compact,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                        ),
-                      ],
+                    ElevatedButton.icon(
+                      onPressed: () => _showAddOrEditDialog(),
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text('Tambah Pos'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        elevation: 0,
+                      ),
                     ),
                   ],
                 ),
@@ -726,11 +694,21 @@ class _ManageTrailCheckpointsScreenState extends State<ManageTrailCheckpointsScr
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Ketuk "Tambah Pos" atau gunakan tombol "Template" untuk mengisi pos acuan.',
+                          'Ketuk "Tambah Pos" untuk membuat pos kustom atau gunakan template acuan.',
                           textAlign: TextAlign.center,
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 11.5,
                             color: AppTheme.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          onPressed: _resetToDefaultTemplate,
+                          icon: const Icon(Icons.auto_awesome, size: 16),
+                          label: const Text('Gunakan Template Acuan'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppTheme.primary,
+                            side: const BorderSide(color: AppTheme.primary, width: 1.2),
                           ),
                         ),
                       ],

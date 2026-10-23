@@ -37,21 +37,74 @@ class _TicketCardState extends State<TicketCard> {
       mountainName: widget.permit.namaGunung,
     );
     _selectedZone = _nativeZone;
-    _resolvedBasecampName = widget.permit.namaBasecamp;
-    if (_resolvedBasecampName == null &&
-        widget.permit.basecampId != null &&
-        widget.permit.basecampId!.isNotEmpty) {
+    final initialName = widget.permit.namaBasecamp;
+    if (initialName != null &&
+        initialName.isNotEmpty &&
+        initialName != 'Pos Basecamp Resmi') {
+      _resolvedBasecampName = initialName;
+    } else {
       _loadBasecampName();
+    }
+  }
+
+  @override
+  void didUpdateWidget(TicketCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.permit.namaBasecamp != oldWidget.permit.namaBasecamp ||
+        widget.permit.basecampId != oldWidget.permit.basecampId ||
+        widget.permit.gunungId != oldWidget.permit.gunungId) {
+      final initialName = widget.permit.namaBasecamp;
+      if (initialName != null &&
+          initialName.isNotEmpty &&
+          initialName != 'Pos Basecamp Resmi') {
+        _resolvedBasecampName = initialName;
+      } else {
+        _loadBasecampName();
+      }
     }
   }
 
   Future<void> _loadBasecampName() async {
     try {
-      final bc = await DatabaseService.instance.getBasecampById(widget.permit.basecampId!);
-      if (bc != null && mounted) {
-        setState(() {
-          _resolvedBasecampName = bc.namaPos;
-        });
+      // 1. Cek langsung via basecampId
+      if (widget.permit.basecampId != null &&
+          widget.permit.basecampId!.isNotEmpty) {
+        final bc = await DatabaseService.instance.getBasecampById(widget.permit.basecampId!);
+        if (bc != null && mounted) {
+          setState(() {
+            _resolvedBasecampName = bc.namaPos;
+          });
+          return;
+        }
+      }
+
+      // 2. Fallback cek dari gunungId jika basecampId null atau belum cocok
+      if (widget.permit.gunungId.isNotEmpty) {
+        final bcs = await DatabaseService.instance.getRegisteredBasecampsByMountain(widget.permit.gunungId);
+        if (bcs.isNotEmpty && mounted) {
+          setState(() {
+            _resolvedBasecampName = bcs.first.namaPos;
+          });
+          return;
+        }
+      }
+
+      // 3. Fallback cek dari pencarian namaGunung
+      if (widget.permit.namaGunung != null && widget.permit.namaGunung!.isNotEmpty) {
+        final allMountains = await DatabaseService.instance.getAllMountains();
+        final searchLower = widget.permit.namaGunung!.toLowerCase();
+        final match = allMountains.where((m) =>
+            m.namaGunung.toLowerCase().contains(searchLower) ||
+            searchLower.contains(m.namaGunung.toLowerCase()));
+        if (match.isNotEmpty) {
+          final bcs = await DatabaseService.instance.getRegisteredBasecampsByMountain(match.first.id);
+          if (bcs.isNotEmpty && mounted) {
+            setState(() {
+              _resolvedBasecampName = bcs.first.namaPos;
+            });
+            return;
+          }
+        }
       }
     } catch (_) {}
   }
@@ -687,27 +740,33 @@ class _TicketCardState extends State<TicketCard> {
             ),
             const SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.25),
+                color: isDiJalur ? const Color(0xFF1E3A2F) : primaryColor,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    isDiJalur ? Icons.hiking : Icons.check_circle_outline,
-                    size: 14,
-                    color: primaryColor,
+                    isDiJalur ? Icons.hiking_rounded : Icons.check_circle_outline,
+                    size: 15,
+                    color: Colors.white,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     'Status: ${widget.permit.statusIzin}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: primaryColor,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
                     ),
                   ),
                 ],

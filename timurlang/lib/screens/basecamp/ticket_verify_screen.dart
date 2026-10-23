@@ -11,7 +11,6 @@ import '../../config/constants.dart';
 import '../../config/theme.dart';
 import '../../services/blockchain_service.dart';
 import '../../models/simaksi_permit.dart';
-import '../../widgets/custom_text_field.dart';
 import '../../widgets/qr_scanner_modal.dart';
 
 class TicketVerifyScreen extends StatefulWidget {
@@ -228,13 +227,114 @@ class _TicketVerifyScreenState extends State<TicketVerifyScreen> {
             ),
             const SizedBox(height: 18),
 
-            // Manual Hash Input
-            CustomTextField(
+            // Manual Hash Input Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Block Hash SHA-256',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                if (_hashCtrl.text.trim().isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _hashCtrl.text.trim().length == 64
+                          ? AppTheme.safeGreen.withValues(alpha: 0.12)
+                          : AppTheme.primarySubtle,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '${_hashCtrl.text.trim().length} / 64 char',
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: _hashCtrl.text.trim().length == 64
+                            ? AppTheme.safeGreen
+                            : AppTheme.primary,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // Block Hash TextField
+            TextField(
               controller: _hashCtrl,
-              label: 'Block Hash SHA-256',
-              hint: 'Tempelkan hash tiket pendaki di sini',
-              prefixIcon: Icons.fingerprint,
+              minLines: 1,
               maxLines: 2,
+              style: GoogleFonts.jetBrainsMono(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
+              ),
+              onChanged: (_) => setState(() {}),
+              onSubmitted: (_) => _verifyHash(),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: AppTheme.surface,
+                hintText: 'Tempelkan 64 karakter hash tiket di sini...',
+                hintStyle: GoogleFonts.plusJakartaSans(
+                  fontSize: 12.5,
+                  color: AppTheme.textSecondary.withValues(alpha: 0.5),
+                  fontWeight: FontWeight.w400,
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                prefixIcon: const Icon(
+                  Icons.fingerprint_rounded,
+                  color: AppTheme.primary,
+                  size: 22,
+                ),
+                suffixIcon: _hashCtrl.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear_rounded, size: 20, color: AppTheme.textSecondary),
+                        onPressed: () {
+                          _hashCtrl.clear();
+                          setState(() {});
+                        },
+                        tooltip: 'Hapus',
+                      )
+                    : IconButton(
+                        icon: const Icon(Icons.content_paste_rounded, size: 20, color: AppTheme.primary),
+                        tooltip: 'Tempel dari Clipboard',
+                        onPressed: () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          final data = await Clipboard.getData(Clipboard.kTextPlain);
+                          final text = data?.text?.trim();
+                          if (text != null && text.isNotEmpty) {
+                            _hashCtrl.text = text;
+                            if (mounted) setState(() {});
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Hash berhasil ditempel dari clipboard',
+                                  style: GoogleFonts.plusJakartaSans(),
+                                ),
+                                duration: const Duration(seconds: 2),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppTheme.border, width: 1.2),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppTheme.border, width: 1.2),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppTheme.primary, width: 1.8),
+                ),
+              ),
             ),
             const SizedBox(height: 12),
             SizedBox(

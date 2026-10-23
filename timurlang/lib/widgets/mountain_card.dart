@@ -41,7 +41,7 @@ class MountainCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final imageProvider = ImageHelper.getImageProvider(mountain.fotoUrl) ??
+    final imageProvider = ImageHelper.getImageProvider(mountain.fotoUrl, mountain.namaGunung) ??
         const AssetImage('assets/images/background_mount.png') as ImageProvider;
 
     return GestureDetector(

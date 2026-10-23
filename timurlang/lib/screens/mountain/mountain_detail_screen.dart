@@ -93,7 +93,7 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
     }
 
     final m = _mountain!;
-    final imageProvider = ImageHelper.getImageProvider(m.fotoUrl) ??
+    final imageProvider = ImageHelper.getImageProvider(m.fotoUrl, m.namaGunung) ??
         const AssetImage('assets/images/background_mount.png') as ImageProvider;
 
     return Scaffold(

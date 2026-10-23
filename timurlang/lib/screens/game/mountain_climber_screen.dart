@@ -102,9 +102,9 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   final double foxHeight = 44.0;
   final double woodWidth = 46.0;
   final double woodHeight = 46.0;
-  final double eagleWidth = 68.0;
-  final double eagleHeight = 48.0;
-  // Ketinggian elang dari tanah: berdiri pasti kena (92 > 68), menunduk aman lewat di bawah (61.3 < 68)
+  final double eagleWidth = 62.0;
+  final double eagleHeight = 82.0;
+  // Ketinggian elang dari tanah: berdiri pasti kena (92 > 68), menunduk aman lewat di bawah (60.2 < 74)
   final double eagleAltitude = 68.0;
 
   // ── Daftar Rintangan Berurutan (Dijamin Tidak Pernah Sejajar) ──
@@ -145,11 +145,9 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
 
   Future<void> _loadAllAssets() async {
     // Muat semua asset pada resolusi native untuk pemotongan koordinat yang presisi
-    hikerSpriteSheet = await _loadUiImage('assets/images/hiker 1.png') ??
+    hikerSpriteSheet = await _loadUiImage('assets/images/hiker.png') ??
+        await _loadUiImage('assets/images/hiker 1.png') ??
         await _loadUiImage('assets/images/hiker_1.png') ??
-        await _loadUiImage('lib/assets/images/hiker 1.png') ??
-        await _loadUiImage('lib/assets/images/hiker_1.png') ??
-        await _loadUiImage('assets/images/hiker.png') ??
         await _loadUiImage('lib/assets/images/hiker.png') ??
         await _loadUiImage('assets/images/hiker.jpeg');
 
@@ -397,11 +395,11 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       bool hasCollision = false;
       for (final obs in _obstacles) {
         if (obs.isEagle) {
-          // Elang di udara: Altitude [eagleAltitude + 8, eagleAltitude + eagleHeight - 8] -> [76, 108]
-          final double eagleXStart = obs.x + 14.0;
-          final double eagleXEnd = obs.x + eagleWidth - 14.0;
-          final double eagleAltBottom = eagleAltitude + 8.0;
-          final double eagleAltTop = eagleAltitude + eagleHeight - 8.0;
+          // Elang di udara: Posisi menunduk (playerAltTop 60.2 < eagleAltBottom 74.0) aman lewat di bawah
+          final double eagleXStart = obs.x + 12.0;
+          final double eagleXEnd = obs.x + eagleWidth - 12.0;
+          final double eagleAltBottom = eagleAltitude + 6.0;
+          final double eagleAltTop = eagleAltitude + eagleHeight - 12.0;
 
           final bool overlapX = playerXEnd > eagleXStart && playerXStart < eagleXEnd;
           final bool overlapAlt = playerAltTop > eagleAltBottom && playerAltBottom < eagleAltTop;
@@ -1368,7 +1366,9 @@ class CartoonRollingWoodPainter extends CustomPainter {
 }
 
 // ============================================================================
-// 3. SPRITE PAINTER BURUNG ELANG (elang.png 4-FRAME SPRITESHEET)
+// 3. SPRITE PAINTER BURUNG ELANG (elang.png / eagle.png 4-FRAME SPRITESHEET)
+// Koordinat persentase presisi berdasar bounding box asli (5663 x 2688)
+// Menjaga aspect ratio alami sehingga elang proporsional & TIDAK GEPENG
 // ============================================================================
 class EagleSpritePainter extends CustomPainter {
   final ui.Image spriteSheet;
@@ -1379,19 +1379,48 @@ class EagleSpritePainter extends CustomPainter {
     required this.frameIndex,
   });
 
+  // Mapping koordinat 4-frame presisi elang (5663 x 2688)
+  // [xRel, yRel, wRel, hRel]
+  static const List<List<double>> _frameSpecs = [
+    [46.0 / 5663.0, 435.0 / 2688.0, 1260.0 / 5663.0, 1780.0 / 2688.0],   // Frame 0: Sayap ke atas
+    [1512.0 / 5663.0, 479.0 / 2688.0, 1260.0 / 5663.0, 1780.0 / 2688.0], // Frame 1: Melayang datar
+    [3171.0 / 5663.0, 463.0 / 2688.0, 1260.0 / 5663.0, 1780.0 / 2688.0], // Frame 2: Sayap ke bawah
+    [4302.0 / 5663.0, 480.0 / 2688.0, 1260.0 / 5663.0, 1780.0 / 2688.0], // Frame 3: Kepakan naik
+  ];
+
   @override
   void paint(Canvas canvas, Size size) {
-    final double fw = spriteSheet.width / 4.0;
+    final double sw = spriteSheet.width.toDouble();
     final double sh = spriteSheet.height.toDouble();
-    final int f = frameIndex.clamp(0, 3);
 
-    final double srcX = f * fw + (fw * 0.06);
-    final double srcW = fw * 0.92;
-    final double srcY = sh * 0.16;
-    final double srcH = sh * 0.68;
+    final int f = frameIndex.clamp(0, _frameSpecs.length - 1);
+    final spec = _frameSpecs[f];
 
+    final double srcX = spec[0] * sw;
+    final double srcY = spec[1] * sh;
+    final double srcW = spec[2] * sw;
+    final double srcH = spec[3] * sh;
     final Rect srcRect = Rect.fromLTWH(srcX, srcY, srcW, srcH);
-    final Rect dstRect = Rect.fromLTWH(0, 0, size.width, size.height);
+
+    // Mempertahankan rasio aspek asli frame elang agar tidak pernah gepeng/terdistorsi
+    final double srcAspect = srcW / srcH;
+    final double boxAspect = size.width / size.height;
+
+    double dstWidth;
+    double dstHeight;
+
+    if (srcAspect > boxAspect) {
+      dstWidth = size.width;
+      dstHeight = dstWidth / srcAspect;
+    } else {
+      dstHeight = size.height;
+      dstWidth = dstHeight * srcAspect;
+    }
+
+    // Posisikan tepat di tengah canvas widget
+    final double dstX = (size.width - dstWidth) / 2.0;
+    final double dstY = (size.height - dstHeight) / 2.0;
+    final Rect dstRect = Rect.fromLTWH(dstX, dstY, dstWidth, dstHeight);
 
     final Paint paint = Paint()
       ..isAntiAlias = true

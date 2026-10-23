@@ -80,6 +80,9 @@ class DatabaseService {
     try {
       await db.execute("ALTER TABLE basecamp_posts ADD COLUMN checkpoints_json TEXT");
     } catch (_) {}
+    try {
+      await db.execute("ALTER TABLE simaksi_permits ADD COLUMN nama_basecamp TEXT");
+    } catch (_) {}
 
     // Pastikan tabel user_personal_data tersedia
     try {
@@ -754,7 +757,7 @@ class DatabaseService {
   Future<List<SimaksiPermit>> getPermitsByUser(String userId) async {
     final db = await database;
     final maps = await db.rawQuery('''
-      SELECT p.*, b.nama_pos AS nama_basecamp
+      SELECT p.*, COALESCE(NULLIF(p.nama_basecamp, ''), b.nama_pos) AS nama_basecamp
       FROM simaksi_permits p
       LEFT JOIN basecamp_posts b ON p.basecamp_id = b.id
       WHERE p.user_id = ?
@@ -767,7 +770,7 @@ class DatabaseService {
   Future<SimaksiPermit?> getActivePermitForHiker(String userId) async {
     final db = await database;
     final maps = await db.rawQuery('''
-      SELECT p.*, b.nama_pos AS nama_basecamp
+      SELECT p.*, COALESCE(NULLIF(p.nama_basecamp, ''), b.nama_pos) AS nama_basecamp
       FROM simaksi_permits p
       LEFT JOIN basecamp_posts b ON p.basecamp_id = b.id
       WHERE p.user_id = ? AND p.status_izin = ?
@@ -779,7 +782,7 @@ class DatabaseService {
     }
     // Fallback cek status tervalidasi atau terdaftar jika belum check-in
     final fallback = await db.rawQuery('''
-      SELECT p.*, b.nama_pos AS nama_basecamp
+      SELECT p.*, COALESCE(NULLIF(p.nama_basecamp, ''), b.nama_pos) AS nama_basecamp
       FROM simaksi_permits p
       LEFT JOIN basecamp_posts b ON p.basecamp_id = b.id
       WHERE p.user_id = ? AND p.status_izin IN (?, ?)

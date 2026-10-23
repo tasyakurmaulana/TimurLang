@@ -1154,7 +1154,7 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
       return _HikingSafety(
         label: 'CUKUP AMAN',
         level: 4,
-        color: Colors.lightGreenAccent,
+        color: const Color(0xFF2E7D32),
         advice: 'Mendung tapi aman untuk pendakian. Siapkan jas hujan untuk berjaga-jaga.',
       );
     }

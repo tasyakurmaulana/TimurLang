@@ -186,12 +186,14 @@ class _SimaksiPaymentScreenState extends State<SimaksiPaymentScreen> {
       final totalBiayaIDR = _args['totalBiayaIDR'] as double;
       final convertedCost = CurrencyUtils.convertFromIDR(totalBiayaIDR, _selectedCurrency);
       final basecampId = _args['basecampId'] as String?;
+      final namaBasecamp = _args['namaBasecamp'] as String?;
       final dataAnggota = _args['dataAnggota'] as String?;
 
       final permit = await BlockchainService.instance.createPermit(
         userId: user.id,
         gunungId: mountain.id,
         basecampId: basecampId,
+        namaBasecamp: namaBasecamp,
         tanggalNaik: _args['tanggalNaik'] as DateTime,
         tanggalTurun: _args['tanggalTurun'] as DateTime,
         jumlahAnggota: _args['jumlahAnggota'] as int,
