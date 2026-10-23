@@ -76,25 +76,12 @@ class _HomeScreenState extends State<HomeScreen> {
           side: const BorderSide(color: Color(0xFF557A5E), width: 1.2),
         ),
         icon: Container(
-          width: 26,
-          height: 26,
+          padding: const EdgeInsets.all(5),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Colors.white.withValues(alpha: 0.18),
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withValues(alpha: 0.9), width: 1.2),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
-                blurRadius: 4,
-              ),
-            ],
           ),
-          child: ClipOval(
-            child: Image.asset(
-              'assets/images/logo_timurlang.png',
-              fit: BoxFit.cover,
-            ),
-          ),
+          child: const Icon(Icons.auto_awesome_rounded, size: 18, color: Colors.white),
         ),
         label: Text(
           'Tanya Tbot',
