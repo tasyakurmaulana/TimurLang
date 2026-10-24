@@ -83,17 +83,6 @@ class DatabaseService {
     try {
       await db.execute("ALTER TABLE simaksi_permits ADD COLUMN nama_basecamp TEXT");
     } catch (_) {}
-    // Backfill nama_basecamp dari basecamp_posts jika basecamp_id ada tapi nama_basecamp masih kosong
-    try {
-      await db.execute('''
-        UPDATE simaksi_permits
-        SET nama_basecamp = (
-          SELECT nama_pos FROM basecamp_posts WHERE basecamp_posts.id = simaksi_permits.basecamp_id
-        )
-        WHERE (nama_basecamp IS NULL OR nama_basecamp = '' OR nama_basecamp = 'Pos Basecamp Resmi')
-          AND basecamp_id IS NOT NULL;
-      ''');
-    } catch (_) {}
 
     // Pastikan tabel user_personal_data tersedia
     try {
@@ -142,6 +131,29 @@ class DatabaseService {
         await _seedBasecamps(db);
         await _seedBasecampUsers(db);
       }
+    } catch (_) {}
+
+    // Backfill & pulihkan nama_basecamp serta basecamp_id yang hilang pada tiket SIMAKSI
+    try {
+      // 1. Pulihkan tiket Merbabu yang basecamp_id-nya null/hilang menjadi Selo Boyolali (bc-023)
+      await db.execute('''
+        UPDATE simaksi_permits
+        SET basecamp_id = 'bc-023',
+            nama_basecamp = 'Selo Boyolali'
+        WHERE (gunung_id = 'mtn-014' OR nama_gunung LIKE '%Merbabu%')
+          AND (basecamp_id IS NULL OR basecamp_id = '' OR nama_basecamp IS NULL OR nama_basecamp = '' OR nama_basecamp = 'Pos Basecamp Resmi');
+      ''');
+
+      // 2. Backfill nama_basecamp dari basecamp_posts untuk seluruh tiket yang sudah memiliki basecamp_id
+      await db.execute('''
+        UPDATE simaksi_permits
+        SET nama_basecamp = (
+          SELECT nama_pos FROM basecamp_posts WHERE basecamp_posts.id = simaksi_permits.basecamp_id
+        )
+        WHERE basecamp_id IS NOT NULL
+          AND (SELECT nama_pos FROM basecamp_posts WHERE basecamp_posts.id = simaksi_permits.basecamp_id) IS NOT NULL
+          AND (nama_basecamp IS NULL OR nama_basecamp = '' OR nama_basecamp = 'Pos Basecamp Resmi');
+      ''');
     } catch (_) {}
 
     return db;
@@ -781,7 +793,11 @@ class DatabaseService {
                 permit.namaBasecamp!.isNotEmpty &&
                 permit.namaBasecamp != 'Pos Basecamp Resmi')
             ? permit.namaBasecamp
-            : old['nama_basecamp'] as String?,
+            : (old['nama_basecamp'] != null &&
+                    (old['nama_basecamp'] as String).isNotEmpty &&
+                    old['nama_basecamp'] != 'Pos Basecamp Resmi')
+                ? old['nama_basecamp'] as String?
+                : null,
         namaGunung: (permit.namaGunung != null && permit.namaGunung!.isNotEmpty)
             ? permit.namaGunung
             : old['nama_gunung'] as String?,
@@ -806,7 +822,15 @@ class DatabaseService {
     final maps = await db.rawQuery('''
       SELECT p.*,
              b.nama_pos AS b_nama_pos,
-             COALESCE(NULLIF(p.nama_basecamp, ''), b.nama_pos) AS resolved_nama_basecamp
+             CASE
+               WHEN p.nama_basecamp IS NOT NULL 
+                    AND p.nama_basecamp != '' 
+                    AND p.nama_basecamp != 'Pos Basecamp Resmi'
+                 THEN p.nama_basecamp
+               WHEN b.nama_pos IS NOT NULL AND b.nama_pos != ''
+                 THEN b.nama_pos
+               ELSE p.nama_basecamp
+             END AS resolved_nama_basecamp
       FROM simaksi_permits p
       LEFT JOIN basecamp_posts b ON p.basecamp_id = b.id
       WHERE p.user_id = ?
@@ -821,7 +845,15 @@ class DatabaseService {
     final maps = await db.rawQuery('''
       SELECT p.*,
              b.nama_pos AS b_nama_pos,
-             COALESCE(NULLIF(p.nama_basecamp, ''), b.nama_pos) AS resolved_nama_basecamp
+             CASE
+               WHEN p.nama_basecamp IS NOT NULL 
+                    AND p.nama_basecamp != '' 
+                    AND p.nama_basecamp != 'Pos Basecamp Resmi'
+                 THEN p.nama_basecamp
+               WHEN b.nama_pos IS NOT NULL AND b.nama_pos != ''
+                 THEN b.nama_pos
+               ELSE p.nama_basecamp
+             END AS resolved_nama_basecamp
       FROM simaksi_permits p
       LEFT JOIN basecamp_posts b ON p.basecamp_id = b.id
       WHERE p.user_id = ? AND p.status_izin = ?
@@ -835,7 +867,15 @@ class DatabaseService {
     final fallback = await db.rawQuery('''
       SELECT p.*,
              b.nama_pos AS b_nama_pos,
-             COALESCE(NULLIF(p.nama_basecamp, ''), b.nama_pos) AS resolved_nama_basecamp
+             CASE
+               WHEN p.nama_basecamp IS NOT NULL 
+                    AND p.nama_basecamp != '' 
+                    AND p.nama_basecamp != 'Pos Basecamp Resmi'
+                 THEN p.nama_basecamp
+               WHEN b.nama_pos IS NOT NULL AND b.nama_pos != ''
+                 THEN b.nama_pos
+               ELSE p.nama_basecamp
+             END AS resolved_nama_basecamp
       FROM simaksi_permits p
       LEFT JOIN basecamp_posts b ON p.basecamp_id = b.id
       WHERE p.user_id = ? AND p.status_izin IN (?, ?)

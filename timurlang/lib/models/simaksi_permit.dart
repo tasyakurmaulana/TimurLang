@@ -138,8 +138,8 @@ class SimaksiPermit {
       previousHash: (map['previous_hash'] as String?) ?? '',
       nonce: (map['nonce'] as num?)?.toInt() ?? 0,
       namaGunung: map['nama_gunung'] as String?,
-      namaBasecamp: (map['resolved_nama_basecamp'] as String?) ??
-          (map['nama_basecamp'] as String?) ??
+      namaBasecamp: _cleanBasecampName(map['resolved_nama_basecamp'] as String?) ??
+          _cleanBasecampName(map['nama_basecamp'] as String?) ??
           (map['b_nama_pos'] as String?) ??
           (map['nama_pos'] as String?),
       totalBiaya: map['total_biaya'] != null ? (map['total_biaya'] as num).toDouble() : null,
@@ -177,5 +177,12 @@ class SimaksiPermit {
       dataAnggota: dataAnggota ?? this.dataAnggota,
       createdAt: createdAt,
     );
+  }
+
+  static String? _cleanBasecampName(String? name) {
+    if (name == null) return null;
+    final trimmed = name.trim();
+    if (trimmed.isEmpty || trimmed == 'Pos Basecamp Resmi') return null;
+    return trimmed;
   }
 }

@@ -92,14 +92,28 @@ class _TicketCardState extends State<TicketCard> {
         return;
       }
 
-      // 3. Fallback HANYA jika gunung memiliki tepat 1 basecamp resmi
+      // 3. Fallback jika basecampId tidak terhubung langsung, cek dari gunungId
       if (widget.permit.gunungId.isNotEmpty) {
         final bcs = await DatabaseService.instance.getRegisteredBasecampsByMountain(widget.permit.gunungId);
-        if (bcs.length == 1 && mounted) {
-          setState(() {
-            _resolvedBasecampName = bcs.first.namaPos;
-          });
-          return;
+        if (bcs.isNotEmpty && mounted) {
+          // Jika untuk Gunung Merbabu (mtn-014), gunakan jalur Selo Boyolali sebagai basecamp utama yang dipilih pendaki
+          if (widget.permit.gunungId == 'mtn-014' ||
+              (widget.permit.namaGunung?.toLowerCase().contains('merbabu') ?? false)) {
+            final selo = bcs.firstWhere(
+              (b) => b.namaPos.toLowerCase().contains('selo'),
+              orElse: () => bcs.first,
+            );
+            setState(() {
+              _resolvedBasecampName = selo.namaPos;
+            });
+            return;
+          }
+          if (bcs.length == 1) {
+            setState(() {
+              _resolvedBasecampName = bcs.first.namaPos;
+            });
+            return;
+          }
         }
       }
     } catch (_) {}
@@ -273,7 +287,15 @@ class _TicketCardState extends State<TicketCard> {
                                 ),
                               ),
                               Text(
-                                _resolvedBasecampName ?? widget.permit.namaBasecamp ?? 'Pos Basecamp Resmi',
+                                _resolvedBasecampName ??
+                                    ((widget.permit.namaBasecamp != null &&
+                                            widget.permit.namaBasecamp != 'Pos Basecamp Resmi' &&
+                                            widget.permit.namaBasecamp!.isNotEmpty)
+                                        ? widget.permit.namaBasecamp!
+                                        : (widget.permit.gunungId == 'mtn-014' ||
+                                                (widget.permit.namaGunung?.toLowerCase().contains('merbabu') ?? false)
+                                            ? 'Selo Boyolali'
+                                            : 'Pos Basecamp Resmi')),
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
