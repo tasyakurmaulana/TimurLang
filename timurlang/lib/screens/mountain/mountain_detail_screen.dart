@@ -204,11 +204,13 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
                       _badge(m.statusJalur, _getStatusColor(m.statusJalur)),
                       const SizedBox(width: 8),
                       _badge(m.tingkatBahaya, AppTheme.accentOrange),
-                      const SizedBox(width: 8),
-                      _badge(
-                        m.sumberAirTersedia ? 'Air Tersedia' : 'Tanpa Air',
-                        m.sumberAirTersedia ? AppTheme.skyBlue : AppTheme.mistGrey,
-                      ),
+                      if (m.sumberAirTersedia) ...[
+                        const SizedBox(width: 8),
+                        _badge(
+                          'Air',
+                          AppTheme.skyBlue,
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 16),

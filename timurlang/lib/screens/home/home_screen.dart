@@ -423,7 +423,7 @@ class _DashboardPageState extends State<_DashboardPage> {
       _checkConnection(),
     ]);
 
-    // 3. Refresh Daftar Tiket, Gunung, & Rekomendasi Pintar
+    // 3. Refresh Daftar Tiket, Gunung, & Rekomendasi TimurLang
     if (mounted) {
       setState(() {
         _permitsFuture = _getRecentPermits();
@@ -675,7 +675,7 @@ class _DashboardPageState extends State<_DashboardPage> {
               _buildCompactMenuSection(),
               const SizedBox(height: 24),
 
-              // 5.5 Rekomendasi Pintar Pendaki (AI Auto-sliding Carousel 3 Gunung)
+              // 5.5 Rekomendasi TimurLang Pendaki (AI Auto-sliding Carousel 3 Gunung)
               _buildSmartMountainRecommendationSection(),
               const SizedBox(height: 26),
 
@@ -1606,17 +1606,17 @@ class _DashboardPageState extends State<_DashboardPage> {
               onTap: () => Navigator.pushNamed(context, AppRoutes.map),
             ),
             _buildCompactMenuItem(
-              label: 'Kompas\n3D',
+              label: 'Kompas',
               icon: Icons.explore_outlined,
               onTap: () => Navigator.pushNamed(context, AppRoutes.compass),
             ),
             _buildCompactMenuItem(
-              label: 'SOS &\nJatuh',
+              label: 'SOS',
               icon: Icons.sos_rounded,
               onTap: () => Navigator.pushNamed(context, AppRoutes.fallDetection),
             ),
             _buildCompactMenuItem(
-              label: 'Mini\ngames',
+              label: 'Games',
               icon: Icons.sports_esports_outlined,
               onTap: () => Navigator.pushNamed(context, AppRoutes.mountainClimber),
             ),
@@ -2206,7 +2206,7 @@ class _DashboardPageState extends State<_DashboardPage> {
     return DatabaseService.instance.getPermitsByUser(user.id);
   }
 
-  // ── REKOMENDASI PINTAR PENDAKI (SMART MOUNTAIN RECOMMENDATIONS) ──
+  // ── Rekomendasi TimurLang PENDAKI (SMART MOUNTAIN RECOMMENDATIONS) ──
 
   Widget _buildSmartMountainRecommendationSection() {
     if (_isLoadingRecommendations) {
@@ -2230,9 +2230,9 @@ class _DashboardPageState extends State<_DashboardPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header Section Rekomendasi Pintar
+        // Header Section Rekomendasi TimurLang
         Text(
-          'Rekomendasi Pintar',
+          'Rekomendasi TimurLang',
           style: GoogleFonts.plusJakartaSans(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -2435,7 +2435,7 @@ class _DashboardPageState extends State<_DashboardPage> {
         SmartMountainRecommendation(
           mountain: item['mountain'] as Mountain,
           matchScore: item['score'] as int,
-          badgeText: i < badges.length ? badges[i] : 'Rekomendasi Pintar',
+          badgeText: i < badges.length ? badges[i] : 'Rekomendasi TimurLang',
           matchReason: item['reason'] as String,
           matchHighlights: List<String>.from(item['tags']),
         ),
@@ -2446,7 +2446,7 @@ class _DashboardPageState extends State<_DashboardPage> {
   }
 }
 
-// ── MODEL DATA REKOMENDASI PINTAR ──
+// ── MODEL DATA Rekomendasi TimurLang ──
 class SmartMountainRecommendation {
   final Mountain mountain;
   final int matchScore;
@@ -2463,7 +2463,7 @@ class SmartMountainRecommendation {
   });
 }
 
-// ── WIDGET CAROUSEL REKOMENDASI PINTAR (GESER OTOMATIS) ──
+// ── WIDGET CAROUSEL Rekomendasi TimurLang (GESER OTOMATIS) ──
 class _SmartRecommendationCarousel extends StatefulWidget {
   final List<SmartMountainRecommendation> recommendations;
   const _SmartRecommendationCarousel({required this.recommendations});
@@ -2529,7 +2529,10 @@ class _SmartRecommendationCarouselState extends State<_SmartRecommendationCarous
               },
               itemBuilder: (context, index) {
                 final rec = widget.recommendations[index];
-                return _buildCard(rec);
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: _buildCard(rec),
+                );
               },
             ),
           ),
@@ -2625,40 +2628,48 @@ class _SmartRecommendationCarouselState extends State<_SmartRecommendationCarous
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Baris Atas: Badge AI Match & Status/Elevasi
+                    // Baris Atas: Badge Rekomendasi & Label MDPL di pojok kanan atas
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Badge AI Smart Match (Clean & Tanpa Stroke / Emote)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1B4332).withValues(alpha: 0.92),
-                            borderRadius: BorderRadius.circular(9999),
-                          ),
-                          child: Text(
-                            '${rec.matchScore}% Cocok • ${rec.badgeText}',
-                            style: GoogleFonts.plusJakartaSans(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                        ),
-                        // Elevasi (Tanpa Stroke)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.5),
+                            color: Colors.black.withValues(alpha: 0.55),
+                            borderRadius: BorderRadius.circular(9999),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.recommend_rounded, size: 14, color: Color(0xFF52B788)),
+                              const SizedBox(width: 5),
+                              Text(
+                                'Rekomendasi Untukmu',
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Label MDPL di pojok kanan atas (Tanpa icon dan tanpa outline, hijau solid)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2D6A4F),
                             borderRadius: BorderRadius.circular(9999),
                           ),
                           child: Text(
                             '${rec.mountain.elevasiMdpl} MDPL',
                             style: GoogleFonts.plusJakartaSans(
-                              color: Colors.white,
-                              fontSize: 10.5,
+                              color: const Color(0xFFE8F5E9),
+                              fontSize: 11,
                               fontWeight: FontWeight.w700,
+                              letterSpacing: 0.2,
                             ),
                           ),
                         ),
@@ -2688,30 +2699,25 @@ class _SmartRecommendationCarouselState extends State<_SmartRecommendationCarous
                     ),
                     const SizedBox(height: 6),
 
-                    // Kotak Pertimbangan Pintar AI (Clean & Tanpa Stroke)
+                    // Kotak Alasan Rekomendasi (Clean, human-curated style)
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.45),
                         borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.psychology_outlined, size: 14, color: Color(0xFFA7C4B5)),
-                              const SizedBox(width: 5),
-                              Text(
-                                'Pertimbangan Pintar AI',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFFA7C4B5),
-                                ),
-                              ),
-                            ],
+                          Text(
+                            'Alasan Rekomendasi',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFFA7C4B5),
+                            ),
                           ),
                           const SizedBox(height: 3),
                           Text(
@@ -2729,10 +2735,10 @@ class _SmartRecommendationCarouselState extends State<_SmartRecommendationCarous
                     ),
                     const SizedBox(height: 10),
 
-                    // Tombol CTA
+                    // Tombol CTA (Tinggi 40, responsive, anti overflow i ->)
                     SizedBox(
                       width: double.infinity,
-                      height: 36,
+                      height: 40,
                       child: ElevatedButton(
                         onPressed: () => Navigator.pushNamed(
                           context,
@@ -2744,23 +2750,26 @@ class _SmartRecommendationCarouselState extends State<_SmartRecommendationCarous
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            side: BorderSide.none,
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(
-                              'Jelajahi Jalur & Simaksi',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
+                            Flexible(
+                              child: Text(
+                                'Jelajahi Jalur & Simaksi',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             const SizedBox(width: 6),
-                            const Icon(Icons.arrow_forward_rounded, size: 14),
+                            const Icon(Icons.arrow_forward_rounded, size: 15),
                           ],
                         ),
                       ),
@@ -2775,3 +2784,4 @@ class _SmartRecommendationCarouselState extends State<_SmartRecommendationCarous
     );
   }
 }
+

@@ -53,6 +53,7 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
   List<BasecampPost> _basecamps = [];
   BasecampPost? _selectedBasecamp;
   bool _isLoadingBasecamps = false;
+  bool _isMountainLocked = false;
 
   User? _currentUser;
   MedicalProfile? _userMedicalProfile;
@@ -210,16 +211,21 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
 
       if (args is Mountain) {
         argMountain = args;
+        _isMountainLocked = true;
       } else if (args is String) {
         mountainId = args;
+        _isMountainLocked = true;
       } else if (args is Map) {
         if (args['mountain'] is Mountain) {
           argMountain = args['mountain'] as Mountain;
+          _isMountainLocked = true;
         } else if (args['mountain'] is String) {
           mountainId = args['mountain'] as String;
+          _isMountainLocked = true;
         }
         if (args['mountainId'] is String) {
           mountainId = args['mountainId'] as String;
+          _isMountainLocked = true;
         }
         if (args['basecampId'] is String) {
           targetBasecampId = args['basecampId'] as String;
@@ -507,18 +513,69 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
               const Text('Gunung Tujuan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: AppTheme.cardDark,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.3)),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: _isMountainLocked
+                        ? AppTheme.border
+                        : AppTheme.primaryGreen.withValues(alpha: 0.3),
+                  ),
                 ),
-                child: _mountains.isEmpty
+                child: (_mountains.isEmpty || _isMountainLocked)
                     ? Row(
                         children: [
-                          const Icon(Icons.terrain, color: AppTheme.primaryGreen, size: 28),
+                          Container(
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.terrain_rounded, color: AppTheme.primary, size: 22),
+                          ),
                           const SizedBox(width: 12),
-                          Text(_mountain?.namaGunung ?? 'Memuat...', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  _mountain?.namaGunung ?? 'Memuat...',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.textPrimary),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${_mountain?.elevasiMdpl ?? 0} MDPL • Status: ${_mountain?.statusJalur ?? "Buka"}',
+                                  style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (_isMountainLocked)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppTheme.surfaceSubtle,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: AppTheme.border),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.lock_rounded, size: 12, color: AppTheme.textSecondary),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Terkunci',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppTheme.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                         ],
                       )
                     : DropdownButtonHideUnderline(

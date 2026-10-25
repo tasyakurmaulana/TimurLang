@@ -193,6 +193,22 @@ class WeatherData {
   }
 }
 
+class HourlyForecast {
+  final DateTime time;
+  final double temperature;
+  final String condition;
+  final String icon;
+  final double pop; // 0.0 - 1.0 (Probability of Precipitation)
+
+  HourlyForecast({
+    required this.time,
+    required this.temperature,
+    required this.condition,
+    required this.icon,
+    required this.pop,
+  });
+}
+
 class WeatherForecast {
   final DateTime date;
   final double tempMin;
@@ -444,5 +460,99 @@ class WeatherService {
     }
 
     return forecasts;
+  }
+
+  /// Get hourly forecast from OpenWeatherMap (parsed to 8-12 time intervals for smooth curve)
+  Future<List<HourlyForecast>> getHourlyForecast(double? lat, double? lon) async {
+    double latitude;
+    double longitude;
+
+    if (lat != null && lon != null && lat != 0 && lon != 0) {
+      latitude = lat;
+      longitude = lon;
+    } else {
+      final position = await _getCurrentPosition();
+      latitude = position.latitude;
+      longitude = position.longitude;
+    }
+
+    final url = Uri.parse(
+      '$_baseUrl/forecast?lat=$latitude&lon=$longitude&appid=$_apiKey&units=metric&lang=id',
+    );
+
+    try {
+      final response = await http.get(url).timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return _parseHourlyForecast(data);
+      }
+    } catch (_) {}
+
+    return _generateMockHourlyForecast();
+  }
+
+  /// Get hourly forecast by city name
+  Future<List<HourlyForecast>> getHourlyForecastByCity(String cityName) async {
+    final url = Uri.parse(
+      '$_baseUrl/forecast?q=$cityName&appid=$_apiKey&units=metric&lang=id',
+    );
+
+    try {
+      final response = await http.get(url).timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return _parseHourlyForecast(data);
+      }
+    } catch (_) {}
+
+    return _generateMockHourlyForecast();
+  }
+
+  /// Parse OpenWeatherMap 3h forecast intervals into hourly slots
+  List<HourlyForecast> _parseHourlyForecast(Map<String, dynamic> data) {
+    final List<dynamic> list = data['list'] ?? [];
+    final List<HourlyForecast> result = [];
+
+    // Take up to 10 intervals (up to 30 hours)
+    for (int i = 0; i < list.length && i < 10; i++) {
+      final item = list[i];
+      final dt = DateTime.fromMillisecondsSinceEpoch(item['dt'] * 1000);
+      final main = item['main'] ?? {};
+      final weatherList = item['weather'] as List<dynamic>?;
+      final weather = (weatherList != null && weatherList.isNotEmpty) ? weatherList[0] : {};
+      final int weatherId = weather['id'] ?? 800;
+      final String iconCode = weather['icon'] ?? '01d';
+      final double pop = (item['pop'] as num?)?.toDouble() ?? 0.0;
+
+      result.add(HourlyForecast(
+        time: dt,
+        temperature: (main['temp'] as num?)?.toDouble() ?? 25.0,
+        condition: WeatherData._translateCondition(weather['main'] ?? 'Clear'),
+        icon: WeatherData._getWeatherEmoji(weatherId, iconCode),
+        pop: pop,
+      ));
+    }
+
+    return result.isEmpty ? _generateMockHourlyForecast() : result;
+  }
+
+  /// Fallback hourly generator if network or API error occurs
+  List<HourlyForecast> _generateMockHourlyForecast() {
+    final now = DateTime.now();
+    final List<HourlyForecast> result = [];
+    final baseTemps = [25.0, 25.0, 25.0, 25.0, 24.0, 24.0, 23.0, 26.0, 28.0, 31.0];
+    final pops = [0.08, 0.11, 0.18, 0.31, 0.33, 0.33, 0.24, 0.15, 0.10, 0.05];
+    final emojis = ['🌙', '☁️', '☁️', '🌧️', '🌧️', '🌧️', '⛅', '☀️', '☀️', '⛅'];
+
+    for (int i = 0; i < 8; i++) {
+      result.add(HourlyForecast(
+        time: now.add(Duration(hours: i + 1)),
+        temperature: baseTemps[i % baseTemps.length],
+        condition: 'Berawan Sebagian',
+        icon: emojis[i % emojis.length],
+        pop: pops[i % pops.length],
+      ));
+    }
+    return result;
   }
 }

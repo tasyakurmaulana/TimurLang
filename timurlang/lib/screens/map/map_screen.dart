@@ -236,12 +236,14 @@ class _MapScreenState extends State<MapScreen> {
                 Row(
                   children: [
                     _buildInfoBadge(Icons.height, '${mountain.elevasiMdpl} MDPL', AppTheme.primary),
-                    const SizedBox(width: 8),
-                    _buildInfoBadge(
-                      Icons.water_drop,
-                      mountain.sumberAirTersedia ? 'Ada Air' : 'Kering',
-                      mountain.sumberAirTersedia ? Colors.blue : Colors.grey,
-                    ),
+                    if (mountain.sumberAirTersedia) ...[
+                      const SizedBox(width: 8),
+                      _buildInfoBadge(
+                        Icons.water_drop,
+                        'Air',
+                        Colors.blue,
+                      ),
+                    ],
                     const SizedBox(width: 8),
                     _buildInfoBadge(Icons.alt_route, '${trails.length} Basecamp', AppTheme.secondary),
                   ],
@@ -259,28 +261,71 @@ class _MapScreenState extends State<MapScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          _focusMountain(mountain);
-                        },
-                        icon: const Icon(Icons.my_location, size: 18),
-                        label: const Text('Fokus Jalur Peta'),
+                      child: SizedBox(
+                        height: 48,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _focusMountain(mountain);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: AppTheme.border, width: 1.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            backgroundColor: AppTheme.surfaceSubtle,
+                          ),
+                          icon: const Icon(Icons.my_location_rounded, size: 18, color: AppTheme.textPrimary),
+                          label: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              'Fokus Jalur',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          Navigator.pushNamed(
-                            context,
-                            AppRoutes.mountainDetail,
-                            arguments: mountain,
-                          );
-                        },
-                        icon: const Icon(Icons.arrow_forward, size: 18),
-                        label: const Text('Detail Gunung'),
+                      child: SizedBox(
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            Navigator.pushNamed(
+                              context,
+                              AppRoutes.mountainDetail,
+                              arguments: mountain,
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                          ),
+                          icon: const Icon(Icons.arrow_forward_rounded, size: 18, color: Colors.white),
+                          label: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              'Detail Gunung',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -299,46 +344,47 @@ class _MapScreenState extends State<MapScreen> {
       backgroundColor: AppTheme.surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
         final isBuka = trail.statusJalur.toLowerCase() == 'buka';
         final statusColor = isBuka ? AppTheme.success : AppTheme.error;
 
         return DraggableScrollableSheet(
-          initialChildSize: 0.55,
-          minChildSize: 0.35,
-          maxChildSize: 0.85,
+          initialChildSize: 0.62,
+          minChildSize: 0.40,
+          maxChildSize: 0.90,
           expand: false,
           builder: (context, scrollController) {
             return SingleChildScrollView(
               controller: scrollController,
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Center(
                     child: Container(
-                      width: 40,
-                      height: 4,
-                      margin: const EdgeInsets.only(bottom: 16),
+                      width: 44,
+                      height: 5,
+                      margin: const EdgeInsets.only(bottom: 18),
                       decoration: BoxDecoration(
                         color: AppTheme.border,
-                        borderRadius: BorderRadius.circular(2),
+                        borderRadius: BorderRadius.circular(3),
                       ),
                     ),
                   ),
+                  // Header Basecamp & Status
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: trail.color.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: trail.color),
+                          color: trail.color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: trail.color.withValues(alpha: 0.3)),
                         ),
-                        child: Icon(Icons.holiday_village_outlined, color: trail.color, size: 28),
+                        child: Icon(Icons.holiday_village_rounded, color: trail.color, size: 26),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -348,91 +394,153 @@ class _MapScreenState extends State<MapScreen> {
                             Text(
                               trail.basecampName,
                               style: GoogleFonts.plusJakartaSans(
-                                fontSize: 18,
+                                fontSize: 17,
                                 fontWeight: FontWeight.bold,
                                 color: AppTheme.textPrimary,
+                                height: 1.2,
                               ),
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(Icons.terrain_rounded, size: 14, color: trail.color),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    'Jalur Resmi ${trail.mountainName}',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 12.5,
+                                      color: trail.color,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4.5),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(shape: BoxShape.circle, color: statusColor),
+                            ),
+                            const SizedBox(width: 5),
                             Text(
-                              'Jalur Resmi ${trail.mountainName}',
+                              trail.statusJalur,
                               style: GoogleFonts.plusJakartaSans(
-                                fontSize: 13,
-                                color: trail.color,
-                                fontWeight: FontWeight.w600,
+                                color: statusColor,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: statusColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: statusColor),
-                        ),
-                        child: Text(
-                          trail.statusJalur,
-                          style: GoogleFonts.plusJakartaSans(
-                            color: statusColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  // Trail metrics
+
+                  // Trail Metrics Grid
                   Container(
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                     decoration: BoxDecoration(
                       color: AppTheme.surfaceSubtle,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppTheme.border),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppTheme.border.withValues(alpha: 0.6)),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _metricItem(Icons.straighten, '${trail.distanceKm} km', 'Panjang Jalur'),
-                        Container(width: 1, height: 30, color: AppTheme.border),
-                        _metricItem(Icons.timer_outlined, '±${trail.estimatedHours} Jam', 'Estimasi Waktu'),
-                        Container(width: 1, height: 30, color: AppTheme.border),
-                        _metricItem(
-                          Icons.confirmation_number_outlined,
-                          'Rp ${trail.basecampPost.hargaSimaksi.toInt()}',
-                          'Tarif SIMAKSI',
+                        Expanded(
+                          child: _metricItem(Icons.straighten_rounded, '${trail.distanceKm} km', 'Panjang Jalur'),
+                        ),
+                        Container(width: 1, height: 32, color: AppTheme.border),
+                        Expanded(
+                          child: _metricItem(Icons.schedule_rounded, '±${trail.estimatedHours} Jam', 'Estimasi Waktu'),
+                        ),
+                        Container(width: 1, height: 32, color: AppTheme.border),
+                        Expanded(
+                          child: _metricItem(
+                            Icons.confirmation_number_outlined,
+                            'Rp ${trail.basecampPost.hargaSimaksi.toInt()}',
+                            'Tarif SIMAKSI',
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+
+                  // Lokasi Deskripsi
+                  if (trail.basecampPost.lokasiDeskripsi.isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.border.withValues(alpha: 0.5)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.place_outlined, size: 16, color: AppTheme.textSecondary),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              trail.basecampPost.lokasiDeskripsi,
+                              style: GoogleFonts.plusJakartaSans(
+                                color: AppTheme.textSecondary,
+                                fontSize: 12,
+                                height: 1.45,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 20),
+                  // Header Checkpoints
                   Text(
-                    trail.basecampPost.lokasiDeskripsi,
-                    style: GoogleFonts.plusJakartaSans(color: AppTheme.textSecondary, fontSize: 13, height: 1.4),
-                  ),
-                  const SizedBox(height: 16),
-                  const Divider(color: AppTheme.border),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Titik Pos & Checkpoint Pendakian:',
+                    'Titik Pos & Checkpoint Pendakian',
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
+                      fontSize: 14.5,
                       fontWeight: FontWeight.bold,
                       color: AppTheme.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  // Checkpoint sequence
+                  const SizedBox(height: 14),
+
+                  // Checkpoint sequence timeline
                   for (int i = 0; i < trail.checkpoints.length; i++) ...[
-                    _checkpointRow(trail.checkpoints[i], i == 0, i == trail.checkpoints.length - 1, trail.color),
+                    _checkpointRow(
+                      trail.checkpoints[i],
+                      i == 0,
+                      i == trail.checkpoints.length - 1,
+                      trail.color,
+                    ),
                   ],
-                  const SizedBox(height: 24),
+
+                  const SizedBox(height: 20),
                   // Button Daftar SIMAKSI
                   SizedBox(
                     width: double.infinity,
-                    height: 48,
+                    height: 50,
                     child: ElevatedButton.icon(
                       onPressed: isBuka
                           ? () {
@@ -453,10 +561,14 @@ class _MapScreenState extends State<MapScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primary,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
-                      icon: const Icon(Icons.assignment_turned_in, size: 20),
-                      label: Text(isBuka ? 'Daftar SIMAKSI Via Jalur Ini' : 'Jalur Sedang Ditutup'),
+                      icon: const Icon(Icons.assignment_turned_in_rounded, size: 20),
+                      label: Text(
+                        isBuka ? 'Daftar SIMAKSI Via Jalur Ini' : 'Jalur Sedang Ditutup',
+                        style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
                     ),
                   ),
                 ],
@@ -470,111 +582,157 @@ class _MapScreenState extends State<MapScreen> {
 
   Widget _metricItem(IconData icon, String value, String label) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 18, color: AppTheme.primary),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textPrimary,
+        Icon(icon, size: 20, color: AppTheme.primary),
+        const SizedBox(height: 5),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13.5,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textPrimary,
+            ),
           ),
         ),
+        const SizedBox(height: 2),
         Text(
           label,
-          style: GoogleFonts.plusJakartaSans(fontSize: 10.5, color: AppTheme.textSecondary),
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 10.5,
+            color: AppTheme.textSecondary,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ],
     );
   }
 
   Widget _checkpointRow(TrailCheckpoint cp, bool isFirst, bool isLast, Color trailColor) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+    final dotColor = isLast ? Colors.redAccent : (isFirst ? trailColor : trailColor);
+
+    return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Timeline indicator
           Column(
             children: [
               Container(
-                width: 14,
-                height: 14,
+                width: 22,
+                height: 22,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isLast ? Colors.redAccent : isFirst ? trailColor : AppTheme.surface,
-                  border: Border.all(color: trailColor, width: 2),
+                  color: isLast
+                      ? Colors.redAccent.withValues(alpha: 0.15)
+                      : (isFirst ? trailColor.withValues(alpha: 0.15) : AppTheme.surface),
+                  border: Border.all(color: dotColor, width: 2),
+                ),
+                child: Center(
+                  child: Icon(
+                    isLast
+                        ? Icons.military_tech_rounded
+                        : (isFirst ? Icons.flag_rounded : Icons.fiber_manual_record_rounded),
+                    size: isLast ? 13 : (isFirst ? 12 : 8),
+                    color: dotColor,
+                  ),
                 ),
               ),
               if (!isLast)
-                Container(
-                  width: 2,
-                  height: 28,
-                  color: trailColor.withValues(alpha: 0.3),
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    margin: const EdgeInsets.symmetric(vertical: 2),
+                    color: trailColor.withValues(alpha: 0.25),
+                  ),
                 ),
             ],
           ),
           const SizedBox(width: 12),
+
+          // Content Box
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      cp.name,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: isLast ? Colors.redAccent : AppTheme.textPrimary,
-                      ),
-                    ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (cp.hasWater) ...[
-                          Container(
-                            margin: const EdgeInsets.only(right: 6),
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                            decoration: BoxDecoration(
-                              color: Colors.lightBlue.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.water_drop, size: 10, color: Colors.lightBlue),
-                                SizedBox(width: 2),
-                                Text(
-                                  'Air',
-                                  style: TextStyle(
-                                    fontSize: 9.5,
-                                    color: Colors.lightBlue,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                        Text(
-                          '${cp.elevationMdpl} MDPL',
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      // Nama pos ter-wrap Expanded agar bebas dari overflow teks panjang
+                      Expanded(
+                        child: Text(
+                          cp.name,
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            color: AppTheme.primary,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: isLast ? Colors.redAccent : AppTheme.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      // Badge Air jika tersedia
+                      if (cp.hasWater) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5.5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.water_drop, size: 10, color: Colors.blue),
+                              SizedBox(width: 2),
+                              Text(
+                                'Air',
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  color: Colors.blue,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
+                        const SizedBox(width: 5),
                       ],
+                      // Elevasi MDPL Badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5.5, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.surfaceSubtle,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: AppTheme.border.withValues(alpha: 0.8)),
+                        ),
+                        child: Text(
+                          '${cp.elevationMdpl} MDPL',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10.5,
+                            color: isLast ? Colors.redAccent : AppTheme.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (cp.description.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      cp.description,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11.5,
+                        color: AppTheme.textSecondary,
+                        height: 1.35,
+                      ),
                     ),
                   ],
-                ),
-                Text(
-                  cp.description,
-                  style: GoogleFonts.plusJakartaSans(fontSize: 11, color: AppTheme.textSecondary),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -607,7 +765,7 @@ class _MapScreenState extends State<MapScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Peta Topografi & Jalur'),
+        title: const Text('Peta Offline'),
         actions: [
           IconButton(
             tooltip: 'Ganti Lapisan Peta',

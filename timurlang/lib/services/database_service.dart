@@ -114,22 +114,22 @@ class DatabaseService {
       ''');
     } catch (_) {}
 
-    // Pastikan seluruh data 46 gunung dan 112 basecamp terisi
+    // Pastikan seluruh data 50 gunung dan 122 basecamp terisi & ter-update
     try {
       final count = Sqflite.firstIntValue(
         await db.rawQuery('SELECT COUNT(*) FROM mountains'),
       ) ?? 0;
-      if (count < 46) {
-        await _seedMountains(db);
-        await _seedBasecamps(db);
-        await _seedBasecampUsers(db);
-      }
       final bcCount = Sqflite.firstIntValue(
         await db.rawQuery('SELECT COUNT(*) FROM basecamp_posts'),
       ) ?? 0;
-      if (bcCount < 112) {
+      if (count < 50 || bcCount < 122) {
+        await _seedMountains(db);
         await _seedBasecamps(db);
         await _seedBasecampUsers(db);
+      } else {
+        // Selalu sinkronkan data master gunung dan basecamp agar nama pos dan koordinat selalu mutakhir
+        await _seedMountains(db);
+        await _seedBasecamps(db);
       }
     } catch (_) {}
 
@@ -348,7 +348,7 @@ class DatabaseService {
         await db.delete('users', where: 'peran = ?', whereArgs: ['basecamp']);
       } catch (_) {}
 
-      // Masukkan 46 gunung, 112 basecamp, dan 112 akun pengelola basecamp
+      // Masukkan 50 gunung, 122 basecamp, dan 122 akun pengelola basecamp
       await _seedMountains(db);
       await _seedBasecamps(db);
       await _seedBasecampUsers(db);
@@ -357,6 +357,11 @@ class DatabaseService {
       try {
         await db.execute('ALTER TABLE simaksi_permits ADD COLUMN data_anggota TEXT');
       } catch (_) {}
+    }
+    if (oldVersion < 7) {
+      await _seedMountains(db);
+      await _seedBasecamps(db);
+      await _seedBasecampUsers(db);
     }
   }
 
@@ -384,7 +389,7 @@ class DatabaseService {
     await batch.commit(noResult: true);
   }
 
-  /// Reset total data gunung, basecamp, riwayat simaksi, dan isi ulang 112 basecamp & 46 gunung
+  /// Reset total data gunung, basecamp, riwayat simaksi, dan isi ulang 122 basecamp & 50 gunung
   Future<void> resetAndSeedBasecampData() async {
     final db = await database;
     await db.transaction((txn) async {

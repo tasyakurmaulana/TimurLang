@@ -26,7 +26,7 @@ class _CompassScreenState extends State<CompassScreen> {
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: Text(
-          'Kompas Orientasi',
+          'Kompas',
           style: GoogleFonts.plusJakartaSans(
             fontWeight: FontWeight.w700,
             fontSize: 18,

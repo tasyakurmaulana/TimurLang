@@ -10,7 +10,7 @@ class AppConstants {
 
   // Database
   static const String dbName = 'timurlang.db';
-  static const int dbVersion = 6;
+  static const int dbVersion = 7;
 
   // Session
   static const String sessionTokenKey = 'session_token';

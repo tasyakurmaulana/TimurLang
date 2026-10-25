@@ -472,7 +472,7 @@ class _MountainListScreenState extends State<MountainListScreen> {
               ),
               const SizedBox(width: 8),
               _buildWaterFilterOption(
-                label: 'Tersedia Air',
+                label: 'Air',
                 isSelected: _sumberAir == true,
                 icon: Icons.water_drop_outlined,
                 onTap: () {
@@ -482,7 +482,7 @@ class _MountainListScreenState extends State<MountainListScreen> {
               ),
               const SizedBox(width: 8),
               _buildWaterFilterOption(
-                label: 'Tanpa Air',
+                label: 'Tidak Ada Air',
                 isSelected: _sumberAir == false,
                 icon: Icons.water_drop_outlined,
                 onTap: () {

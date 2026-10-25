@@ -72,7 +72,7 @@ class _FallDetectionScreenState extends State<FallDetectionScreen>
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: const Text(
-          'Keselamatan & SOS',
+          'SOS',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
