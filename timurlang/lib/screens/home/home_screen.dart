@@ -60,43 +60,8 @@ class _HomeScreenState extends State<HomeScreen> {
         children: _pages,
       ),
       bottomNavigationBar: _buildAuraBottomBar(),
-      floatingActionButton: _currentIndex == 0 ? _buildAiFloatingButton() : null,
+      floatingActionButton: _currentIndex == 0 ? const _AnimatedTbotBubble() : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-    );
-  }
-
-  /// AI Survival Assistant Floating Action Button (Melayang di kanan bawah)
-  Widget _buildAiFloatingButton() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8, right: 4),
-      child: FloatingActionButton.extended(
-        heroTag: 'ai_survival_fab',
-        onPressed: () => Navigator.pushNamed(context, AppRoutes.survivalAssistant),
-        backgroundColor: AppTheme.primary,
-        foregroundColor: Colors.white,
-        elevation: 6,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(9999),
-          side: const BorderSide(color: Color(0xFF557A5E), width: 1.2),
-        ),
-        icon: Container(
-          padding: const EdgeInsets.all(5),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.18),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.auto_awesome_rounded, size: 18, color: Colors.white),
-        ),
-        label: Text(
-          'Tanya Tbot',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-            letterSpacing: 0.2,
-          ),
-        ),
-      ),
     );
   }
 
@@ -2784,4 +2749,179 @@ class _SmartRecommendationCarouselState extends State<_SmartRecommendationCarous
     );
   }
 }
+
+/// Balon Obrolan Tbot dengan Animasi Mengambang (Floating Bobbing & Breathing)
+/// Memberi isyarat visual dinamis agar langsung menarik perhatian pengguna
+class _AnimatedTbotBubble extends StatefulWidget {
+  const _AnimatedTbotBubble();
+
+  @override
+  State<_AnimatedTbotBubble> createState() => _AnimatedTbotBubbleState();
+}
+
+class _AnimatedTbotBubbleState extends State<_AnimatedTbotBubble>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _floatingAnim;
+  late final Animation<double> _scaleAnim;
+  late final Animation<double> _rotateAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
+
+    _floatingAnim = Tween<double>(begin: 0.0, end: -7.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine),
+    );
+
+    _scaleAnim = Tween<double>(begin: 1.0, end: 1.035).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine),
+    );
+
+    _rotateAnim = Tween<double>(begin: -0.018, end: 0.018).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const double bubbleWidth = 130.0;
+    const double bubbleHeight = 88.0;
+    const double ovalHeight = 70.0;
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(0, _floatingAnim.value),
+          child: Transform.rotate(
+            angle: _rotateAnim.value,
+            alignment: const Alignment(0.6, 1.0),
+            child: Transform.scale(
+              scale: _scaleAnim.value,
+              alignment: Alignment.center,
+              child: child,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6, right: 6),
+        child: Hero(
+          tag: 'ai_survival_fab',
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => Navigator.pushNamed(context, AppRoutes.survivalAssistant),
+              borderRadius: BorderRadius.circular(40),
+              splashColor: Colors.white.withValues(alpha: 0.15),
+              highlightColor: Colors.transparent,
+              child: SizedBox(
+                width: bubbleWidth,
+                height: bubbleHeight,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    // Gambar Balon Chat Komik (Oval + Kerucut Melengkung Terpadu)
+                    CustomPaint(
+                      size: const Size(bubbleWidth, bubbleHeight),
+                      painter: _ComicSpeechBubblePainter(
+                        color: AppTheme.primary,
+                        borderColor: Colors.white.withValues(alpha: 0.25),
+                        shadowColor: Colors.black.withValues(alpha: 0.28),
+                      ),
+                    ),
+                    // Teks "Tanya Tbot" presisi di tengah-tengah badan oval
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      width: bubbleWidth,
+                      height: ovalHeight,
+                      child: Center(
+                        child: Text(
+                          'Tanya Tbot',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Painter untuk menggambar Balon Obrolan Komik (Oval + Kerucut Melengkung Menyatu)
+class _ComicSpeechBubblePainter extends CustomPainter {
+  final Color color;
+  final Color borderColor;
+  final Color shadowColor;
+
+  const _ComicSpeechBubblePainter({
+    required this.color,
+    required this.borderColor,
+    required this.shadowColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final ovalH = h - 16.0; // Tinggi badan oval
+
+    // 1. Badan Oval Sempurna
+    final ovalPath = Path()..addOval(Rect.fromLTWH(0, 0, w, ovalH));
+
+    // 2. Ekor Kerucut Melengkung Khas Komik (persis gambar referensi)
+    final tailPath = Path()
+      ..moveTo(w * 0.58, ovalH * 0.95)
+      ..quadraticBezierTo(w * 0.69, h * 0.92, w * 0.80, h)
+      ..quadraticBezierTo(w * 0.77, h * 0.81, w * 0.83, ovalH * 0.73)
+      ..close();
+
+    // 3. Satukan menjadi satu siluet tanpa garis sambungan
+    final bubblePath = Path.combine(PathOperation.union, ovalPath, tailPath);
+
+    // Gambar bayangan halus
+    canvas.drawShadow(bubblePath, shadowColor, 8, true);
+
+    // Isi warna gelembung
+    final fillPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(bubblePath, fillPaint);
+
+    // Garis tepi halus
+    final borderPaint = Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    canvas.drawPath(bubblePath, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+
+
 
