@@ -448,4 +448,234 @@ class BlockchainService {
     }
     return (success: true, message: 'Check-out berhasil. Pendakian selesai!');
   }
+
+  /// Pembatalan sukarela oleh pendaki (Jaga-jaga jika batal mendaki)
+  /// Kebijakan: NON-REFUNDABLE (Tidak ada pengembalian dana kecuali ada pembatalan resmi basecamp)
+  Future<({bool success, String message})> cancelPermitByUser({
+    required String permitId,
+    required String reason,
+  }) async {
+    SimaksiPermit? permit = await _db.getPermitByHash(permitId);
+    if (permit == null && SupabaseService.instance.isInitialized) {
+      permit = await SupabaseService.instance.getPermitByHash(permitId);
+    }
+    if (permit == null) {
+      return (success: false, message: 'Tiket tidak ditemukan.');
+    }
+
+    if (!permit.isCancellableByUser) {
+      return (
+        success: false,
+        message: 'Tiket tidak dapat dibatalkan (Status saat ini: ${permit.statusIzin}).',
+      );
+    }
+
+    final updated = permit.copyWith(
+      statusIzin: AppConstants.statusDibatalkanPendaki,
+      alasanPembatalan: 'Inisiatif Pendaki: $reason',
+      opsiPembatalan: 'cancelled_no_refund',
+    );
+
+    await _db.updatePermit(updated);
+    if (SupabaseService.instance.isInitialized) {
+      await SupabaseService.instance.updatePermit(updated);
+    }
+
+    // Kembalikan kuota ke Basecamp agar slot bisa dipesan pendaki lain
+    if (permit.basecampId != null && permit.basecampId!.isNotEmpty) {
+      await _db.increaseBasecampQuota(permit.basecampId!, permit.jumlahAnggota);
+      if (SupabaseService.instance.isInitialized) {
+        await SupabaseService.instance.increaseBasecampQuota(permit.basecampId!, permit.jumlahAnggota);
+      }
+    }
+
+    return (
+      success: true,
+      message: 'Tiket berhasil dibatalkan. Sesuai kebijakan pengelola, pembatalan mandiri bersifat Non-Refundable (dana tidak dikembalikan). Kuota Anda telah dikembalikan ke basecamp.',
+    );
+  }
+
+  /// Pembatalan resmi sesuai kebijakan pengelola (Basecamp)
+  /// Memberikan pendaki pilihan: Refund 100% atau Reschedule (Ubah Jadwal)
+  Future<({bool success, String message})> cancelPermitByBasecamp({
+    required String permitId,
+    required String officialReason,
+  }) async {
+    SimaksiPermit? permit = await _db.getPermitByHash(permitId);
+    if (permit == null && SupabaseService.instance.isInitialized) {
+      permit = await SupabaseService.instance.getPermitByHash(permitId);
+    }
+    if (permit == null) {
+      return (success: false, message: 'Tiket tidak ditemukan.');
+    }
+
+    final updated = permit.copyWith(
+      statusIzin: AppConstants.statusDibatalkanBasecamp,
+      alasanPembatalan: officialReason,
+      opsiPembatalan: 'reschedule_or_refund',
+    );
+
+    await _db.updatePermit(updated);
+    if (SupabaseService.instance.isInitialized) {
+      await SupabaseService.instance.updatePermit(updated);
+    }
+
+    // Kembalikan kuota ke Basecamp
+    if (permit.basecampId != null && permit.basecampId!.isNotEmpty) {
+      await _db.increaseBasecampQuota(permit.basecampId!, permit.jumlahAnggota);
+      if (SupabaseService.instance.isInitialized) {
+        await SupabaseService.instance.increaseBasecampQuota(permit.basecampId!, permit.jumlahAnggota);
+      }
+    }
+
+    return (
+      success: true,
+      message: 'Pembatalan resmi pengelola berhasil diproses. Pendaki kini dapat memilih opsi Refund 100% atau Reschedule jadwal.',
+    );
+  }
+
+  /// Pembatalan massal untuk semua tiket terdaftar di basecamp ini (misal jalur ditutup/cuaca buruk)
+  Future<int> cancelAllActivePermitsForBasecamp({
+    required String gunungId,
+    required String basecampId,
+    required String officialReason,
+  }) async {
+    final allPermits = await _db.getAllPermitsForBasecamp(
+      gunungId: gunungId,
+      basecampId: basecampId,
+    );
+
+    int count = 0;
+    for (final p in allPermits) {
+      if (p.statusIzin == AppConstants.statusTerdaftar ||
+          p.statusIzin == AppConstants.statusDiajukan ||
+          p.statusIzin == AppConstants.statusTervalidasi ||
+          p.statusIzin == AppConstants.statusRescheduled) {
+        final updated = p.copyWith(
+          statusIzin: AppConstants.statusDibatalkanBasecamp,
+          alasanPembatalan: officialReason,
+          opsiPembatalan: 'reschedule_or_refund',
+        );
+        await _db.updatePermit(updated);
+        if (SupabaseService.instance.isInitialized) {
+          await SupabaseService.instance.updatePermit(updated);
+        }
+        await _db.increaseBasecampQuota(basecampId, p.jumlahAnggota);
+        if (SupabaseService.instance.isInitialized) {
+          await SupabaseService.instance.increaseBasecampQuota(basecampId, p.jumlahAnggota);
+        }
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /// Reschedule tanggal pendakian oleh pendaki (ketika ada pembatalan resmi basecamp)
+  Future<({bool success, String message})> reschedulePermit({
+    required String permitId,
+    required DateTime newTanggalNaik,
+    required DateTime newTanggalTurun,
+  }) async {
+    SimaksiPermit? permit = await _db.getPermitByHash(permitId);
+    if (permit == null && SupabaseService.instance.isInitialized) {
+      permit = await SupabaseService.instance.getPermitByHash(permitId);
+    }
+    if (permit == null) {
+      return (success: false, message: 'Tiket tidak ditemukan.');
+    }
+
+    final updated = permit.copyWith(
+      tanggalNaik: newTanggalNaik,
+      tanggalTurun: newTanggalTurun,
+      statusIzin: AppConstants.statusRescheduled,
+      opsiPembatalan: 'rescheduled',
+    );
+
+    await _db.updatePermit(updated);
+    if (SupabaseService.instance.isInitialized) {
+      await SupabaseService.instance.updatePermit(updated);
+    }
+
+    // Ambil kuota kembali untuk tanggal baru
+    if (permit.basecampId != null && permit.basecampId!.isNotEmpty) {
+      await _db.reduceBasecampQuota(permit.basecampId!, permit.jumlahAnggota);
+      if (SupabaseService.instance.isInitialized) {
+        await SupabaseService.instance.reduceBasecampQuota(permit.basecampId!, permit.jumlahAnggota);
+      }
+    }
+
+    return (
+      success: true,
+      message: 'Jadwal pendakian berhasil diubah! Tiket Anda telah diperbarui untuk tanggal baru.',
+    );
+  }
+
+  /// Pengajuan Refund 100% oleh pendaki (ketika ada pembatalan resmi basecamp)
+  Future<({bool success, String message})> requestRefund({
+    required String permitId,
+    required String bankOrWallet,
+    required String accountNumber,
+    required String accountHolder,
+  }) async {
+    SimaksiPermit? permit = await _db.getPermitByHash(permitId);
+    if (permit == null && SupabaseService.instance.isInitialized) {
+      permit = await SupabaseService.instance.getPermitByHash(permitId);
+    }
+    if (permit == null) {
+      return (success: false, message: 'Tiket tidak ditemukan.');
+    }
+
+    final refundData = jsonEncode({
+      'provider': bankOrWallet,
+      'nomor': accountNumber,
+      'nama': accountHolder,
+      'nominal': permit.totalBiaya ?? 0,
+      'waktu_pengajuan': DateTime.now().toIso8601String(),
+    });
+
+    final updated = permit.copyWith(
+      statusIzin: AppConstants.statusRefundDiajukan,
+      opsiPembatalan: 'refund_requested',
+      rekeningRefund: refundData,
+    );
+
+    await _db.updatePermit(updated);
+    if (SupabaseService.instance.isInitialized) {
+      await SupabaseService.instance.updatePermit(updated);
+    }
+
+    return (
+      success: true,
+      message: 'Pengajuan pengembalian dana 100% sebesar Rp ${(permit.totalBiaya ?? 0).toInt()} berhasil dikirimkan! Pengelola basecamp akan memproses transfer ke rekening Anda.',
+    );
+  }
+
+  /// Penyelesaian transfer refund oleh Basecamp
+  Future<({bool success, String message})> completeRefundByBasecamp({
+    required String permitId,
+  }) async {
+    SimaksiPermit? permit = await _db.getPermitByHash(permitId);
+    if (permit == null && SupabaseService.instance.isInitialized) {
+      permit = await SupabaseService.instance.getPermitByHash(permitId);
+    }
+    if (permit == null) {
+      return (success: false, message: 'Tiket tidak ditemukan.');
+    }
+
+    final updated = permit.copyWith(
+      statusIzin: AppConstants.statusRefundSelesai,
+      opsiPembatalan: 'refund_completed',
+    );
+
+    await _db.updatePermit(updated);
+    if (SupabaseService.instance.isInitialized) {
+      await SupabaseService.instance.updatePermit(updated);
+    }
+
+    return (
+      success: true,
+      message: 'Status refund berhasil diperbarui menjadi SELESAI.',
+    );
+  }
 }
+

@@ -92,6 +92,12 @@ class AppConstants {
   static const String statusDiJalur = 'Di Jalur';
   static const String statusSelesai = 'Selesai';
   static const String statusDitolak = 'Ditolak';
+  static const String statusDibatalkan = 'Dibatalkan';
+  static const String statusDibatalkanPendaki = 'Dibatalkan (Non-Refund)';
+  static const String statusDibatalkanBasecamp = 'Dibatalkan Pengelola';
+  static const String statusRescheduled = 'Jadwal Diubah';
+  static const String statusRefundDiajukan = 'Refund Diajukan';
+  static const String statusRefundSelesai = 'Refund Selesai';
 
   // Trail Status
   static const String trailOpen = 'Buka';

@@ -22,6 +22,7 @@ import '../../services/sync_service.dart';
 import '../../services/basecamp_alert_service.dart';
 import '../../utils/image_helper.dart';
 import 'manage_trail_checkpoints_screen.dart';
+import 'basecamp_permit_management_screen.dart';
 
 class BasecampDashboardScreen extends StatefulWidget {
   const BasecampDashboardScreen({super.key});
@@ -518,6 +519,24 @@ class _BasecampDashboardScreenState extends State<BasecampDashboardScreen> {
                 Icons.tune,
                 AppTheme.primary,
                 _showBasecampSettingsModal,
+              ),
+              const SizedBox(height: 12),
+              _actionCard(
+                'Manajemen Reservasi & Pembatalan',
+                'Kebijakan resmi pembatalan basecamp (opsi Refund 100% / Reschedule) & transfer pengembalian dana',
+                Icons.assignment_late_outlined,
+                const Color(0xFFD97706),
+                () {
+                  if (_basecampPost == null) return;
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => BasecampPermitManagementScreen(
+                        basecampPost: _basecampPost!,
+                      ),
+                    ),
+                  ).then((_) => _loadData());
+                },
               ),
               const SizedBox(height: 12),
               _actionCard(

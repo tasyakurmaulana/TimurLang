@@ -77,15 +77,26 @@ class _SimaksiTicketScreenState extends State<SimaksiTicketScreen> {
     if (_selectedFilter == 'Terdaftar') {
       return _permits.where((p) {
         final status = p.statusIzin;
-        return status == AppConstants.statusTerdaftar ||
-            status == AppConstants.statusDiajukan ||
-            status == AppConstants.statusTervalidasi ||
-            status.toLowerCase().contains('daftar');
+        return (status == AppConstants.statusTerdaftar ||
+                status == AppConstants.statusDiajukan ||
+                status == AppConstants.statusTervalidasi ||
+                status == AppConstants.statusRescheduled ||
+                status.toLowerCase().contains('daftar')) &&
+            !p.isCancelled &&
+            !p.isOfficialCancellation &&
+            !p.isRefundRequested;
       }).toList();
     } else if (_selectedFilter == 'Di Jalur') {
       return _permits.where((p) => p.statusIzin == AppConstants.statusDiJalur).toList();
     } else if (_selectedFilter == 'Selesai') {
       return _permits.where((p) => p.statusIzin == AppConstants.statusSelesai).toList();
+    } else if (_selectedFilter == 'Dibatalkan') {
+      return _permits.where((p) =>
+        p.isCancelled ||
+        p.isOfficialCancellation ||
+        p.isRefundRequested ||
+        p.isRefundCompleted
+      ).toList();
     }
     return _permits;
   }
@@ -94,15 +105,26 @@ class _SimaksiTicketScreenState extends State<SimaksiTicketScreen> {
     if (filter == 'Terdaftar') {
       return _permits.where((p) {
         final status = p.statusIzin;
-        return status == AppConstants.statusTerdaftar ||
-            status == AppConstants.statusDiajukan ||
-            status == AppConstants.statusTervalidasi ||
-            status.toLowerCase().contains('daftar');
+        return (status == AppConstants.statusTerdaftar ||
+                status == AppConstants.statusDiajukan ||
+                status == AppConstants.statusTervalidasi ||
+                status == AppConstants.statusRescheduled ||
+                status.toLowerCase().contains('daftar')) &&
+            !p.isCancelled &&
+            !p.isOfficialCancellation &&
+            !p.isRefundRequested;
       }).length;
     } else if (filter == 'Di Jalur') {
       return _permits.where((p) => p.statusIzin == AppConstants.statusDiJalur).length;
     } else if (filter == 'Selesai') {
       return _permits.where((p) => p.statusIzin == AppConstants.statusSelesai).length;
+    } else if (filter == 'Dibatalkan') {
+      return _permits.where((p) =>
+        p.isCancelled ||
+        p.isOfficialCancellation ||
+        p.isRefundRequested ||
+        p.isRefundCompleted
+      ).length;
     }
     return _permits.length;
   }
@@ -140,7 +162,7 @@ class _SimaksiTicketScreenState extends State<SimaksiTicketScreen> {
               onRefresh: _loadTickets,
               child: Column(
                 children: [
-                  // Filter Bar (Semua, Terdaftar, Di Jalur, Selesai)
+                  // Filter Bar (Semua, Terdaftar, Di Jalur, Selesai, Dibatalkan)
                   _buildFilterBar(),
 
                   // List of filtered tickets
@@ -151,7 +173,10 @@ class _SimaksiTicketScreenState extends State<SimaksiTicketScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                             itemCount: filtered.length,
                             itemBuilder: (context, i) {
-                              return TicketCard(permit: filtered[i]);
+                              return TicketCard(
+                                permit: filtered[i],
+                                onStatusChanged: () => _loadTickets(silent: false),
+                              );
                             },
                           ),
                   ),
@@ -162,7 +187,7 @@ class _SimaksiTicketScreenState extends State<SimaksiTicketScreen> {
   }
 
   Widget _buildFilterBar() {
-    final filters = ['Semua', 'Terdaftar', 'Di Jalur', 'Selesai'];
+    final filters = ['Semua', 'Terdaftar', 'Di Jalur', 'Selesai', 'Dibatalkan'];
 
     return Container(
       width: double.infinity,
@@ -189,6 +214,9 @@ class _SimaksiTicketScreenState extends State<SimaksiTicketScreen> {
             } else if (filter == 'Selesai') {
               badgeBg = isSelected ? Colors.white.withValues(alpha: 0.25) : const Color(0xFF94A3B8).withValues(alpha: 0.2);
               badgeText = isSelected ? Colors.white : const Color(0xFF64748B);
+            } else if (filter == 'Dibatalkan') {
+              badgeBg = isSelected ? Colors.white.withValues(alpha: 0.25) : AppTheme.dangerRed.withValues(alpha: 0.15);
+              badgeText = isSelected ? Colors.white : AppTheme.dangerRed;
             } else {
               badgeBg = isSelected ? Colors.white.withValues(alpha: 0.25) : AppTheme.primarySubtle;
               badgeText = isSelected ? Colors.white : AppTheme.primary;

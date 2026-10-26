@@ -83,6 +83,15 @@ class DatabaseService {
     try {
       await db.execute("ALTER TABLE simaksi_permits ADD COLUMN nama_basecamp TEXT");
     } catch (_) {}
+    try {
+      await db.execute("ALTER TABLE simaksi_permits ADD COLUMN alasan_pembatalan TEXT");
+    } catch (_) {}
+    try {
+      await db.execute("ALTER TABLE simaksi_permits ADD COLUMN opsi_pembatalan TEXT");
+    } catch (_) {}
+    try {
+      await db.execute("ALTER TABLE simaksi_permits ADD COLUMN rekening_refund TEXT");
+    } catch (_) {}
 
     // Pastikan tabel user_personal_data tersedia
     try {
@@ -258,6 +267,9 @@ class DatabaseService {
         total_biaya REAL,
         matauang TEXT,
         data_anggota TEXT,
+        alasan_pembatalan TEXT,
+        opsi_pembatalan TEXT,
+        rekening_refund TEXT,
         created_at TEXT NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id),
         FOREIGN KEY (gunung_id) REFERENCES mountains(id)
@@ -765,6 +777,24 @@ class DatabaseService {
     }
   }
 
+  /// Tambah kembali sisa kuota basecamp secara realtime saat ada pembatalan tiket
+  Future<void> increaseBasecampQuota(String basecampId, int jumlahOrang) async {
+    final db = await database;
+    final bc = await getBasecampById(basecampId);
+    if (bc != null) {
+      final int newSisa = (bc.sisaKuotaHariIni + jumlahOrang).clamp(0, bc.kuotaHarian);
+      await db.update(
+        'basecamp_posts',
+        {
+          'sisa_kuota_hari_ini': newSisa,
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+        where: 'id = ?',
+        whereArgs: [basecampId],
+      );
+    }
+  }
+
   /// Hitung total pendaki aktif di jalur untuk basecamp ini (dihitung per orang / sum jumlah_anggota)
   Future<int> getActiveHikersCountForBasecamp({
     required String gunungId,
@@ -949,6 +979,29 @@ class DatabaseService {
     return maps.map((m) => SimaksiPermit.fromMap(m)).toList();
   }
 
+  /// Mengambil semua izin/tiket SIMAKSI (termasuk Terdaftar, Batal, Refund, dll) khusus untuk basecamp ini
+  Future<List<SimaksiPermit>> getAllPermitsForBasecamp({
+    required String gunungId,
+    String? basecampId,
+  }) async {
+    final db = await database;
+    String whereClause = 'gunung_id = ?';
+    List<dynamic> whereArgs = [gunungId];
+
+    if (basecampId != null && basecampId.isNotEmpty) {
+      whereClause = 'gunung_id = ? AND (basecamp_id = ? OR basecamp_id IS NULL)';
+      whereArgs = [gunungId, basecampId];
+    }
+
+    final maps = await db.query(
+      'simaksi_permits',
+      where: whereClause,
+      whereArgs: whereArgs,
+      orderBy: 'created_at DESC',
+    );
+    return maps.map((m) => SimaksiPermit.fromMap(m)).toList();
+  }
+
   Future<List<SimaksiPermit>> getPermitsByMountain(String gunungId) async {
     final db = await database;
     final maps = await db.query(
@@ -963,6 +1016,17 @@ class DatabaseService {
   Future<void> updatePermitStatus(String id, String status) async {
     final db = await database;
     await db.update('simaksi_permits', {'status_izin': status}, where: 'id = ?', whereArgs: [id]);
+  }
+
+  /// Update data lengkap permit (status, alasan batal, opsi pembatalan, rekening refund, tanggal naik/turun)
+  Future<void> updatePermit(SimaksiPermit permit) async {
+    final db = await database;
+    await db.update(
+      'simaksi_permits',
+      permit.toMap(),
+      where: 'id = ?',
+      whereArgs: [permit.id],
+    );
   }
 
   Future<String> getLastPermitHash() async {

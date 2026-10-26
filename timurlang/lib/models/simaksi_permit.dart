@@ -4,6 +4,7 @@
 // ============================================
 
 import 'dart:convert';
+import '../config/constants.dart';
 
 class MemberInfo {
   final String nama;
@@ -63,6 +64,9 @@ class SimaksiPermit {
   final String? matauang;
   final String? dataAnggota; // JSON serialized list of MemberInfo
   final DateTime createdAt;
+  final String? alasanPembatalan;
+  final String? opsiPembatalan; // 'reschedule_or_refund', 'refund_requested', 'rescheduled', 'cancelled_no_refund', 'refund_completed'
+  final String? rekeningRefund;
 
   SimaksiPermit({
     required this.id,
@@ -82,6 +86,9 @@ class SimaksiPermit {
     this.matauang,
     this.dataAnggota,
     required this.createdAt,
+    this.alasanPembatalan,
+    this.opsiPembatalan,
+    this.rekeningRefund,
   });
 
   /// Mengambil daftar anggota rombongan yang telah diparsing
@@ -97,6 +104,42 @@ class SimaksiPermit {
     } catch (_) {}
     return [];
   }
+
+  /// Tiket dapat dibatalkan oleh pendaki sendiri jika belum di jalur dan belum selesai/batal
+  bool get isCancellableByUser {
+    if (isCancelled || isOfficialCancellation || isRefundRequested) return false;
+    return statusIzin == AppConstants.statusTerdaftar ||
+        statusIzin == AppConstants.statusDiajukan ||
+        statusIzin == AppConstants.statusTervalidasi ||
+        statusIzin == AppConstants.statusRescheduled;
+  }
+
+  /// Pembatalan resmi dari pihak basecamp/pengelola (memiliki hak Reschedule atau Refund)
+  bool get isOfficialCancellation =>
+      statusIzin == AppConstants.statusDibatalkanBasecamp ||
+      opsiPembatalan == 'reschedule_or_refund';
+
+  /// Pendaki telah mengajukan pengembalian dana 100% akibat pembatalan basecamp
+  bool get isRefundRequested =>
+      statusIzin == AppConstants.statusRefundDiajukan ||
+      opsiPembatalan == 'refund_requested';
+
+  /// Pengembalian dana resmi telah diselesaikan oleh pihak basecamp
+  bool get isRefundCompleted =>
+      statusIzin == AppConstants.statusRefundSelesai ||
+      opsiPembatalan == 'refund_completed';
+
+  /// Tiket telah di-reschedule ke tanggal baru
+  bool get isRescheduled =>
+      statusIzin == AppConstants.statusRescheduled ||
+      opsiPembatalan == 'rescheduled';
+
+  /// Tiket telah dibatalkan (baik oleh pendaki tanpa refund, atau resmi dari basecamp)
+  bool get isCancelled =>
+      statusIzin == AppConstants.statusDibatalkanPendaki ||
+      statusIzin == AppConstants.statusDibatalkan ||
+      statusIzin == AppConstants.statusDitolak ||
+      statusIzin.toLowerCase().contains('batal');
 
   Map<String, dynamic> toMap() {
     return {
@@ -117,6 +160,9 @@ class SimaksiPermit {
       'matauang': matauang,
       'data_anggota': dataAnggota,
       'created_at': createdAt.toIso8601String(),
+      if (alasanPembatalan != null) 'alasan_pembatalan': alasanPembatalan,
+      if (opsiPembatalan != null) 'opsi_pembatalan': opsiPembatalan,
+      if (rekeningRefund != null) 'rekening_refund': rekeningRefund,
     };
   }
 
@@ -148,23 +194,31 @@ class SimaksiPermit {
       createdAt: map['created_at'] != null
           ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
           : DateTime.now(),
+      alasanPembatalan: map['alasan_pembatalan'] as String?,
+      opsiPembatalan: map['opsi_pembatalan'] as String?,
+      rekeningRefund: map['rekening_refund'] as String?,
     );
   }
 
   SimaksiPermit copyWith({
     String? statusIzin,
     String? basecampId,
+    DateTime? tanggalNaik,
+    DateTime? tanggalTurun,
     String? dataAnggota,
     String? namaGunung,
     String? namaBasecamp,
+    String? alasanPembatalan,
+    String? opsiPembatalan,
+    String? rekeningRefund,
   }) {
     return SimaksiPermit(
       id: id,
       userId: userId,
       gunungId: gunungId,
       basecampId: basecampId ?? this.basecampId,
-      tanggalNaik: tanggalNaik,
-      tanggalTurun: tanggalTurun,
+      tanggalNaik: tanggalNaik ?? this.tanggalNaik,
+      tanggalTurun: tanggalTurun ?? this.tanggalTurun,
       jumlahAnggota: jumlahAnggota,
       statusIzin: statusIzin ?? this.statusIzin,
       blockHash: blockHash,
@@ -176,6 +230,9 @@ class SimaksiPermit {
       matauang: matauang,
       dataAnggota: dataAnggota ?? this.dataAnggota,
       createdAt: createdAt,
+      alasanPembatalan: alasanPembatalan ?? this.alasanPembatalan,
+      opsiPembatalan: opsiPembatalan ?? this.opsiPembatalan,
+      rekeningRefund: rekeningRefund ?? this.rekeningRefund,
     );
   }
 

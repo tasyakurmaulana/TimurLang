@@ -405,6 +405,33 @@ class SupabaseService {
     }
   }
 
+  /// Tambah kembali sisa kuota basecamp secara realtime di Supabase saat pembatalan tiket
+  Future<bool> increaseBasecampQuota(String basecampId, int amount) async {
+    if (!_initialized || _client == null) return false;
+    try {
+      final res = await _client!
+          .from('basecamp_posts')
+          .select('kuota_harian, sisa_kuota_hari_ini')
+          .eq('id', basecampId)
+          .maybeSingle();
+      if (res != null) {
+        final kuota = (res['kuota_harian'] as num?)?.toInt() ?? 100;
+        final currentSisa = (res['sisa_kuota_hari_ini'] as num?)?.toInt() ?? 0;
+        final newSisa = (currentSisa + amount).clamp(0, kuota);
+        await _client!.from('basecamp_posts').update({
+          'sisa_kuota_hari_ini': newSisa,
+          'updated_at': DateTime.now().toIso8601String(),
+        }).eq('id', basecampId);
+        debugPrint('✅ Berhasil tambah kembali kuota basecamp $basecampId sebesar $amount di Supabase (sisa: $newSisa)');
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('⚠️ Gagal increase kuota basecamp di Supabase: $e');
+      return false;
+    }
+  }
+
   /// Mengambil semua pos basecamp dari Supabase
   Future<List<BasecampPost>> getAllBasecampPosts() async {
     if (!_initialized || _client == null) return [];
@@ -477,6 +504,9 @@ class SupabaseService {
         'total_biaya': permit.totalBiaya,
         'matauang': permit.matauang,
         if (permit.dataAnggota != null) 'data_anggota': permit.dataAnggota,
+        if (permit.alasanPembatalan != null) 'alasan_pembatalan': permit.alasanPembatalan,
+        if (permit.opsiPembatalan != null) 'opsi_pembatalan': permit.opsiPembatalan,
+        if (permit.rekeningRefund != null) 'rekening_refund': permit.rekeningRefund,
         'created_at': permit.createdAt.toIso8601String(),
       });
       debugPrint('✅ Berhasil sync permit (${permit.id}) ke Supabase');
@@ -560,6 +590,39 @@ class SupabaseService {
     } catch (e) {
       debugPrint('❌ Gagal update permit status: $e');
       return false;
+    }
+  }
+
+  /// Update data lengkap tiket di Supabase (status, reschedule tanggal, alasan batal, rekening refund)
+  Future<bool> updatePermit(SimaksiPermit permit) async {
+    if (!_initialized || _client == null) return false;
+    try {
+      final updateData = <String, dynamic>{
+        'status_izin': permit.statusIzin,
+        'tanggal_naik': permit.tanggalNaik.toIso8601String().split('T')[0],
+        'tanggal_turun': permit.tanggalTurun.toIso8601String().split('T')[0],
+      };
+      if (permit.alasanPembatalan != null) updateData['alasan_pembatalan'] = permit.alasanPembatalan;
+      if (permit.opsiPembatalan != null) updateData['opsi_pembatalan'] = permit.opsiPembatalan;
+      if (permit.rekeningRefund != null) updateData['rekening_refund'] = permit.rekeningRefund;
+
+      await _client!
+          .from('simaksi_permits')
+          .update(updateData)
+          .eq('id', permit.id);
+      return true;
+    } catch (e) {
+      debugPrint('❌ Gagal update permit lengkap di Supabase: $e');
+      // Fallback update status saja jika kolom tambahan belum ada di Supabase
+      try {
+        await _client!
+            .from('simaksi_permits')
+            .update({'status_izin': permit.statusIzin})
+            .eq('id', permit.id);
+        return true;
+      } catch (_) {
+        return false;
+      }
     }
   }
 
