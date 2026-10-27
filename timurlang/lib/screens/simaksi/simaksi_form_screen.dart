@@ -549,29 +549,35 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(4.5),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.primary.withValues(alpha: 0.12),
-                                        borderRadius: BorderRadius.circular(6),
+                                Expanded(
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(4.5),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.primary.withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: const Icon(Icons.terrain_rounded, size: 14, color: AppTheme.primary),
                                       ),
-                                      child: const Icon(Icons.terrain_rounded, size: 14, color: AppTheme.primary),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Text(
-                                      'DESTINASI PENDAKIAN TERPILIH',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 0.8,
-                                        color: AppTheme.primary,
+                                      const SizedBox(width: 8),
+                                      const Flexible(
+                                        child: Text(
+                                          'DESTINASI PENDAKIAN TERPILIH',
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: 0.8,
+                                            color: AppTheme.primary,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
+                                const SizedBox(width: 8),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
                                   decoration: BoxDecoration(
@@ -653,10 +659,13 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
                                         ),
                                       ),
                                       const SizedBox(height: 6),
-                                      Row(
+                                      Wrap(
+                                        spacing: 6,
+                                        runSpacing: 4,
+                                        crossAxisAlignment: WrapCrossAlignment.center,
                                         children: [
                                           Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                                             decoration: BoxDecoration(
                                               color: AppTheme.surfaceSubtle,
                                               borderRadius: BorderRadius.circular(8),
@@ -670,7 +679,7 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
                                                 Text(
                                                   '${_mountain?.elevasiMdpl ?? 0} MDPL',
                                                   style: const TextStyle(
-                                                    fontSize: 11.5,
+                                                    fontSize: 11,
                                                     fontWeight: FontWeight.w600,
                                                     color: AppTheme.textSecondary,
                                                   ),
@@ -678,9 +687,8 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
                                               ],
                                             ),
                                           ),
-                                          const SizedBox(width: 8),
                                           Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                                             decoration: BoxDecoration(
                                               color: AppTheme.surfaceSubtle,
                                               borderRadius: BorderRadius.circular(8),
@@ -689,7 +697,7 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
                                             child: Text(
                                               _mountain?.tingkatBahaya ?? 'Grade Standar',
                                               style: const TextStyle(
-                                                fontSize: 11.5,
+                                                fontSize: 11,
                                                 fontWeight: FontWeight.w600,
                                                 color: AppTheme.textSecondary,
                                               ),
