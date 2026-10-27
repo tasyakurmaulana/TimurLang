@@ -194,11 +194,13 @@ Aplikasi TimurLang telah melalui serangkaian pengujian komprehensif:
 
 ---
 
-## 👨‍💻 Pengembang
+## 👥 Tim Pengembang
 
-* **Tasyakur Maulana**  
-  *Proyek Akhir Mata Kuliah Pemrograman Aplikasi Mobile (PAM) — Semester 5*  
-  GitHub: [@tasyakurmaulana](https://github.com/tasyakurmaulana)
+Proyek Akhir Mata Kuliah **Pemrograman Aplikasi Mobile (PAM)** — Semester 5.
+
+1. **Tasyakur Maulana Istna**
+2. **Rahmat Agung Aryanto**
+3. **Arya Alifia Al Ashar**
 
 ---
 
