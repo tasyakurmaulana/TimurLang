@@ -20,12 +20,14 @@ class TicketCard extends StatefulWidget {
   final SimaksiPermit permit;
   final VoidCallback? onTap;
   final VoidCallback? onStatusChanged;
+  final bool initiallyExpanded;
 
   const TicketCard({
     super.key,
     required this.permit,
     this.onTap,
     this.onStatusChanged,
+    this.initiallyExpanded = true,
   });
 
   @override
@@ -35,12 +37,13 @@ class TicketCard extends StatefulWidget {
 class _TicketCardState extends State<TicketCard> {
   late String _nativeZone;
   late String _selectedZone;
-  bool _isExpanded = false;
+  late bool _isExpanded;
   String? _resolvedBasecampName;
 
   @override
   void initState() {
     super.initState();
+    _isExpanded = widget.initiallyExpanded;
     _nativeZone = TimeZoneHelper.getMountainTimeZone(
       mountainName: widget.permit.namaGunung,
     );

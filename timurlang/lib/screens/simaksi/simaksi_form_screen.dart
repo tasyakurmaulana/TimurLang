@@ -16,6 +16,7 @@ import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/date_utils.dart';
+import '../../utils/image_helper.dart';
 import '../../utils/time_zone_helper.dart';
 import '../../utils/validators.dart';
 import '../../widgets/custom_text_field.dart';
@@ -509,109 +510,248 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Mountain Info / Selection
-              const Text('Gunung Tujuan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              // Mountain Info / Selection (Stand out hero card)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Gunung Tujuan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                  if (!_isMountainLocked && _mountains.isNotEmpty)
+                    const Text(
+                      'Ketuk untuk ganti',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.primary),
+                    ),
+                ],
+              ),
               const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: AppTheme.cardDark,
-                  borderRadius: BorderRadius.circular(14),
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(18),
                   border: Border.all(
-                    color: _isMountainLocked
-                        ? AppTheme.border
-                        : AppTheme.primaryGreen.withValues(alpha: 0.3),
+                    color: AppTheme.primary.withValues(alpha: 0.45),
+                    width: 1.5,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primary.withValues(alpha: 0.08),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: (_mountains.isEmpty || _isMountainLocked)
-                    ? Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(7),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primary.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(Icons.terrain_rounded, color: AppTheme.primary, size: 22),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
+                    ? Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Destinasi Terpilih Header Badge & Status Jalur (Tanpa label Terkunci)
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  _mountain?.namaGunung ?? 'Memuat...',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.textPrimary),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(4.5),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.primary.withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Icon(Icons.terrain_rounded, size: 14, color: AppTheme.primary),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'DESTINASI PENDAKIAN TERPILIH',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.8,
+                                        color: AppTheme.primary,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  '${_mountain?.elevasiMdpl ?? 0} MDPL • Status: ${_mountain?.statusJalur ?? "Buka"}',
-                                  style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+                                  decoration: BoxDecoration(
+                                    color: (_mountain?.statusJalur.toLowerCase() == 'tutup'
+                                            ? AppTheme.dangerRed
+                                            : AppTheme.safeGreen)
+                                        .withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(999),
+                                    border: Border.all(
+                                      color: (_mountain?.statusJalur.toLowerCase() == 'tutup'
+                                              ? AppTheme.dangerRed
+                                              : AppTheme.safeGreen)
+                                          .withValues(alpha: 0.35),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 6,
+                                        height: 6,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: _mountain?.statusJalur.toLowerCase() == 'tutup'
+                                              ? AppTheme.dangerRed
+                                              : AppTheme.safeGreen,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        'Jalur ${_mountain?.statusJalur ?? "Buka"}',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: _mountain?.statusJalur.toLowerCase() == 'tutup'
+                                              ? AppTheme.dangerRed
+                                              : AppTheme.safeGreen,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
-                          ),
-                          if (_isMountainLocked)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppTheme.surfaceSubtle,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: AppTheme.border),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.lock_rounded, size: 12, color: AppTheme.textSecondary),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Terkunci',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppTheme.textSecondary,
+                            const SizedBox(height: 14),
+                            // Thumbnail Foto Gunung Asli + Info Elevasi & Tingkat Bahaya
+                            Row(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: Image(
+                                    image: ImageHelper.getImageProvider(_mountain?.fotoUrl, _mountain?.namaGunung) ??
+                                        const AssetImage('assets/images/Foto Gunung/Merbabu.webp'),
+                                    width: 66,
+                                    height: 66,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) => Container(
+                                      width: 66,
+                                      height: 66,
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.primarySubtle,
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      child: const Icon(Icons.terrain_rounded, color: AppTheme.primary, size: 30),
                                     ),
                                   ),
-                                ],
-                              ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _mountain?.namaGunung ?? 'Memuat...',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 17,
+                                          color: AppTheme.textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: AppTheme.surfaceSubtle,
+                                              borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(color: AppTheme.border),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(Icons.height_rounded, size: 13, color: AppTheme.textSecondary),
+                                                const SizedBox(width: 3),
+                                                Text(
+                                                  '${_mountain?.elevasiMdpl ?? 0} MDPL',
+                                                  style: const TextStyle(
+                                                    fontSize: 11.5,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: AppTheme.textSecondary,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: AppTheme.surfaceSubtle,
+                                              borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(color: AppTheme.border),
+                                            ),
+                                            child: Text(
+                                              _mountain?.tingkatBahaya ?? 'Grade Standar',
+                                              style: const TextStyle(
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.w600,
+                                                color: AppTheme.textSecondary,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
-                        ],
+                          ],
+                        ),
                       )
-                    : DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: _mountain?.id,
-                          isExpanded: true,
-                          dropdownColor: AppTheme.cardDark,
-                          icon: const Icon(Icons.arrow_drop_down, color: AppTheme.primaryGreen),
-                          items: _mountains.map((m) {
-                            return DropdownMenuItem<String>(
-                              value: m.id,
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.terrain, color: AppTheme.primaryGreen, size: 22),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Text(m.namaGunung, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.textPrimary)),
-                                        Text('${m.elevasiMdpl} mdpl • Status: ${m.statusJalur}', style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-                                      ],
+                    : Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _mountain?.id,
+                            isExpanded: true,
+                            dropdownColor: AppTheme.surface,
+                            icon: const Icon(Icons.arrow_drop_down, color: AppTheme.primary),
+                            items: _mountains.map((m) {
+                              return DropdownMenuItem<String>(
+                                value: m.id,
+                                child: Row(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image(
+                                        image: ImageHelper.getImageProvider(m.fotoUrl, m.namaGunung) ??
+                                            const AssetImage('assets/images/Foto Gunung/Merbabu.webp'),
+                                        width: 36,
+                                        height: 36,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) => const Icon(Icons.terrain, color: AppTheme.primary, size: 22),
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: (newId) {
-                            if (newId != null) {
-                              final selected = _mountains.firstWhere((m) => m.id == newId);
-                              setState(() => _mountain = selected);
-                              _loadBasecampsForMountain(newId);
-                            }
-                          },
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text(m.namaGunung, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5, color: AppTheme.textPrimary)),
+                                          Text('${m.elevasiMdpl} MDPL • Status: ${m.statusJalur}', style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (newId) {
+                              if (newId != null) {
+                                final selected = _mountains.firstWhere((m) => m.id == newId);
+                                setState(() => _mountain = selected);
+                                _loadBasecampsForMountain(newId);
+                              }
+                            },
+                          ),
                         ),
                       ),
               ),
@@ -804,17 +944,73 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
               ],
               const SizedBox(height: 24),
 
-              // Date Selection
-              const Text('Jadwal Pendakian', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              // Date Selection (Desain interaktif & jelas)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.calendar_month_rounded, color: AppTheme.primary, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'Jadwal Pendakian',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                      ),
+                    ],
+                  ),
+                  if (_tanggalNaik != null && _tanggalTurun != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.timelapse_rounded, size: 13, color: AppTheme.primary),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${_tanggalTurun!.difference(_tanggalNaik!).inDays + 1} Hari Pendakian',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Ketuk tombol kalender di bawah untuk memilih tanggal naik & tanggal turun Anda:',
+                style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+              ),
               const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
-                    child: _datePickerCard('Tanggal Naik', _tanggalNaik, () => _pickDate(true)),
+                    child: _datePickerCard(
+                      label: 'Tanggal Naik',
+                      hint: 'Mulai mendaki',
+                      icon: Icons.hiking_rounded,
+                      date: _tanggalNaik,
+                      onTap: () => _pickDate(true),
+                    ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 14),
                   Expanded(
-                    child: _datePickerCard('Tanggal Turun', _tanggalTurun, () => _pickDate(false)),
+                    child: _datePickerCard(
+                      label: 'Tanggal Turun',
+                      hint: 'Selesai / pulang',
+                      icon: Icons.home_rounded,
+                      date: _tanggalTurun,
+                      onTap: () => _pickDate(false),
+                    ),
                   ),
                 ],
               ),
@@ -1204,30 +1400,130 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
     );
   }
 
-  Widget _datePickerCard(String label, DateTime? date, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: date != null ? AppTheme.primary : AppTheme.border),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-            const SizedBox(height: 4),
-            Text(
-              date != null ? AppDateUtils.formatDateIndonesian(date) : 'Pilih Tanggal',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: date != null ? FontWeight.bold : FontWeight.normal,
-                color: date != null ? AppTheme.textPrimary : AppTheme.primary,
-              ),
+  Widget _datePickerCard({
+    required String label,
+    required String hint,
+    required IconData icon,
+    required DateTime? date,
+    required VoidCallback onTap,
+  }) {
+    final bool isSelected = date != null;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        splashColor: AppTheme.primary.withValues(alpha: 0.15),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppTheme.primary.withValues(alpha: 0.08)
+                : AppTheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected
+                  ? AppTheme.primary
+                  : AppTheme.primary.withValues(alpha: 0.45),
+              width: isSelected ? 1.8 : 1.4,
             ),
-          ],
+            boxShadow: [
+              BoxShadow(
+                color: isSelected
+                    ? AppTheme.primary.withValues(alpha: 0.12)
+                    : Colors.black.withValues(alpha: 0.04),
+                blurRadius: isSelected ? 10 : 6,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    icon,
+                    size: 15,
+                    color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppTheme.primary : AppTheme.primary.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isSelected ? Icons.check_rounded : Icons.edit_calendar_rounded,
+                      size: 12,
+                      color: isSelected ? Colors.white : AppTheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              if (!isSelected) ...[
+                const Row(
+                  children: [
+                    Icon(Icons.calendar_month_outlined, size: 16, color: AppTheme.primary),
+                    SizedBox(width: 6),
+                    Text(
+                      'Pilih Tanggal',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Ketuk untuk buka kalender',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.textSecondary.withValues(alpha: 0.8),
+                  ),
+                ),
+              ] else ...[
+                Text(
+                  AppDateUtils.formatDateIndonesian(date),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textPrimary,
+                    height: 1.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  hint,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.primary.withValues(alpha: 0.85),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );

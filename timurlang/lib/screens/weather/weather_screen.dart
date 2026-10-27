@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../config/theme.dart';
 import '../../services/weather_service.dart';
 
 class WeatherScreen extends StatefulWidget {
@@ -346,64 +345,34 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Scaffold(
-        backgroundColor: AppTheme.background,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppTheme.textPrimary, size: 20),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: Text(
-            'Informasi Cuaca',
-            style: GoogleFonts.plusJakartaSans(
-              color: AppTheme.textPrimary,
-              fontWeight: FontWeight.w700,
-              fontSize: 18,
-            ),
-          ),
-          centerTitle: true,
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 3),
-              const SizedBox(height: 18),
-              Text(
-                'Mengambil data cuaca...',
-                style: GoogleFonts.plusJakartaSans(
-                  color: AppTheme.textPrimary,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Mendeteksi satelit & koordinat GPS...',
-                style: GoogleFonts.plusJakartaSans(
-                  color: AppTheme.textSecondary,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: _getBaseBackgroundColor(),
       body: Stack(
         children: [
-          // 1. Clean Atmospheric Background (Gradien tenang saat loaded)
+          // 1. Clean Atmospheric Background (Gradien dinamis menyesuaikan cuaca & waktu)
           Positioned.fill(
             child: _buildCleanAtmosphereBackground(),
           ),
 
-          // 2. Weather Content (Tanpa bottom navbar)
+          // 2. Weather Illustration Background (Mepet atas saja, lebarnya dan tingginya sesuai gambar asli)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 500),
+                child: Image.asset(
+                  _getWeatherBackgroundImage(),
+                  key: ValueKey(_getWeatherBackgroundImage()),
+                  fit: BoxFit.fitWidth,
+                  alignment: Alignment.topCenter,
+                  errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                ),
+              ),
+            ),
+          ),
+
           Positioned.fill(
             child: SafeArea(
               bottom: false,
@@ -415,47 +384,192 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
     );
   }
 
-  /// Background bersih dan tenang (gradasi halus saat data siap)
-  Widget _buildCleanAtmosphereBackground() {
+  Color _getBaseBackgroundColor() {
+    return _getAtmosphereGradientColors().last;
+  }
 
+  String _getWeatherBackgroundImage() {
     final now = DateTime.now();
     final hour = now.hour;
-    final isNight = hour < 6 || hour >= 18;
-    final condition = _currentWeather?.condition.toLowerCase() ?? '';
-    final isRain = condition.contains('hujan') || condition.contains('gerimis') || condition.contains('badai');
-    final isClouds = condition.contains('awan') || condition.contains('mendung');
+    final nowEpoch = now.millisecondsSinceEpoch ~/ 1000;
+    final isNight = (_currentWeather != null && _currentWeather!.sunrise > 0 && _currentWeather!.sunset > 0)
+        ? (nowEpoch < _currentWeather!.sunrise || nowEpoch >= _currentWeather!.sunset)
+        : (hour < 6 || hour >= 18);
 
-    List<Color> gradientColors;
+    final condition = _currentWeather?.condition.toLowerCase() ?? '';
+    final description = _currentWeather?.description.toLowerCase() ?? '';
+
+    final isRain = condition.contains('hujan') ||
+        condition.contains('gerimis') ||
+        condition.contains('badai') ||
+        condition.contains('petir') ||
+        condition.contains('rain') ||
+        condition.contains('drizzle') ||
+        condition.contains('thunderstorm') ||
+        description.contains('hujan') ||
+        description.contains('gerimis') ||
+        description.contains('badai') ||
+        (_currentWeather?.isStormWarning ?? false) ||
+        ((_currentWeather?.rain1h ?? 0) > 0);
 
     if (isRain) {
-      // Mood hujan/badai: slate navy lembut dan tenang, tidak ramai
-      gradientColors = const [
-        Color(0xFF1E293B),
-        Color(0xFF0F172A),
-        Color(0xFF020617),
+      return 'assets/images/weather_hujan.png';
+    }
+
+    final isClouds = condition.contains('awan') ||
+        condition.contains('mendung') ||
+        condition.contains('kabut') ||
+        condition.contains('cloud') ||
+        condition.contains('mist') ||
+        condition.contains('fog') ||
+        condition.contains('haze') ||
+        description.contains('awan') ||
+        description.contains('mendung') ||
+        description.contains('kabut');
+
+    if (isClouds) {
+      return 'assets/images/weather_berawan.png';
+    }
+
+    if (isNight || condition.contains('malam') || description.contains('malam')) {
+      return 'assets/images/weather_malam.png';
+    }
+
+    return 'assets/images/weather_cerah.png';
+  }
+
+  List<Color> _getAtmosphereGradientColors() {
+    final now = DateTime.now();
+    final hour = now.hour;
+    final minute = now.minute;
+    final timeInMinutes = hour * 60 + minute;
+    final nowEpoch = now.millisecondsSinceEpoch ~/ 1000;
+
+    final isMorning = timeInMinutes >= 300 && timeInMinutes < 510;
+    final isDusk = timeInMinutes >= 930 && timeInMinutes < 1095;
+    final isNight = (_currentWeather != null && _currentWeather!.sunrise > 0 && _currentWeather!.sunset > 0)
+        ? (nowEpoch < _currentWeather!.sunrise || nowEpoch >= _currentWeather!.sunset)
+        : (timeInMinutes >= 1095 || timeInMinutes < 300);
+
+    final condition = _currentWeather?.condition.toLowerCase() ?? '';
+    final description = _currentWeather?.description.toLowerCase() ?? '';
+
+    final isRain = condition.contains('hujan') ||
+        condition.contains('gerimis') ||
+        condition.contains('badai') ||
+        condition.contains('petir') ||
+        condition.contains('rain') ||
+        condition.contains('drizzle') ||
+        condition.contains('thunderstorm') ||
+        description.contains('hujan') ||
+        description.contains('gerimis') ||
+        description.contains('badai') ||
+        (_currentWeather?.isStormWarning ?? false) ||
+        ((_currentWeather?.rain1h ?? 0) > 0);
+
+    final isClouds = condition.contains('awan') ||
+        condition.contains('mendung') ||
+        condition.contains('kabut') ||
+        condition.contains('cloud') ||
+        condition.contains('mist') ||
+        condition.contains('fog') ||
+        condition.contains('haze') ||
+        description.contains('awan') ||
+        description.contains('mendung') ||
+        description.contains('kabut');
+
+    if (isRain) {
+      if (isDusk) {
+        return const [
+          Color(0xFF2E273D),
+          Color(0xFF1B1626),
+          Color(0xFF0C0914),
+        ];
+      } else if (isNight) {
+        return const [
+          Color(0xFF111927),
+          Color(0xFF0A0F1A),
+          Color(0xFF02050A),
+        ];
+      } else {
+        return const [
+          Color(0xFF263545),
+          Color(0xFF142130),
+          Color(0xFF0A121C),
+        ];
+      }
+    }
+
+    if (isClouds) {
+      if (isMorning) {
+        return const [
+          Color(0xFF3B5066),
+          Color(0xFF233242),
+          Color(0xFF101B26),
+        ];
+      } else if (isDusk) {
+        return const [
+          Color(0xFF382E47),
+          Color(0xFF221A30),
+          Color(0xFF0F0B18),
+        ];
+      } else if (isNight) {
+        return const [
+          Color(0xFF141C2B),
+          Color(0xFF0A0F1A),
+          Color(0xFF03050B),
+        ];
+      } else {
+        return const [
+          Color(0xFF2B3D52),
+          Color(0xFF1B2836),
+          Color(0xFF0D1620),
+        ];
+      }
+    }
+
+    if (isNight || condition.contains('malam') || description.contains('malam')) {
+      if (hour >= 22 || hour < 5) {
+        return const [
+          Color(0xFF080D1A),
+          Color(0xFF040710),
+          Color(0xFF010206),
+        ];
+      } else {
+        return const [
+          Color(0xFF0F172A),
+          Color(0xFF090E1F),
+          Color(0xFF03050B),
+        ];
+      }
+    }
+
+    if (isMorning) {
+      return const [
+        Color(0xFF0284C7),
+        Color(0xFF0369A1),
+        Color(0xFF082F49),
       ];
-    } else if (isNight) {
-      // Mood malam: deep midnight navy yang syahdu
-      gradientColors = const [
-        Color(0xFF0F172A),
-        Color(0xFF0B132B),
-        Color(0xFF020617),
-      ];
-    } else if (isClouds) {
-      // Mood berawan: blue-grey sejuk
-      gradientColors = const [
-        Color(0xFF1E3A8A),
-        Color(0xFF1E293B),
-        Color(0xFF0F172A),
+    } else if (isDusk) {
+      return const [
+        Color(0xFFB45309),
+        Color(0xFF6B21A8),
+        Color(0xFF181024),
       ];
     } else {
-      // Mood siang cerah: gradasi biru langit yang tenang & segar
-      gradientColors = const [
+      return const [
         Color(0xFF0284C7),
         Color(0xFF0369A1),
         Color(0xFF0B3B60),
       ];
     }
+  }
+
+  Widget _buildCleanAtmosphereBackground() {
+    final gradientColors = _getAtmosphereGradientColors();
+    final now = DateTime.now();
+    final hour = now.hour;
+    final isNight = hour < 6 || hour >= 18;
 
     return Container(
       decoration: BoxDecoration(
@@ -482,30 +596,38 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
 
   Widget _buildBody() {
     if (_isLoading) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const CircularProgressIndicator(color: Color(0xFF38BDF8), strokeWidth: 3),
-            const SizedBox(height: 18),
-            Text(
-              'Sinkronisasi Satelit OpenWeather...',
-              style: GoogleFonts.plusJakartaSans(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildBackButton(),
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(color: Color(0xFF38BDF8), strokeWidth: 3),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Sinkronisasi Satelit OpenWeather...',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Mengambil data cuaca real-time & GPS',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.white60,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              'Mengambil data cuaca real-time & GPS',
-              style: GoogleFonts.plusJakartaSans(
-                color: Colors.white60,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       );
     }
 
@@ -655,6 +777,13 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
                   fontSize: 24,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.3,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      blurRadius: 8,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -683,6 +812,13 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
               fontWeight: FontWeight.w300,
               height: 1.0,
               letterSpacing: -2,
+              shadows: [
+                Shadow(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  blurRadius: 16,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 8),
@@ -694,6 +830,13 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
               fontSize: 22,
               fontWeight: FontWeight.w600,
               letterSpacing: -0.2,
+              shadows: [
+                Shadow(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  blurRadius: 10,
+                  offset: const Offset(0, 1),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 6),
@@ -701,9 +844,16 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
           Text(
             '↑ ${weather.tempMax.round()}° / ↓ ${weather.tempMin.round()}°',
             style: GoogleFonts.plusJakartaSans(
-              color: Colors.white.withValues(alpha: 0.9),
+              color: Colors.white.withValues(alpha: 0.95),
               fontSize: 14,
               fontWeight: FontWeight.w500,
+              shadows: [
+                Shadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 1),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 3),
@@ -711,9 +861,16 @@ class _WeatherScreenState extends State<WeatherScreen> with SingleTickerProvider
           Text(
             'Terasa seperti ${weather.feelsLike.round()}°',
             style: GoogleFonts.plusJakartaSans(
-              color: Colors.white.withValues(alpha: 0.8),
+              color: Colors.white.withValues(alpha: 0.9),
               fontSize: 14,
               fontWeight: FontWeight.w400,
+              shadows: [
+                Shadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 1),
+                ),
+              ],
             ),
           ),
         ],

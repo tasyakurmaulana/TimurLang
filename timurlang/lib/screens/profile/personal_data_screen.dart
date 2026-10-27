@@ -356,22 +356,6 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Data Diri Pendaki'),
-        actions: [
-          if (!_isLoading)
-            TextButton(
-              onPressed: _isSaving ? null : _savePersonalData,
-              child: _isSaving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                    )
-                  : const Text(
-                      'Simpan',
-                      style: TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold, fontSize: 15),
-                    ),
-            ),
-        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -382,18 +366,10 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Banner Info Syarat SIMAKSI
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppTheme.primaryGreen.withValues(alpha: 0.18),
-                            AppTheme.cardDark,
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                        color: AppTheme.cardDark,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.35)),
                       ),

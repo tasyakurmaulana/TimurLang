@@ -2156,7 +2156,10 @@ class _DashboardPageState extends State<_DashboardPage> {
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
-                child: TicketCard(permit: permit),
+                child: TicketCard(
+                  permit: permit,
+                  initiallyExpanded: true,
+                ),
               ),
             ),
           ],
@@ -2750,8 +2753,7 @@ class _SmartRecommendationCarouselState extends State<_SmartRecommendationCarous
   }
 }
 
-/// Balon Obrolan Tbot dengan Animasi Mengambang (Floating Bobbing & Breathing)
-/// Memberi isyarat visual dinamis agar langsung menarik perhatian pengguna
+/// Gelembung Obrolan AI Berkilau (Shimmering Sparkling Gradient) dengan Ekor Segitiga & Posisi Diam
 class _AnimatedTbotBubble extends StatefulWidget {
   const _AnimatedTbotBubble();
 
@@ -2761,105 +2763,67 @@ class _AnimatedTbotBubble extends StatefulWidget {
 
 class _AnimatedTbotBubbleState extends State<_AnimatedTbotBubble>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _floatingAnim;
-  late final Animation<double> _scaleAnim;
-  late final Animation<double> _rotateAnim;
+  late final AnimationController _shimmerController;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
+    _shimmerController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
-    )..repeat(reverse: true);
-
-    _floatingAnim = Tween<double>(begin: 0.0, end: -7.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine),
-    );
-
-    _scaleAnim = Tween<double>(begin: 1.0, end: 1.035).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine),
-    );
-
-    _rotateAnim = Tween<double>(begin: -0.018, end: 0.018).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine),
-    );
+      duration: const Duration(milliseconds: 3200),
+    )..repeat();
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _shimmerController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    const double bubbleWidth = 130.0;
-    const double bubbleHeight = 88.0;
-    const double ovalHeight = 70.0;
+    const double size = 56.0;
 
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Transform.translate(
-          offset: Offset(0, _floatingAnim.value),
-          child: Transform.rotate(
-            angle: _rotateAnim.value,
-            alignment: const Alignment(0.6, 1.0),
-            child: Transform.scale(
-              scale: _scaleAnim.value,
-              alignment: Alignment.center,
-              child: child,
-            ),
-          ),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 6, right: 6),
-        child: Hero(
-          tag: 'ai_survival_fab',
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => Navigator.pushNamed(context, AppRoutes.survivalAssistant),
-              borderRadius: BorderRadius.circular(40),
-              splashColor: Colors.white.withValues(alpha: 0.15),
-              highlightColor: Colors.transparent,
-              child: SizedBox(
-                width: bubbleWidth,
-                height: bubbleHeight,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    // Gambar Balon Chat Komik (Oval + Kerucut Melengkung Terpadu)
-                    CustomPaint(
-                      size: const Size(bubbleWidth, bubbleHeight),
-                      painter: _ComicSpeechBubblePainter(
-                        color: AppTheme.primary,
-                        borderColor: Colors.white.withValues(alpha: 0.25),
-                        shadowColor: Colors.black.withValues(alpha: 0.28),
-                      ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6, right: 6),
+      child: Hero(
+        tag: 'ai_survival_fab',
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => Navigator.pushNamed(context, AppRoutes.survivalAssistant),
+            customBorder: const CircleBorder(),
+            splashColor: Colors.white.withValues(alpha: 0.25),
+            highlightColor: Colors.transparent,
+            child: SizedBox(
+              width: size,
+              height: size,
+              child: AnimatedBuilder(
+                animation: _shimmerController,
+                builder: (context, child) {
+                  return CustomPaint(
+                    painter: _SparklingSpeechBubblePainter(
+                      shimmerProgress: _shimmerController.value,
                     ),
-                    // Teks "Tanya Tbot" presisi di tengah-tengah badan oval
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      width: bubbleWidth,
-                      height: ovalHeight,
-                      child: Center(
-                        child: Text(
-                          'Tanya Tbot',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                            letterSpacing: 0.2,
-                          ),
+                    child: child,
+                  );
+                },
+                child: const Center(
+                  child: Padding(
+                    padding: EdgeInsets.only(right: 2, bottom: 2),
+                    child: Icon(
+                      Icons.auto_awesome_rounded,
+                      color: Colors.white,
+                      size: 26,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black26,
+                          blurRadius: 4,
+                          offset: Offset(0, 1),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -2870,56 +2834,66 @@ class _AnimatedTbotBubbleState extends State<_AnimatedTbotBubble>
   }
 }
 
-/// Painter untuk menggambar Balon Obrolan Komik (Oval + Kerucut Melengkung Menyatu)
-class _ComicSpeechBubblePainter extends CustomPainter {
-  final Color color;
-  final Color borderColor;
-  final Color shadowColor;
+class _SparklingSpeechBubblePainter extends CustomPainter {
+  final double shimmerProgress;
 
-  const _ComicSpeechBubblePainter({
-    required this.color,
-    required this.borderColor,
-    required this.shadowColor,
-  });
+  _SparklingSpeechBubblePainter({required this.shimmerProgress});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final ovalH = h - 16.0; // Tinggi badan oval
+    const double cx = 25.5;
+    const double cy = 25.5;
+    const double r = 23.5;
 
-    // 1. Badan Oval Sempurna
-    final ovalPath = Path()..addOval(Rect.fromLTWH(0, 0, w, ovalH));
+    final circle = Path()
+      ..addOval(Rect.fromCircle(center: const Offset(cx, cy), radius: r));
 
-    // 2. Ekor Kerucut Melengkung Khas Komik (persis gambar referensi)
-    final tailPath = Path()
-      ..moveTo(w * 0.58, ovalH * 0.95)
-      ..quadraticBezierTo(w * 0.69, h * 0.92, w * 0.80, h)
-      ..quadraticBezierTo(w * 0.77, h * 0.81, w * 0.83, ovalH * 0.73)
+    final tail = Path()
+      ..moveTo(35.5, 45.5)
+      ..quadraticBezierTo(43.5, 46.5, 48.5, 48.5)
+      ..quadraticBezierTo(46.5, 43.5, 45.5, 35.5)
       ..close();
 
-    // 3. Satukan menjadi satu siluet tanpa garis sambungan
-    final bubblePath = Path.combine(PathOperation.union, ovalPath, tailPath);
+    final bubblePath = Path.combine(PathOperation.union, circle, tail);
 
-    // Gambar bayangan halus
-    canvas.drawShadow(bubblePath, shadowColor, 8, true);
+    canvas.drawShadow(bubblePath, Colors.black.withValues(alpha: 0.28), 7, true);
 
-    // Isi warna gelembung
+    final double shimmerPos = -1.2 + shimmerProgress * 3.4;
+    final gradient = LinearGradient(
+      begin: Alignment(shimmerPos - 0.85, -1.0),
+      end: Alignment(shimmerPos + 0.85, 1.0),
+      colors: const [
+        Color(0xFF047857),
+        Color(0xFF059669),
+        Color(0xFF10B981),
+        Color(0xFF34D399),
+        Color(0xFFD1FAE5),
+        Color(0xFF34D399),
+        Color(0xFF10B981),
+        Color(0xFF059669),
+        Color(0xFF047857),
+      ],
+      stops: const [0.0, 0.22, 0.38, 0.46, 0.50, 0.54, 0.62, 0.78, 1.0],
+    );
+
     final fillPaint = Paint()
-      ..color = color
+      ..shader = gradient.createShader(Offset.zero & size)
       ..style = PaintingStyle.fill;
     canvas.drawPath(bubblePath, fillPaint);
 
-    // Garis tepi halus
-    final borderPaint = Paint()
-      ..color = borderColor
+    final strokePaint = Paint()
+      ..color = Colors.white
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-    canvas.drawPath(bubblePath, borderPaint);
+      ..strokeWidth = 2.2
+      ..strokeJoin = StrokeJoin.round
+      ..strokeCap = StrokeCap.round;
+    canvas.drawPath(bubblePath, strokePaint);
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _SparklingSpeechBubblePainter oldDelegate) {
+    return oldDelegate.shimmerProgress != shimmerProgress;
+  }
 }
 
 
