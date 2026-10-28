@@ -49,6 +49,9 @@ class SimaksiFormScreen extends StatefulWidget {
 }
 
 class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
+  static const int maxAnggota = 10;
+  bool _isUpdatingAnggota = false;
+
   Mountain? _mountain;
   List<Mountain> _mountains = [];
   List<BasecampPost> _basecamps = [];
@@ -177,14 +180,54 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
   }
 
   void _onAnggotaChanged() {
-    final val = int.tryParse(_anggotaCtrl.text) ?? 1;
+    if (_isUpdatingAnggota) return;
+
+    final text = _anggotaCtrl.text.trim();
+    if (text.isEmpty) {
+      _syncMemberControllers(0);
+      return;
+    }
+
+    final parsed = int.tryParse(text);
+    if (parsed == null) {
+      _syncMemberControllers(0);
+      return;
+    }
+
+    if (parsed > maxAnggota) {
+      _isUpdatingAnggota = true;
+      _anggotaCtrl.value = const TextEditingValue(
+        text: '$maxAnggota',
+        selection: TextSelection.collapsed(offset: 2),
+      );
+      _isUpdatingAnggota = false;
+      _syncMemberControllers(maxAnggota - 1);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Maksimal anggota rombongan adalah 10 orang (termasuk ketua).'),
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    final val = parsed.clamp(1, maxAnggota);
     final needed = val > 1 ? val - 1 : 0;
     _syncMemberControllers(needed);
   }
 
   void _syncMemberControllers(int count) {
     if (count < 0) count = 0;
-    if (_memberControllers.length == count) return;
+    if (count > maxAnggota - 1) count = maxAnggota - 1;
+    if (_memberControllers.length == count) {
+      setState(() {});
+      return;
+    }
     while (_memberControllers.length < count) {
       _memberControllers.add(_MemberFormControllers());
     }
@@ -196,7 +239,7 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
 
   void _updateAnggotaCount(int delta) {
     final current = int.tryParse(_anggotaCtrl.text) ?? 1;
-    final next = (current + delta).clamp(1, 50);
+    final next = (current + delta).clamp(1, maxAnggota);
     _anggotaCtrl.text = next.toString();
   }
 
@@ -392,7 +435,17 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
       return;
     }
 
-    final int jumlahAnggota = int.parse(_anggotaCtrl.text);
+    final int? parsedAnggota = int.tryParse(_anggotaCtrl.text);
+    if (parsedAnggota == null || parsedAnggota < 1 || parsedAnggota > maxAnggota) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Jumlah anggota rombongan harus antara 1 sampai 10 orang.'),
+          backgroundColor: AppTheme.dangerRed,
+        ),
+      );
+      return;
+    }
+    final int jumlahAnggota = parsedAnggota;
 
     // Cek status buka/tutup basecamp
     if (!_selectedBasecamp!.isBuka) {
@@ -1025,13 +1078,34 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
               const SizedBox(height: 24),
 
               // Jumlah Anggota Section
-              const Text(
-                'Jumlah Anggota Rombongan',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Jumlah Anggota Rombongan',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AppTheme.primary.withValues(alpha: 0.25)),
+                    ),
+                    child: const Text(
+                      'Maks. 10 Orang',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 4),
               const Text(
-                'Termasuk ketua rombongan (Anda)',
+                'Termasuk ketua rombongan (Anda) • Maksimal 10 orang',
                 style: TextStyle(fontSize: 12.5, color: AppTheme.textSecondary),
               ),
               const SizedBox(height: 10),
@@ -1042,41 +1116,50 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
                     child: CustomTextField(
                       controller: _anggotaCtrl,
                       label: 'Total Anggota',
+                      hint: '1 - 10 orang',
                       keyboardType: TextInputType.number,
                       prefixIcon: Icons.people_outline,
-                      validator: (v) => Validators.minValue(v, 1, 'Jumlah anggota'),
+                      validator: (v) => Validators.range(v, 1, maxAnggota, 'Jumlah anggota'),
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Container(
-                    height: 54,
-                    decoration: BoxDecoration(
-                      color: AppTheme.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.border, width: 1.2),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.remove, size: 20),
-                          onPressed: () => _updateAnggotaCount(-1),
-                          color: AppTheme.textPrimary,
-                          tooltip: 'Kurangi Anggota',
+                  Builder(
+                    builder: (context) {
+                      final currentCount = int.tryParse(_anggotaCtrl.text) ?? 1;
+                      final canDecrease = currentCount > 1;
+                      final canIncrease = currentCount < maxAnggota;
+
+                      return Container(
+                        height: 54,
+                        decoration: BoxDecoration(
+                          color: AppTheme.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppTheme.border, width: 1.2),
                         ),
-                        Container(
-                          width: 1,
-                          height: 24,
-                          color: AppTheme.border,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.remove, size: 20),
+                              onPressed: canDecrease ? () => _updateAnggotaCount(-1) : null,
+                              color: canDecrease ? AppTheme.textPrimary : AppTheme.textSecondary.withValues(alpha: 0.3),
+                              tooltip: 'Kurangi Anggota',
+                            ),
+                            Container(
+                              width: 1,
+                              height: 24,
+                              color: AppTheme.border,
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.add, size: 20),
+                              onPressed: canIncrease ? () => _updateAnggotaCount(1) : null,
+                              color: canIncrease ? AppTheme.primary : AppTheme.textSecondary.withValues(alpha: 0.3),
+                              tooltip: 'Tambah Anggota (Maks. 10)',
+                            ),
+                          ],
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.add, size: 20),
-                          onPressed: () => _updateAnggotaCount(1),
-                          color: AppTheme.primary,
-                          tooltip: 'Tambah Anggota',
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -1355,6 +1438,7 @@ class _SimaksiFormScreenState extends State<SimaksiFormScreen> {
     final title = _getOrdinalMemberTitle(index);
 
     return Container(
+      key: ValueKey('member_$index'),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppTheme.surface,

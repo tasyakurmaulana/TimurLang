@@ -70,4 +70,26 @@ class Validators {
     }
     return null;
   }
+
+  static String? maxValue(String? value, int max, [String fieldName = 'Field']) {
+    final numError = number(value, fieldName);
+    if (numError != null) return numError;
+    if (int.parse(value!.trim()) > max) {
+      return '$fieldName maksimal $max';
+    }
+    return null;
+  }
+
+  static String? range(String? value, int min, int max, [String fieldName = 'Field']) {
+    final numError = number(value, fieldName);
+    if (numError != null) return numError;
+    final val = int.parse(value!.trim());
+    if (val < min) {
+      return '$fieldName minimal $min';
+    }
+    if (val > max) {
+      return '$fieldName maksimal $max';
+    }
+    return null;
+  }
 }
